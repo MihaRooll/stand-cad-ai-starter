@@ -8,11 +8,13 @@
 
 ## Git baseline
 
-- Repository initialized with remote `origin` = `https://github.com/MihaRooll/stand-cad-ai-starter.git` (fetch and push).
+- Repository initialized with remote `origin` = `https://github.com/MihaRooll/stand-cad-ai-starter.git` (fetch and push). Upstream branch: `origin/main`.
 - Commits (oldest first):
   - `910a23a` — Initial commit: add README
   - `a1f2c97` — Initial AI-first CAD project specification
-- No baseline git tag exists yet; baseline commit is `a1f2c97`.
+  - `c07dbf4` (`c07dbf40235ffb258bc5881d3d71d7ac194a7d62`) — Adopt orchestration harness and record MCP connectivity resolution (15 files: `.cursor/agents/`, `.cursor/skills/autonomous-task/`, rules `20`/`21`/`30`, four `state/**` files)
+- Annotated tag `baseline` on `a1f2c97`, message `Baseline: initial AI-first CAD project specification`.
+- `c07dbf4` is local-only and unpushed (`git log origin/main..HEAD` lists it; not pushed to remote).
 
 ## G0 status (evidence only)
 
@@ -67,8 +69,6 @@ Evidence collected is not a gate verdict: G0 remains an unconfirmed Human Gate.
 
 ## Remaining Phase 0 work
 
-- Imported `.cursor/` orchestration harness (agents, `autonomous-task` skill, rules `20`/`21`/`30`) — local commit and local annotated baseline tag on `a1f2c97` authorised by the user (no push); pending in this cycle (a later step performs them).
-- No baseline git tag created yet — same as above; pending in this cycle.
 - Author MCP modeling/drawing/repair project rules per `docs/05_IMPLEMENTATION_PLAN.md:14` — precondition now satisfied (MCP connected in-session, 38 tools listed; see D-009). Authoring is unblocked as a separate follow-up packet; not in scope for this cycle. `build123d-mcp@0.3.81 --help` lists only server options, with no rule-install command; rules must be authored in this repository.
 
 ## Current blockers
