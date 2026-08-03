@@ -1,0 +1,19 @@
+.venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+dist/
+build/
+
+# Generated CAD and review artifacts are intentionally not committed by default.
+output/
+
+# Decide and document Git LFS or external release storage before adding binary
+# review/release packages. Controlled manifests and approval records must remain
+# traceable; therefore review/ and release/ are not blanket-ignored here.
+
+# Local real-project inputs may contain sensitive site/vendor details.
+config/project.toml
+config/equipment.toml

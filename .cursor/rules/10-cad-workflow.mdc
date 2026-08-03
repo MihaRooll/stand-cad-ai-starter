@@ -1,0 +1,14 @@
+---
+description: Parametric CAD generation, validation, and manufacturing handoff rules
+globs: "**/*.py,**/*.toml,**/*.step,**/*.stp,**/*.dxf,**/*.svg,**/*.pdf"
+alwaysApply: false
+---
+
+- Use `build123d==0.11.1` and the pinned project MCP.
+- Build explicit named parts incrementally; render and measure after major features.
+- Edit generator/config source, never generated STEP/DXF as the normal change path.
+- Verify solids, expected bounding boxes, part count, placement, collisions, service zones, and controlled views before export.
+- Save revisioned validation evidence and map it to requirement IDs.
+- Treat STEP as neutral geometry, PDF as controlled design intent, and DXF as a gated manufacturing derivative.
+- Bent-sheet DXF is reference-only until target-factory DFM and bend/flat-pattern responsibility are recorded.
+

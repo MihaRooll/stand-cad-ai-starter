@@ -1,0 +1,6 @@
+requirement_id,summary,source,status,design_element,verification,evidence,revision,owner,notes
+PRD-001,"Selected equipment set and quantity",docs/04_REQUIREMENTS_CHECKLIST.md,OPEN,"","","","",USER,""
+EQP-001,"Exact manufacturer model and revision",docs/04_REQUIREMENTS_CHECKLIST.md,OPEN,"","","","",USER,""
+SWE-001,"One canonical Python generator per released part",ADR-002,PLANNED,src/,"code review + manifest","",DRAFT,OPUS5,""
+SWE-002,"Configuration validates before generation",docs/04_REQUIREMENTS_CHECKLIST.md,IN_PROGRESS,src/stand_cad/schema.py,"pytest + validator","",DRAFT,IMPLEMENTER,""
+MFG-007,"Target manufacturer DFM response archived",ADR-003,BLOCKED,review/vendor_dfm/,"document review","",DRAFT,USER,"Requires authorized vendor process"

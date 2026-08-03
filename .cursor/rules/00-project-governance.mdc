@@ -1,0 +1,13 @@
+---
+description: Project governance and release safety for the mobile stand CAD repository
+alwaysApply: true
+---
+
+- Read and obey `AGENTS.md`.
+- Keep Python/config as the geometry source of truth.
+- Maintain `state/PROJECT_STATE.md`, `state/DECISION_LOG.md`, `state/ASSUMPTIONS.md`, and requirements traceability.
+- Proceed autonomously on reversible work; consolidate fit/safety blockers in `docs/10_USER_INPUT_REQUIRED.md`.
+- Never invent critical equipment, load, heat, electrical, transport, or manufacturer bend data.
+- Never mark an artifact for production before the applicable gate passes.
+- Use one geometry-source writer and independent non-editing review/verification roles.
+

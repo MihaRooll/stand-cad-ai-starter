@@ -1,0 +1,15 @@
+*.step binary
+*.stp binary
+*.stl binary
+*.3mf binary
+*.glb binary
+*.pdf binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.dxf text eol=lf
+*.py text eol=lf
+*.md text eol=lf
+*.toml text eol=lf
+*.csv text eol=lf
+

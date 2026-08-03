@@ -1,0 +1,31 @@
+schema_version = 1
+
+[project]
+id = "STAND"
+name = "Mobile equipment stand demo"
+mode = "demo"
+revision = "DRAFT"
+production_release = false
+release_kind = "none"
+prototype_inspection_record_id = ""
+units = "mm"
+
+[constraints]
+max_outer_width_mm = 0.0
+max_outer_depth_mm = 0.0
+max_outer_height_mm = 0.0
+max_total_mass_kg = 0.0
+constraints_verified = false
+
+[workflow]
+operate_while_installed = false
+transport_fully_loaded = false
+operators = 0
+workflow_verified = false
+
+[manufacturing]
+target_manufacturer = "TBD"
+dfm_record_id = ""
+uses_bent_sheet_metal = false
+bend_data_confirmed = false
+flat_pattern_owner = "TBD"

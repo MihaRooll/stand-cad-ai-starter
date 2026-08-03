@@ -1,0 +1,33 @@
+schema_version = 1
+mode = "demo"
+
+[[equipment]]
+id = "DEMO-DEVICE-001"
+manufacturer = "SYNTHETIC"
+model = "DEMO ONLY — NOT A REAL DEVICE"
+quantity = 1
+enabled = true
+verified = false
+envelopes_verified = false
+support_verified = false
+transport_verified = false
+electrical_verified = false
+thermal_verified = false
+source_type = "synthetic_demo"
+source_reference = ""
+width_mm = 600.0
+depth_mm = 400.0
+height_mm = 300.0
+mass_kg = 25.0
+power_w = 0.0
+powered = false
+heat_source = false
+transport_orientation = "demo"
+
+[equipment.service_clearance_mm]
+front = 300.0
+rear = 100.0
+left = 50.0
+right = 50.0
+top = 200.0
+bottom = 0.0
