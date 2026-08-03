@@ -1,0 +1,25 @@
+---
+description: Language of agent replies to the user versus language of repository artifacts
+alwaysApply: true
+---
+
+# Communication language
+
+## Reply to the user in Russian
+
+- Every user-facing message — status, findings, questions, stage reports, blockers, final summaries — is written in Russian.
+- Lead with the outcome, then the reasoning. Keep the reporting discipline required by `21-orchestration-overlay.mdc`: a finding still needs its path, line numbers, requirement ID, and reproducible evidence.
+- When a subagent returns its report in English, translate the substance for the user instead of pasting it through.
+
+## Keep the repository in English
+
+Russian applies to conversation only. Everything that lands on disk stays English, because this repository, its documentation, and the manufacturing handoff are English:
+
+- code, identifiers, docstrings, and comments;
+- `docs/**`, `state/**`, ADRs, and plan artifacts in `.cursor/plans/**`;
+- commit messages, branch names, config keys, and validator output;
+- requirement summaries in `state/REQUIREMENTS_TRACEABILITY.csv`.
+
+## Do not translate
+
+Keep verbatim, inside otherwise Russian text: file paths, identifiers, commands, requirement IDs, gate names (`G0`–`G8`), tier labels (`T0`–`T4`), agent names, model slugs, verdict tokens such as `rework` and `BLOCKED`, and units of measurement.

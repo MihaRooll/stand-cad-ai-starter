@@ -1,0 +1,407 @@
+# Orchestration contracts (normative)
+
+## Constants
+
+- `MAX_REVIEW_CYCLES=3`; cycle 3 reopens blocker findings only.
+- `MAX_PRINCIPAL_ATTEMPTS=2`; second reject → `BLOCKED`.
+- Premium packets: max 12 invariants and 12 validation steps (each <=200 chars), `scope_summary<=1000`, max 20 `{path, lines, excerpt<=200}` refs.
+- Never send raw shell logs, long stack traces, file dumps, or tool JSON to Sol.
+
+All artifacts share one stable `contract_id`.
+
+**T0/T1:** compact Work Packet (goal, owned paths, verify commands, forbidden) + compact result; formal Task Contract / Plan / Finding / Verification Record **не обязательны**. Main never product-writes T0–T3.
+
+**T2+:** formal Task Contract обязателен; Plan, Finding, Verification Record — когда соответствующий stage запущен.
+
+## Context budgets (best-effort)
+
+| Packet | Max tokens |
+|--------|------------|
+| Work/Scope Packet | ≤2k |
+| L2 Spawn Packet | ≤8k |
+| Scout return | ≤4k |
+| Final Report | ≤1.5k |
+
+Forbidden in packets: raw logs, full files, chat history, tool JSON dumps. Best-effort in normal Cursor chat — not platform-enforced.
+
+## 0. Work Packet (T0/T1 compact)
+
+Main creates compact Work Packet before spawning implementer:
+
+```yaml
+contract_id: task-slug
+tier: T0|T1
+goal: testable outcome
+acceptance_criteria:
+  - id: AC-1
+    text: observable result
+owned_files: []
+verify_commands: []
+forbidden: []
+```
+
+Main never writes owned product paths on T0–T3. T0: implementer runs targeted checks (no separate verifier). T1: Grok verifier required after implementer.
+
+## 1. Task Contract
+
+```yaml
+contract_id: task-slug
+tier: T0|T1|T2|T3|T4
+goal: testable outcome
+acceptance_criteria:
+  - id: AC-1
+    text: observable result
+owned_files: []
+verify_commands: []
+forbidden: []
+```
+
+Writer cannot change acceptance criteria or verification commands.
+
+## 2. Plan (T2+)
+
+Path: `.cursor/plans/<contract_id>.plan.md`.
+
+```yaml
+contract_id: task-slug
+cycle: 1|2|3
+steps:
+  - id: S-1
+    action: bounded action
+    owner: operational-orchestrator|implementer|adversarial-reviewer|verifier|principal-arbiter|explore
+sol_approved: true|false|null
+```
+
+Required before first T3 product write. T2: persist when plan stage runs. Cycle 3 steps cite blocker finding IDs.
+
+## 3. Principal Packet (T3)
+
+```yaml
+contract_id: task-slug
+attempt: 1|2
+invariants:
+  - id: INV-1
+    text: must remain true
+validation_plan: []
+scope_summary: compact summary
+owned_files: []
+evidence_refs:
+  - path: src/file
+    lines: 10-20
+    excerpt: capped excerpt
+```
+
+Sol response:
+
+```yaml
+verdict: approve|reject
+gaps: []
+```
+
+No implementer before `approve`. Reject on attempt 1 → revise once; reject on attempt 2 → BLOCKED.
+
+## 4. Human Gate Packet (T4)
+
+```yaml
+contract_id: task-slug
+trigger: destructive|external-write|explicit-human
+action_summary: requested action
+destructive_ops: []
+rollback_plan: safe rollback
+verify_commands: []
+human_decision: null|approve|reject
+```
+
+No forbidden mutation before explicit `approve`. After approval, Main owns the exact approved external/destructive action; code-bearing work may enter the reviewed T2 pipeline. Reject → BLOCKED.
+
+## 5. Finding
+
+```yaml
+finding_id: F-1
+contract_id: task-slug
+severity: blocker|should-fix|nit
+path: src/file
+lines: 10-20
+requirement_ref: AC-1|INV-1
+evidence: reproducible counterexample
+cycle: 1|2|3
+status: open|resolved|wontfix
+```
+
+Missing `path`, `lines`, `requirement_ref`, or `evidence` → drop finding. Consensus is not evidence.
+
+## 6. Verification Record
+
+```yaml
+contract_id: task-slug
+cycle: 1|2|3
+commands:
+  - cmd: exact command
+    exit_code: 0
+    summary: bounded output
+criteria_map:
+  - id: AC-1
+    status: pass|fail
+blockers_open: 0
+verdict: pass|fail
+```
+
+`pass` iff every required command exits 0, every AC passes, and blockers_open=0.
+
+## 7. Final Report
+
+```yaml
+contract_id: task-slug
+tier: T0|T1|T2|T3|T4
+outcome: done|blocked|human_pending|failed
+changes_summary: compact result
+files_touched: []
+review_cycles_used: 0|1|2|3
+principal_attempts_used: 0|1|2
+stop_reason: verified_pass|awaiting_human|blocker_exhausted|principal_rejected|human_rejected|verify_fail_exhausted|invalid_task
+```
+
+There is no partial completion. Open should-fix/nit may be reported only when all AC and deterministic checks still pass.
+
+## State transitions
+
+```text
+WORK_PACKET -> IMPLEMENT -> VERIFY(targeted)                           T0 implementer targeted checks
+WORK_PACKET -> IMPLEMENT -> VERIFY(verifier)                           T1 Grok verifier required
+CONTRACT -> [EXPLORE] -> [PLAN] -> IMPLEMENT -> [REVIEW] -> [VERIFY]   T2 conditional stages
+CONTRACT -> PLAN -> PRINCIPAL -> IMPLEMENT -> REVIEW -> VERIFY         T3 approve
+PRINCIPAL -> PLAN -> PRINCIPAL                T3 reject on attempt 1
+PRINCIPAL -> BLOCKED                          T3 reject on attempt 2
+CONTRACT -> HUMAN -> HUMAN_PENDING            T4 awaiting decision
+HUMAN_PENDING -> BLOCKED                      T4 explicit human reject
+HUMAN_PENDING -> IMPLEMENT                    T4 approve + code-bearing task; Main dispatches reviewed T2 pipeline
+HUMAN_PENDING -> EXECUTE -> VERIFY            T4 approve + action-only task; Main executes exact approved action
+HUMAN_PENDING -> IMPLEMENT -> REVIEW -> EXECUTE -> VERIFY  T4 approve + code/action hybrid
+IMPLEMENT -> VERIFY                           T0 targeted or T2 when no separate verifier
+IMPLEMENT -> REVIEW -> VERIFY                 T2/T3/T4-approved-code when review stage runs
+REVIEW|VERIFY -> IMPLEMENT                    fixable failure, cycle < 3
+VERIFY -> DONE                                strict pass gate
+otherwise -> BLOCKED|HUMAN_PENDING|FAILED
+```
+
+| Condition | Outcome | stop_reason |
+|-----------|---------|-------------|
+| Strict verification pass | DONE | `verified_pass` |
+| Human decision missing | HUMAN_PENDING | `awaiting_human` |
+| Human reject | BLOCKED | `human_rejected` |
+| Second principal reject | BLOCKED | `principal_rejected` |
+| Cycle 3 has open blocker finding | BLOCKED | `blocker_exhausted` |
+| Cycle 3 required command/AC still fails without blocker finding | FAILED | `verify_fail_exhausted` |
+| Invalid/unexecutable contract | FAILED | `invalid_task` |
+
+Main creates the Final Report and is the only user-facing completion owner.
+
+## 8. Docs Impact Record
+
+Required when change/build touches docs or user-facing surface (README, onboarding, AGENTS copy):
+
+```yaml
+contract_id: task-slug
+docs_paths_touched: []
+docs_map_entries_updated: []
+validator_run: yes|no
+validator_exit_code: 0|null
+notes: compact optional context
+```
+
+- `docs_paths_touched`: every doc/markdown path edited or added
+- `docs_map_entries_updated`: `entries[].path` values changed in `docs/docs-map.json`
+- `validator_run: yes` expected when map or referenced paths changed; attach exit code
+- Omit section only for pure code changes with zero doc/user-facing touch
+
+## Verification profiles (normative light vocabulary)
+
+Light scope only — **not** a second oracle engine. Profiles name **which deterministic commands** satisfy verify stages; they do **not** prove Cursor/model/plugin runtime (INV-10).
+
+| Profile | Scope | Typical command (toolkit root) |
+|---------|-------|--------------------------------|
+| `targeted` | Task `verify_commands` only (owned paths) | Per Work Packet / Contract |
+| `Quick` | All fast static/policy checks once | `scripts/verify-harness.ps1 -Profile Quick` |
+| `Full` | Quick + exactly one bootstrap oracle | `scripts/verify-harness.ps1 -Profile Full` |
+
+**Authoritative vocabulary (VERIFY-01):** `targeted` / `Quick` / `Full` above are **normative for running** verify stages. The evidence sidecar (`tests/orchestration/evidence-schema.json`) accepts `targeted`, `quick`, `full`, plus `affected` and `checkpoint` — the latter two are **evidence-recording** labels for the shadow sidecar only; they do not create new oracles or override toolkit profiles. Map `quick` ↔ `Quick` when recording.
+
+**Default during change/build/fix:** implementer runs **targeted** checks from the packet; toolkit contributors use **Quick** for local completion. **Full** is due when any Full trigger below applies — deferred Full is **not** done without INV-7 evidence.
+
+### Full triggers (schedule Full)
+
+1. **pre-merge** — PR / merge intent to protected branch
+2. **release** — ship, tag, publish, or bootstrap copy to consumers
+3. **shared config** — rules, skills, agents, copy lists, orchestration manifests, plugin mirrors
+4. **public contract** — contracts, tier-rubric, schemas, or APIs shipped to products
+5. **unknown impact** — weak oracle, cross-cutting blast radius unclear
+6. **flake** — prior verify failure in touched area or non-deterministic regression signal
+7. **explicit request** — human or Main asks for Full
+
+### Due checkpoint (INV-7)
+
+| Phase | Done evidence |
+|-------|----------------|
+| Until required CI is **active** | Same-SHA local **Full** (exit 0) unless explicit human deferral recorded in Final Report |
+| After green `toolkit-verify` on target SHA | May satisfy pre-protection checkpoint only; **report branch protection status** |
+| Always | Deferred Full ≠ done without INV-7 evidence |
+
+Protection edits remain Human Gate (T4). Green CI does not replace protection signoff.
+
+### Evidence rules (fixtures-backed policy)
+
+- `verify_commands` name **exact** commands; forbid placeholder "run tests".
+- Verification Record maps each command → AC IDs with exit codes.
+- Static oracle tokens (`VERIFY_HARNESS_PASS`, `STAGE_OK`) = deterministic evidence only.
+- Findings and done claims still require `path + lines + requirement_ref + evidence` — model consensus is not evidence.
+
+Product repos without toolkit oracle: use task `verify_commands` only; do not invent profile names.
+
+## Artifact ownership
+
+| Artifact | Creator | Persistence |
+|----------|---------|-------------|
+| Work Packet | Main (T0/T1) | compact task packet |
+| Task Contract | Main (T2+ required) | chat/task packet |
+| Plan | operational-orchestrator (T2 when plan stage runs; T3 required) | `.cursor/plans/<contract_id>.plan.md` |
+| Principal Packet | operational-orchestrator | compact task packet; no raw log |
+| Human Gate Packet | Main | chat until explicit decision |
+| Finding | adversarial-reviewer (T2+ when review stage runs) | review return |
+| Verification Record | implementer T0 targeted; verifier T1+ when scheduled; Main T4 action-only | verification return |
+| Final Report | Main | user-facing response (≤1.5k) |
+| Docs Impact Record | implementer when docs touched; Main never product writer T0–T3 | task return when docs touched |
+
+Main never product-writes T0–T3. Only `implementer` writes owned product paths for T0–T3. Verifier/reviewer must not create `_v_*.txt` or temp evidence in product root.
+
+## 9. FailureRecord
+
+Normalized failure for stuck detection and recovery packets. Natural-language progress is not evidence.
+
+```yaml
+contract_id: task-slug
+failure_id: F-1
+normalized_signature: stable hash or slug of failure class + command + key output tokens
+reproduction:
+  cmd: exact command
+  cwd: optional path
+  exit_code: non-zero int
+expected: compact expected outcome
+actual: compact actual outcome (capped; no raw log dump)
+environment_hash: hash of toolchain versions + relevant env keys (no secrets)
+timestamp: ISO8601
+```
+
+## 10. EvidenceRecord
+
+Immutable command/path evidence. Model opinion, consensus, or narrative progress is **not** evidence.
+
+```yaml
+evidence_id: E-1
+contract_id: task-slug
+path: repo-relative file (optional)
+hash: SHA256 of file or artifact (optional)
+command: exact command run (optional)
+exit_code: int
+base_sha: git HEAD at capture time
+summary: bounded output excerpt (<=500 chars)
+captured_at: ISO8601
+```
+
+## 11. HypothesisRecord
+
+Mechanism under test; duplicate fingerprints must not spawn competing experiments in R0.
+
+```yaml
+hypothesis_id: H-1
+contract_id: task-slug
+mechanism: root-cause claim (<=300 chars)
+prediction: falsifiable outcome if mechanism is true
+disconfirming_test: command or observation that would refute mechanism
+fingerprint: deterministic hash of normalized mechanism + prediction + disconfirming_test
+status: open|confirmed|refuted|duplicate
+```
+
+## 12. RecoverySnapshot
+
+Point-in-time recovery state; tracks budget consumption.
+
+```yaml
+contract_id: task-slug
+attempt: int
+evidence_delta: list of new evidence_id since last snapshot (empty = no new evidence)
+duplicate_fingerprints: [H-fingerprint, ...]
+remaining_budget:
+  evidence_retries: int
+  readonly_scouts: int
+  experiments: int
+  premium_reviews: int
+last_failure_signature: normalized_signature or null
+```
+
+## 13. ChallengePacket
+
+Bounded recovery handoff for scouts, premium arbiters, or one experiment. Target **≤12k tokens**; no raw logs, secrets, chain-of-thought, or tool JSON dumps.
+
+```yaml
+contract_id: task-slug
+tier: T0|T1|T2|T3
+bounded_task_contract:
+  goal: compact
+  owned_files: []
+  verify_commands: []
+  forbidden: []
+invariants:
+  - id: INV-R1
+    text: must remain true during recovery
+hypotheses: [H-1, ...]
+evidence_refs: [E-1, ...]
+oracle:
+  available: true|false
+  description: what counts as pass/fail oracle (null if unavailable)
+availability:
+  premium_openai: runtime-check|available|unavailable
+  premium_claude: runtime-check|available|unavailable
+  premium_fable: runtime-check|available|unavailable
+scope_summary: compact context (<=1000 chars)
+remaining_budget:
+  evidence_retries: int
+  readonly_scouts: int
+  experiments: int
+  premium_reviews: int
+```
+
+## 14. RecoveryDecision
+
+Closed enum — recovery orchestrator output only; Main remains user-facing completion owner.
+
+```yaml
+contract_id: task-slug
+decision: retry|scout|premium|experiment|blocked|human_pending
+rationale: compact evidence-based reason (<=500 chars)
+next_owner: Main|recovery-orchestrator|reproducer|implementer|human
+hypothesis_refs: []
+evidence_refs: []
+escalation_reason: null|uncertain_verdict|evidence_conflict|dual_hypotheses|user_requested_cross_family
+budget_after:
+  evidence_retries: int
+  readonly_scouts: int
+  experiments: int
+  premium_reviews: int
+```
+
+### Recovery budgets (R0)
+
+| Tier | Evidence retries | Readonly scouts | Experiments | Competing worktrees |
+|------|------------------|-----------------|-------------|---------------------|
+| T0 | 1 | max 3 distinct contours | 1 | **none in R0** |
+| T1–T3 | max 2 | max 3 distinct contours | 1 | **none in R0** |
+
+- Stuck predicate: same `normalized_signature` **or** empty `evidence_delta`; NL progress ≠ evidence.
+- Premium path (T3/security/architecture) — **sequential**, not parallel by default:
+  1. `recovery-orchestrator` confirms genuine stuck.
+  2. Cheaper evidence first: `reproducer` scratch or readonly scouts when cheaper than premium.
+  3. **One** preferred premium arbiter receives the bounded Challenge Packet (at most one premium model per step; `escalation_reason` null/absent).
+  4. Second model family **only** when `escalation_reason` is set: `uncertain_verdict` | `evidence_conflict` | `dual_hypotheses` | `user_requested_cross_family` — second call remains **blind** (no peer verdict leakage).
+  5. Fable / `deep`: unchanged — explicit `deep` only after unresolved cross-family conflict.
+- No reliable oracle → no experiment tournament and no `DONE` from recovery alone.
+- Unavailable premium model → degraded-mode record; never silent substitution.

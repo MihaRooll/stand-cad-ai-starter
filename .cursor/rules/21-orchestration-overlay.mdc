@@ -1,0 +1,60 @@
+---
+description: Project-local bindings for the imported autonomous orchestration harness
+alwaysApply: true
+---
+
+# Orchestration overlay (stand-cad)
+
+Binds the imported `autonomous-task` harness to this repository. On any conflict, this file and `00-project-governance.mdc` win over the imported `.cursor/skills/autonomous-task/` files (`SKILL.md`, `contracts.md`, `tier-rubric.md`) and over `20-autonomous-orchestration.mdc`.
+
+## Verification profiles — real commands here
+
+| Profile | Command |
+|---------|---------|
+| `targeted` | Only the checks named in the Work Packet for the owned paths |
+| `Quick` | `uv run pytest` and `uv run ruff check .` |
+| `Full` | `powershell -ExecutionPolicy Bypass -File .\scripts\setup_windows.ps1` |
+
+These bind the existing profile names to local commands; do not invent new profile names.
+
+- Never invoke `scripts/verify-harness.ps1`; it does not exist here.
+- Never call bare `python`: PATH resolves to 3.11 and this project requires 3.12. Always `uv run`.
+
+## Toolkit infrastructure absent here
+
+`SKILL.md` and `contracts.md` were imported verbatim and still mention toolkit-only machinery. None of it exists in this repository:
+
+- **`toolkit-verify` CI and INV-7 same-SHA checkpoint** — there is no CI. `done` requires a local `Full` run on the current working tree; there is no green-CI shortcut and nothing to defer to.
+- **`tests/orchestration/evidence-schema.json` sidecar** — absent. Record evidence in the Final Report and in `state/`, not in a sidecar.
+- **Plan artifacts** go to `.cursor/plans/<contract_id>.plan.md`. That path is **not** git-ignored here, so plans become visible repository records; treat them as traceability material alongside `state/DECISION_LOG.md`.
+
+## Docs Impact Record
+
+- This repo has no `docs/docs-map.json`. Leave `docs_map_entries_updated` empty and set `validator_run: no`.
+- Record state changes in `state/PROJECT_STATE.md`, `state/DECISION_LOG.md`, `state/ASSUMPTIONS.md`, and `state/REQUIREMENTS_TRACEABILITY.csv` instead.
+
+## Oracle strength in this repo
+
+`tier-rubric.md` is calibrated for software risk. Here the deciding factor is that **the test suite is a weak oracle for physical claims**: green `pytest`, a valid STEP, or a clean render says nothing about stability, load, heat, clearance, or manufacturability. Weak oracle is already a T2 trigger in the rubric — apply it rather than reading a small dimension edit as a low-risk local diff.
+
+## Tier floors
+
+Tier rubric alone never authorises manufacturing output. Regardless of computed tier:
+
+- Any change to a physical quantity — dimension, mass, centre of gravity, clearance, service zone, thermal or electrical budget, load path, transport envelope — is **T2 minimum**, so an independent Grok reviewer sees it.
+- Any change to exported STEP, PDF, DXF, or to a gate verdict in `docs/05_IMPLEMENTATION_PLAN.md` is **T3 minimum**.
+- Marking any artifact production-ready, or moving a G0–G8 gate to passed, is a **Human Gate** — never agent-decided.
+- Missing equipment, load, heat, electrical, transport, or bend data is a blocker: consolidate it in `docs/10_USER_INPUT_REQUIRED.md` and stop. Never substitute an assumed value to unblock a tier.
+
+## Review cycles
+
+- At T2 and above the `adversarial-reviewer` pass is **mandatory here**, not conditional: implement → review → fix → verify.
+- The 3-cycle cap in `SKILL.md` still applies, and cycle 3 fixes blockers only. Exhausting the cap with an open finding means **BLOCKED**, reported to the human — never silently `done`.
+- A reviewer verdict of `rework` never converts to done by re-running tests; the finding is closed by a change or by a recorded human decision in `state/DECISION_LOG.md`.
+- Findings need path, lines, the requirement ID from `state/REQUIREMENTS_TRACEABILITY.csv`, and reproducible evidence.
+
+## Writer / reviewer split
+
+- `implementer` (Composer) is the sole writer of geometry source and config, matching the single-writer rule in `00-project-governance.mdc`.
+- `verifier` and `adversarial-reviewer` (Grok) never edit; they report findings with path, lines, and reproducible evidence.
+- A passing test, a valid STEP, or a clean render is not evidence of physical correctness.
