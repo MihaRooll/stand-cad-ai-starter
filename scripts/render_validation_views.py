@@ -384,6 +384,18 @@ def build_rear_vent_closeup_assembly(params: Parameters) -> AssemblyState:
     return state
 
 
+def build_cable_passthrough_closeup_assembly(params: Parameters) -> AssemblyState:
+    """Rear outer panel + grommet — cable pass-through opening legibility evidence."""
+    state = build_transport_assembly(params)
+    state.parts = {
+        part_id: record
+        for part_id, record in state.parts.items()
+        if part_id in ("PANEL-OUT-REAR-001", "SVC-CABLE-PASSTHROUGH-001")
+    }
+    state.name = "cable_passthrough_closeup"
+    return state
+
+
 def build_service_port_closeup_assembly(params: Parameters) -> AssemblyState:
     """Right outer side slab only — USB service-port cutout legibility evidence."""
     state = build_transport_assembly(params)
@@ -446,6 +458,11 @@ def default_render_targets() -> list[RenderTarget]:
         RenderTarget(
             "rear_vent_closeup.png",
             build_rear_vent_closeup_assembly,
+            ViewSpec(direction=(0.0, 1.0, 0.0)),
+        ),
+        RenderTarget(
+            "cable_passthrough_closeup.png",
+            build_cable_passthrough_closeup_assembly,
             ViewSpec(direction=(0.0, 1.0, 0.0)),
         ),
         RenderTarget(
@@ -562,6 +579,7 @@ def render_all_views(
                 "organizer_closeup.png",
                 "base_plate_closeup.png",
                 "rear_vent_closeup.png",
+                "cable_passthrough_closeup.png",
                 "service_port_closeup.png",
             )
             else (width, height)
@@ -569,6 +587,7 @@ def render_all_views(
         if target.filename in (
             "base_plate_closeup.png",
             "rear_vent_closeup.png",
+            "cable_passthrough_closeup.png",
         ):
             bg = BASE_PLATE_CLOSEUP_BACKGROUND_RGB
         elif target.filename in (

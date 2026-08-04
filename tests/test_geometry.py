@@ -896,6 +896,73 @@ def test_rear_vent_slots(params, transport, datums):
     assert intersection_volume(solid_probe, rear) == pytest.approx(0.0, abs=1e-3)
 
 
+def test_cable_passthrough_through_cut(params, transport, datums):
+    """D-036 rework F-2 — both rear panels (outer + inner) have a real through-cut."""
+    from stand_cad.geometry.panels import cable_passthrough_footprint
+
+    fp = cable_passthrough_footprint(params, datums)
+    cx = (fp["x0"] + fp["x1"]) / 2
+    cz = (fp["z0"] + fp["z1"]) / 2
+    probe = box_from_bounds(cx - 1, 542, cz - 1, cx + 1, 551, cz + 1)
+    for part_id in ("PANEL-OUT-REAR-001", "PANEL-IN-REAR-001"):
+        solid = transport.parts[part_id].solid
+        assert intersection_volume(probe, solid) == pytest.approx(0.0, abs=1e-3), part_id
+
+
+def test_cable_passthrough_bore_clear(params, transport, datums):
+    """D-036 rework F-1 — the grommet has a real open bore; a probe passes cleanly through it."""
+    from stand_cad.geometry.panels import cable_passthrough_footprint
+
+    grommet = transport.parts["SVC-CABLE-PASSTHROUGH-001"].solid
+    fp = cable_passthrough_footprint(params, datums)
+    cx = (fp["x0"] + fp["x1"]) / 2
+    cz = (fp["z0"] + fp["z1"]) / 2
+    probe = box_from_bounds(cx - 1, fp["y0"] - 1, cz - 1, cx + 1, fp["y1"] + 1, cz + 1)
+    assert intersection_volume(probe, grommet) == pytest.approx(0.0, abs=1e-3)
+
+
+def test_cable_passthrough_registered(params, transport):
+    """D-036 — stable part ID, material, and verify-on-real-machine marker."""
+    record = transport.parts["SVC-CABLE-PASSTHROUGH-001"]
+    assert record.material == "soft_trim_brush"
+    assert record.verify_on_real_machine is True
+
+
+def test_cable_passthrough_grommet_clears_neighbours(params, transport):
+    """D-036 — SVC-CABLE-PASSTHROUGH-001 clears inserts, mains inlet, light strip."""
+    tol = float(params.value("tolerance.part_assembly_feature_mm"))
+    grommet = transport.parts["SVC-CABLE-PASSTHROUGH-001"].solid
+    for neighbour_id in (
+        "SVC-INSERT-L1-001",
+        "SVC-INSERT-L2-001",
+        "MAINS-INLET-001",
+        "LIGHT-STRIP-001",
+    ):
+        neighbour = transport.parts[neighbour_id].solid
+        clearance = minimum_clearance(grommet, neighbour)
+        assert clearance >= tol, f"{neighbour_id} clearance {clearance:.3f} < {tol} mm"
+
+
+def test_cable_passthrough_clears_vent_band(params, transport, datums):
+    """D-036 — cable pass-through clears the rear vent slot band."""
+    from stand_cad.geometry.panels import cable_passthrough_footprint
+
+    tol = float(params.value("tolerance.part_assembly_feature_mm"))
+    band_z = float(params.value("hardware.vent_band_z_mm"))
+    slot_h = float(params.value("hardware.vent_slot_height_mm"))
+    grommet = transport.parts["SVC-CABLE-PASSTHROUGH-001"].solid
+    fp = cable_passthrough_footprint(params, datums)
+    vent_probe = box_from_bounds(
+        fp["x0"],
+        fp["y0"] - 5,
+        band_z - slot_h / 2,
+        fp["x1"],
+        fp["y1"] + 5,
+        band_z + slot_h / 2,
+    )
+    assert minimum_clearance(grommet, vent_probe) >= tol
+
+
 def test_feet_cylindrical_volume(params, transport):
     """Finding 5 — feet are cylinders matching diameter semantics."""
     import math

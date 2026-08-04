@@ -6,6 +6,7 @@ from build123d import (
     Align,
     BuildPart,
     BuildSketch,
+    Circle,
     Location,
     Part,
     Plane,
@@ -251,6 +252,33 @@ def _subtract_vent_slots_z(
     return result
 
 
+def _cable_passthrough_mount_z(params: Parameters) -> float:
+    """Midpoint between L1 media-feed-slot top and L2 media-feed-slot bottom (D-036)."""
+    slot_h = float(params.value("media_path.slot_height_target"))
+    feed_top_l1 = _feed_plane_z(params, "L1") + slot_h / 2
+    feed_bottom_l2 = _feed_plane_z(params, "L2") - slot_h / 2
+    return (feed_top_l1 + feed_bottom_l2) / 2.0
+
+
+def _subtract_cable_passthrough(
+    solid: Part, params: Parameters, datums: Datums, *, y0: float, y1: float
+) -> Part:
+    """Round cable pass-through through rear panel thickness (owner override, D-036)."""
+    diameter = float(params.value("hardware.cable_passthrough_diameter_mm"))
+    radius = diameter / 2.0
+    width = datums.case_envelope.x.max_mm
+    cx = width / 2.0
+    z_center = _cable_passthrough_mount_z(params)
+    eps = 0.5
+    span_y = (y1 - y0) + 2 * eps
+    with BuildPart() as builder:
+        with BuildSketch(Plane.XZ):
+            Circle(radius)
+        extrude(amount=span_y)
+    cutter = builder.part.move(Location((cx, y1 + eps, z_center)))
+    return solid - cutter
+
+
 def _apply_rear_corner_fillets(
     solid: Part,
     *,
@@ -317,6 +345,7 @@ def _build_rear_panel(params: Parameters, datums: Datums) -> PartRecord:
         )
 
     solid = _subtract_vent_slots_x(solid, params, datums, y0=y0, y1=y1)
+    solid = _subtract_cable_passthrough(solid, params, datums, y0=y0, y1=y1)
 
     corner_centers = [
         _physical_corner_center(c, corner_r, width, depth)
@@ -426,17 +455,23 @@ def build_inner_panels(params: Parameters, datums: Datums) -> list[PartRecord]:
         material=INNER_PANEL_MATERIAL,
         solid=bottom_solid,
     )
+    rear_inner_y0 = depth - thickness - gap
+    rear_inner_y1 = depth - gap
+    rear_solid = box_from_bounds(
+        gap,
+        rear_inner_y0,
+        foot_h,
+        width - gap,
+        rear_inner_y1,
+        datums.top_structure.z.min_mm,
+    )
+    rear_solid = _subtract_cable_passthrough(
+        rear_solid, params, datums, y0=rear_inner_y0, y1=rear_inner_y1
+    )
     rear = PartRecord(
         part_id="PANEL-IN-REAR-001",
         material=INNER_PANEL_MATERIAL,
-        solid=box_from_bounds(
-            gap,
-            depth - thickness - gap,
-            foot_h,
-            width - gap,
-            depth - gap,
-            datums.top_structure.z.min_mm,
-        ),
+        solid=rear_solid,
     )
     mid_z = (datums.plotter1_physical.z.max_mm + datums.plotter2_physical.z.min_mm) / 2
     mid = PartRecord(
@@ -486,4 +521,23 @@ def handle_cutout_footprint(params: Parameters, datums: Datums, *, side: str) ->
         "y1": y_center + grip_len / 2,
         "z0": mount_z - grip_depth / 2,
         "z1": mount_z + grip_depth / 2,
+    }
+
+
+def cable_passthrough_footprint(params: Parameters, datums: Datums) -> dict[str, float]:
+    """Return axis-aligned cable pass-through bounding box for tests (x0/x1/y0/y1/z0/z1)."""
+    diameter = float(params.value("hardware.cable_passthrough_diameter_mm"))
+    radius = diameter / 2.0
+    width = datums.case_envelope.x.max_mm
+    depth = datums.case_envelope.y.max_mm
+    thickness = float(params.value("materials.outer_panel_thickness_mm"))
+    cx = width / 2.0
+    z_center = _cable_passthrough_mount_z(params)
+    return {
+        "x0": cx - radius,
+        "x1": cx + radius,
+        "y0": depth - thickness,
+        "y1": depth,
+        "z0": z_center - radius,
+        "z1": z_center + radius,
     }

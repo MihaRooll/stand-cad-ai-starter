@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from build123d import Align, Axis, Cylinder, Location, chamfer
+
 from stand_cad.geometry.datums import Datums
 from stand_cad.geometry.primitives import box_from_bounds
 from stand_cad.geometry.registry import PartRecord
@@ -20,6 +22,14 @@ def _feed_plane_z(params: Parameters, level: str) -> float:
     prefix = "lower" if level == "L1" else "upper"
     tray_top = float(params.value(f"plotter.{prefix}_z"))
     return tray_top + float(params.value("plotter.feed_plane_z_provisional_mm"))
+
+
+def _cable_passthrough_mount_z(params: Parameters) -> float:
+    """Midpoint between L1 media-feed-slot top and L2 media-feed-slot bottom (D-036)."""
+    slot_h = float(params.value("media_path.slot_height_target"))
+    feed_top_l1 = _feed_plane_z(params, "L1") + slot_h / 2
+    feed_bottom_l2 = _feed_plane_z(params, "L2") - slot_h / 2
+    return (feed_top_l1 + feed_bottom_l2) / 2.0
 
 
 def _media_path_centre_x(params: Parameters, datums: Datums) -> float:
@@ -151,6 +161,41 @@ def build_service_parts(params: Parameters, datums: Datums) -> list[PartRecord]:
                 y_outer,
                 foot_h + cover_t + gap + mi_h,
             ),
+            verify_on_real_machine=True,
+        )
+    )
+
+    cp_diameter = float(params.value("hardware.cable_passthrough_diameter_mm"))
+    cp_radius = cp_diameter / 2.0
+    cp_wall = float(params.value("services.cable_passthrough_grommet_wall_mm"))
+    cp_bore_radius = cp_radius - cp_wall
+    cp_edge_r = float(params.value("services.cable_passthrough_edge_break_radius_mm"))
+    cp_outer_t = float(params.value("materials.outer_panel_thickness_mm"))
+    cp_cx = _media_path_centre_x(params, datums)
+    cp_z = _cable_passthrough_mount_z(params)
+    cp_eps = 0.5  # boolean-cut overextension guard, same convention as panels.py eps usage
+    cp_outer_cyl = Cylinder(
+        cp_radius, cp_outer_t, align=(Align.CENTER, Align.CENTER, Align.MIN)
+    ).rotate(Axis.X, -90)
+    cp_inner_cyl = (
+        Cylinder(
+            cp_bore_radius, cp_outer_t + 2 * cp_eps, align=(Align.CENTER, Align.CENTER, Align.MIN)
+        )
+        .rotate(Axis.X, -90)
+        .move(Location((0, -cp_eps, 0)))
+    )
+    cp_ring = cp_outer_cyl - cp_inner_cyl
+    # Real rim circles (outer+inner, both faces) are far longer than the ~outer_t-length
+    # seam artifact build123d leaves on a revolved circular sketch; 10 mm cleanly separates them.
+    cp_rim_edges = [edge for edge in cp_ring.edges() if edge.length > 10]
+    cp_bore_rims = [edge for edge in cp_rim_edges if edge.length <= cp_radius * 6]
+    cp_grommet = chamfer(cp_bore_rims, length=cp_edge_r)
+    cp_grommet = cp_grommet.move(Location((cp_cx, depth - cp_outer_t, cp_z)))
+    parts.append(
+        PartRecord(
+            part_id="SVC-CABLE-PASSTHROUGH-001",
+            material=EDGEGUARD_MATERIAL,
+            solid=cp_grommet,
             verify_on_real_machine=True,
         )
     )

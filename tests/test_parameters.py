@@ -278,7 +278,7 @@ def test_production_release_blocks_on_to_measure_parameters():
     params = load_parameters(PARAMETERS_PATH)
     issues = validate_parameters(params, production_release=True)
     rel027 = [issue for issue in issues if issue.code == "REL-027"]
-    assert len(rel027) == 41
+    assert len(rel027) == 43
     paths = {issue.message.split(":")[0] for issue in rel027}
     assert "hardware.service_port_cutout_width_mm" in paths
     assert "hardware.service_port_cutout_height_mm" in paths
@@ -375,7 +375,7 @@ def test_validate_release_readiness_surfaces_rel027_with_real_config():
     params = load_parameters(PARAMETERS_PATH)
     issues = validate_release_readiness(project, equipment, params)
     rel027 = [issue for issue in issues if issue.code == "REL-027"]
-    assert len(rel027) == 41
+    assert len(rel027) == 43
 
 
 def test_validate_release_readiness_clean_synthetic_doc_has_zero_errors():

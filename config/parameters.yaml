@@ -179,6 +179,7 @@ hardware:
   vent_slot_height_mm: {value: 8, provenance: to_measure, note: "TZ line 290 — provisional rear vent slot height; measure on prototype grille"}
   vent_slot_pitch_mm: {value: 12, provenance: to_measure, note: "TZ line 290 — provisional spacing between rear vent slots"}
   vent_band_z_mm: {value: 45, provenance: to_measure, note: "Provisional Z center of rear vent row above feet; TZ mandates rear/bottom ventilation but gives no slot coordinates"}
+  cable_passthrough_diameter_mm: {value: 30, provenance: to_measure, note: "PROVISIONAL cable pass-through opening diameter for a plain extension-cord cable/plug end — owner 2026-08-04 override of TZ section 10's certified rear mains inlet with retention/strain relief (D-036): a simple grommeted hole suffices for the prototype; owner plugs plotters/lighting into an extension cord/power strip inside the case himself. Chosen in the 25-35 mm range, generous enough for a common Schuko/Europlug body; exact cord/plug not measured — VERIFY before production DXF (docs/10_USER_INPUT_REQUIRED.md)."}
 
 top_structure:
   height_mm: {value: 15, provenance: verified, note: "TZ section 5 — top structure band height (was z_max-z_min at 690 mm envelope)"}
@@ -202,6 +203,8 @@ services:
   mains_inlet_width_mm: {value: 60, provenance: to_measure, note: "Provisional mains inlet hardware volume width"}
   mains_inlet_height_mm: {value: 40, provenance: to_measure, note: "Provisional mains inlet hardware volume height"}
   mains_inlet_depth_mm: {value: 35, provenance: to_measure, note: "Provisional mains inlet protrusion depth from rear panel"}
+  cable_passthrough_edge_break_radius_mm: {value: 1, provenance: verified, note: "TZ:472 — minimum safe radius R1 on cut edges; applied as a 1 mm chamfer on the SVC-CABLE-PASSTHROUGH-001 grommet bore rim so the cut edge does not cut the cable's insulation. Verified per TZ line 472 R1 spec, not a guess."}
+  cable_passthrough_grommet_wall_mm: {value: 2, provenance: to_measure, note: "PROVISIONAL silicone grommet wall thickness; SVC-CABLE-PASSTHROUGH-001 bore diameter = cable_passthrough_diameter_mm − 2×wall = 26 mm clear cable passage; grommet hardware not yet selected — VERIFY before production DXF."}
   light_strip_length_mm: {value: 600, provenance: to_measure, note: "Provisional RGBW COB strip + heat-sink run length"}
   light_strip_width_mm: {value: 12, provenance: to_measure, note: "Provisional COB strip + aluminium heat-sink cross-section width"}
   light_strip_height_mm: {value: 8, provenance: to_measure, note: "Provisional COB strip + heat-sink cross-section height"}

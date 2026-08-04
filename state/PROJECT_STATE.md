@@ -1,10 +1,19 @@
 # Project state
 
 - Project: Light desktop tower for two Silhouette plotters plus horizontal film storage, **650 × 550 × 517 mm** (derived height; see ADR-005 and `ИИ советы/Cursor_Opus5_TZ_Light_Plotter_Tower.md`)
-- Current phase: PLT-007 horizontal reconfiguration → **rev7** evidence pack (CONCEPT / REFERENCE_ONLY)
+- Current phase: PLT-007 horizontal reconfiguration → **rev8** evidence pack (CONCEPT / REFERENCE_ONLY)
 - Current gate: G0 (human verdict unconfirmed)
-- Status: D-033 tier alignment + quick-access slide implement complete pending adversarial review
-- Last updated: 2026-08-04 (D-032/D-033 rev7 implement; tier setback removed)
+- Status: D-036 cable pass-through adversarial-approved (cycle 2), pending local commit
+- Last updated: 2026-08-04 (D-036 rev8; owner override — plain grommeted cable hole; APPROVED)
+
+## PLT-007 cable pass-through (D-036, 2026-08-04)
+
+- **Change:** Owner override of TZ section 10 certified rear mains inlet → plain **30 mm** grommeted cable pass-through at rear panel centre (X=325, Z=160.5); `SVC-CABLE-PASSTHROUGH-001` annular grommet (26 mm clear bore, 1 mm TZ:472 R1 chamfer on the bore rim); `MAINS-INLET-001` placeholder unchanged (deferred, not deleted)
+- **Delivered:** real boolean cut through both `PANEL-OUT-REAR-001` and `PANEL-IN-REAR-001` (cycle-1 adversarial review found the first pass only cut the outer skin and used a solid, bore-less grommet — both fixed); `hardware.cable_passthrough_diameter_mm`, `services.cable_passthrough_grommet_wall_mm` (`to_measure`), `services.cable_passthrough_edge_break_radius_mm` (`verified`, TZ:472 R1); `CONCEPT_REVISION`=8; `cable_passthrough_closeup.png` evidence
+- **Evidence target:** `output/validation/rev8/views/`; STEP/manifest `*_rev8.*`
+- **Tests:** 141 pytest passing; ruff clean; `scripts/setup_windows.ps1` exit 0
+- **Review:** adversarial-reviewer APPROVED on cycle 2 (cycle 1 REWORK: F-1 solid-plug grommet, F-2 inner panel not cut, F-3 stale REL-027 count — all closed)
+- **Next:** local commit (no push); human G0 verdict unchanged
 
 ## PLT-007 horizontal reconfig + Cameo 4 governing envelope (2026-08-04)
 
