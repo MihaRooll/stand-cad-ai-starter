@@ -23,12 +23,10 @@ PROVENANCE_VALUES = frozenset({"verified", "derived", "to_measure"})
 # Acceptance-criteria thresholds (see config/parameters.yaml notes).
 REQUIRED_CASE_WIDTH_MM = 650  # TZ section 4 — not flexible per owner 2026-08-04
 CASE_DEPTH_TARGET_MM = 550  # TZ section 4 target; tolerance below
-CASE_DEPTH_TOLERANCE_MM = 5  # Owner 2026-08-04 allowance
 REQUIRED_UPPER_SETBACK_MM = 0  # D-033 — tiers aligned; supersedes 130 mm (D-029) and TZ 150 mm
 MIN_LOWER_QUICK_ACCESS_EXTENSION_MM = 130  # D-033 — minimum tier-1 quick-access forward slide
 HORIZONTAL_ORGANIZER_CLEAR_MIN_MM = (610, 330, 100)  # width, depth, stack height (4×25 mm)
 HORIZONTAL_SHELF_COUNT = 4  # Owner 2026-08-04 verified default
-TIER_CLEARANCE_MIN_MM = 170  # Owner 2026-08-04; matches plotter.tier_clearance_min_mm leaf
 
 PARAMETER_GROUPS = (
     "case",

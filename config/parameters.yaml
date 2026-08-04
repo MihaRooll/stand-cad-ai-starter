@@ -23,7 +23,7 @@ case:
   depth: {value: 550, provenance: verified, note: "TZ section 4 target; owner 2026-08-04 allows small deviation if geometry requires (PARAM-006 depth tolerance ±5 mm)"}
   height: {value: 517, provenance: derived, note: "film_storage_horizontal.z + shelf_stack_height_mm + top_structure.height_mm = 396 + 106 + 15; formula in Parameters.computed_case_height_mm"}
   internal_width: {value: 610, provenance: verified, note: "TZ section 4 — 650−2×20 mm side slabs; Main PLT-007 ruling 2026-08-04 rejects widening to 620/630 (R10 at 20 mm wall beats R7.5/R5 at narrower walls)"}
-  depth_tolerance_mm: {value: 5, provenance: derived, note: "Owner 2026-08-04 allowance for case.depth deviation from 550 mm target; used by PARAM-006"}
+  depth_tolerance_mm: {value: 5, provenance: verified, note: "Owner 2026-08-04 allowance for case.depth deviation from 550 mm target; used by PARAM-006"}
   corner_radius: {value: 25, provenance: verified, note: "TZ section 8 line 230 — R20-R30 outer shell corner radius; consumed by PANEL-OUT-REAR-* corner trims only (side slabs use side_slab_bullnose_radius_mm)"}
   side_slab_bullnose_radius_mm: {value: 10, provenance: derived, note: "side_clear/2 with side_clear=(650−610)/2=20 mm; PLT-006 R10 ruling retained — widening niche would reduce max bullnose (D-026)"}
 
@@ -127,7 +127,7 @@ materials:
   inner_panel_thickness_mm: {value: 3.5, provenance: derived, note: "Midpoint of impact_panel_thickness 3-4 mm range for concept geometry"}
   organizer_floor_thickness_mm: {value: 11, provenance: derived, note: "Midpoint of organizer_floor_thickness 10-12 mm range for concept geometry"}
   org_insert_thickness_mm: {value: "TO_MEASURE", provenance: to_measure, note: "TZ:160 — thin HDPE-class insert; measure after material selection"}
-  org_insert_provisional_mm: {value: 1.0, provenance: derived, note: "Concept-stage placeholder when org_insert_thickness_mm is TO_MEASURE; used by Parameters.org_insert_thickness_mm"}
+  org_insert_provisional_mm: {value: 1.0, provenance: to_measure, note: "Concept-stage placeholder when org_insert_thickness_mm is TO_MEASURE; used by Parameters.org_insert_thickness_mm"}
   foot_height_mm: {value: 9, provenance: derived, note: "Midpoint of foot_height 8-10 mm range for concept geometry"}
   outer_panel_shadow_gap_mm: {value: 2.5, provenance: derived, note: "Midpoint of TZ section 8 shadow gap 2-3 mm range"}
   pmma_density_kg_m3: {value: 1180, provenance: verified, note: "Generic cast opal PMMA datasheet range (~1180 kg/m3)"}
@@ -167,6 +167,7 @@ operational:
 hardware:
   handle_grip_length_mm: {value: 110, provenance: verified, note: "TZ:304 — minimum grip length"}
   handle_grip_depth_mm: {value: 35, provenance: verified, note: "TZ:304 — minimum grip depth"}
+  handle_cutout_edge_radius_mm: {value: 2.5, provenance: verified, note: "TZ:472 minimum safe cut-edge radius is R1; 2.5 mm chosen for the hand-contact handle cutout edge break (ergonomic margin above the R1 floor)"}
   handle_mount_y_mm: {value: 100, provenance: derived, note: "Front grip centre Y=100 → band [45,155] mm; clears frame posts Y≤40 and organizer Z≥396; EQUIP-/ENV- bodies are excluded from the handle sightline check by design (test_handle_cutout_sightline_clear); tier 2 front Y moved to 15 mm (D-033) does not change this — the check never depended on plotter Y"}
   handle_mount_z_mm: {value: 263, provenance: derived, note: "Side-panel centre Z=(foot_height_mm+case.height)/2=(9+517)/2=263 mm; owner 2026-08-04 override of TZ line 235 CoM placement (D-030). Loaded-case indicative CoM z≈216.0 mm (case+2 plotters, mass-report model) → handle +47 mm above CoM; empty-case CoM z≈224.7 mm → +38 mm"}
   service_port_cutout_width_mm: {value: 16, provenance: to_measure, note: "PROVISIONAL panel-mount USB-A coupler body cutout width; connector type NOT decided — do not use for production DXF"}
@@ -199,7 +200,7 @@ services:
   edgeguard_height_mm: {value: 18, provenance: derived, note: "Equals media_path.slot_height_target"}
   rearsupport_depth_mm: {value: 80, provenance: to_measure, note: "Provisional foldable rear support span for long material"}
   rearsupport_height_mm: {value: 12, provenance: derived, note: "Equals media_path.clear_height_min"}
-  cover_svc_thickness_mm: {value: 3.5, provenance: derived, note: "Rear/bottom service cover panel thickness (panel height; no separate vertical extent leaf)"}
+  cover_svc_thickness_mm: {value: 3.5, provenance: derived, note: "Rear/bottom service cover panel thickness (panel height; no separate vertical extent leaf); matches materials.inner_panel_thickness_mm (3.5 mm), same panel-thickness reuse as services.svc_insert_thickness_mm"}
   mains_inlet_width_mm: {value: 60, provenance: to_measure, note: "Provisional mains inlet hardware volume width"}
   mains_inlet_height_mm: {value: 40, provenance: to_measure, note: "Provisional mains inlet hardware volume height"}
   mains_inlet_depth_mm: {value: 35, provenance: to_measure, note: "Provisional mains inlet protrusion depth from rear panel"}

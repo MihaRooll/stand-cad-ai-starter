@@ -756,12 +756,12 @@ def test_handle_mount_z_side_panel_centred(params):
     assert expected == pytest.approx(263.0)
 
 
-def test_vertical_organizer_rightmost_cell_boundary_arithmetic():
+def test_vertical_organizer_rightmost_cell_boundary_arithmetic(params):
     """D-031 — vertical cell 9 bounded by org floor at X=630, not missing divider."""
-    org_x = 20.0
-    clear_w = 610.0
+    org_x = float(params.value("film_storage_horizontal.x"))
+    clear_w = float(params.value("film_storage_horizontal.clear_width"))
     cells = 10
-    divider_t = 2.0
+    divider_t = float(params.value("materials.divider_thickness_mm"))
     cell_w = (clear_w - (cells - 1) * divider_t) / cells
     assert cell_w == pytest.approx(59.2)
     cell9_x_min = org_x + 9 * (cell_w + divider_t)

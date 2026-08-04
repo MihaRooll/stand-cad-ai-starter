@@ -23,7 +23,6 @@ from stand_cad.parameters import Parameters
 
 OUTER_PANEL_MATERIAL = "cast_opal_pmma_3mm"
 INNER_PANEL_MATERIAL = "white_composite_3_4mm"
-HANDLE_CUTOUT_EDGE_RADIUS_MM = 2.5
 
 
 def _feed_plane_z(params: Parameters, level: str) -> float:
@@ -369,6 +368,7 @@ def _build_side_slab_with_handle(
     wall_mm = float(params.value("materials.outer_panel_thickness_mm"))
     grip_len = float(params.value("hardware.handle_grip_length_mm"))
     grip_depth = float(params.value("hardware.handle_grip_depth_mm"))
+    edge_r = float(params.value("hardware.handle_cutout_edge_radius_mm"))
     width = datums.case_envelope.x.max_mm
     depth = datums.case_envelope.y.max_mm
     height = datums.case_envelope.z.max_mm
@@ -402,7 +402,7 @@ def _build_side_slab_with_handle(
         y1=y_center + grip_len / 2,
         z0=mount_z - grip_depth / 2,
         z1=mount_z + grip_depth / 2,
-        edge_radius=HANDLE_CUTOUT_EDGE_RADIUS_MM,
+        edge_radius=edge_r,
     )
     if side == "right":
         port_w = float(params.value("hardware.service_port_cutout_width_mm"))
