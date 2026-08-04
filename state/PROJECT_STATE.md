@@ -162,9 +162,9 @@ Evidence collected is not a gate verdict: G0 remains an unconfirmed Human Gate.
 
 ## Current blockers
 
-### Stability — safety-relevant, open
+### Stability — indicative PLT-010 closed in rev10 (D-039)
 
-- Upper tray fully extended (400 mm) with both plotters installed: tip-over factor **1.300**, below the TZ line 508 floor of **1.5** (13% short). Lower tray fully extended meets the floor at 2.080. Pre-existing since rev6, unchanged by D-038 (height-stack fix) or any other cycle since — not a new regression. See `docs/10_USER_INPUT_REQUIRED.md` section J and `state/REQUIREMENTS_TRACEABILITY.csv` PLT-010 (status `FAILING`). No fix applied yet: closing it means either adding restoring mass/a deployable prop within the fixed footprint, or an owner-accepted deviation on the 400 mm minimum extension with a stated mitigation. Not authoritative for Gate G4 either way — needs qualified engineering review, not an agent-computed static model.
+- Upper tray fully extended (400 mm) with both plotters installed: corrected tip-over factor **1.596** (meets TZ line 508 floor of **1.5**). Lower tray: **3.563**. Legacy mass-cancelling model had upper at **1.300** — a modelling flaw, not a geometry limitation. No ballast added. See `output/validation/rev10/stability_report.md`, `state/REQUIREMENTS_TRACEABILITY.csv` PLT-010 (`PASSING`), and `docs/10_USER_INPUT_REQUIRED.md` section J. Still **not authoritative for Gate G4** — needs qualified engineering review.
 
 ### Measurements and manufacturing
 

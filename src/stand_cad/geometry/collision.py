@@ -331,6 +331,12 @@ def is_mating(
         if other.startswith(("FRAME-", "PANEL-OUT-", "PANEL-IN-", "PANEL-CLAD-FRONT-")):
             if aabb_share_face(solid_a, solid_b, threshold):
                 return True
+        # Tray-rail cladding (PLT-010) meets inner partition skins at Y=y0 without a full
+        # AABB face — same cosmetic-over-shell intent as BASE/ORG/TOP front strips.
+        clad_id = a if a.startswith("PANEL-CLAD-FRONT-TRAY-") else b
+        if clad_id.startswith("PANEL-CLAD-FRONT-TRAY-") and other.startswith("PANEL-IN-"):
+            if minimum_clearance(solid_a, solid_b) < threshold:
+                return True
 
     # Side slabs meet organizer stack at the internal side-clearance boundary (X=20 / X=630).
     for side_prefix in ("PANEL-OUT-LEFT", "PANEL-OUT-RIGHT"):
@@ -445,6 +451,7 @@ def is_open_front_kinematic_contact(
         "TRAY-LOWER-",
         "SLIDE-LOWER-",
         "EQUIP-PLOTTER1-",
+        "INTERLOCK-TAB-LOWER-",
         "TRAY-UPPER-",
         "SLIDE-UPPER-",
         "EQUIP-PLOTTER2-",

@@ -104,17 +104,15 @@ Regression: `tests/test_kinematics.py::test_plotter1_clear_of_tier2_under_tray_h
 
 **Post PLT-009 height-stack fix (rev9):** both `LIGHT-STRIP-001` and `FRAME-POST-RR-001` derive from `top_structure.z_min_mm` (529 mm post-fix, was 502 mm) — the +27 mm shift is common to both, so `minimum_clearance(LIGHT-STRIP-001, FRAME-POST-RR-001)` remains **0.5 mm** unchanged. A 1–2 mm Y-anchor nudge in `services.py` would not remove the genuine XY planform overlap (X∈[610,625]×Y∈[535,544.5] between strip footprint and post `leg_h`); clearing it fully would require shortening `services.light_strip_length_mm` (a `to_measure` hardware leaf) — not applied. **No reposition applied.**
 
-## J. Upper-tray tip-over stability factor below the TZ floor (PLT-010 / TZ line 508) — **OPEN, safety-relevant**
+## J. Upper-tray tip-over stability factor below the TZ floor (PLT-010 / TZ line 508) — **RESOLVED in rev10 (D-039), still indicative-only**
 
-`output/validation/rev9/stability_report.md` (unchanged from rev6/rev8 — pre-existing, not introduced or worsened by D-038):
+`output/validation/rev10/stability_report.md` (D-039 split stationary/moving mass model):
 
-| Case | Tip factor | TZ floor (line 508) | Status |
-|---|---|---|---|
-| Lower tray fully extended (250 mm), both plotters installed, organizer empty | **2.080** | 1.5 | Meets |
-| Upper tray fully extended (400 mm), both plotters installed, organizer empty | **1.300** | 1.5 | **Fails — 13% short of the floor** |
+| Case | Legacy factor (rev9) | Corrected factor (rev10) | TZ floor (line 508) | Status |
+|---|---|---|---|---|
+| Lower tray fully extended (250 mm), both plotters installed | **2.080** | **3.563** | 1.5 | Meets |
+| Upper tray fully extended (400 mm), both plotters installed | **1.300** | **1.596** | 1.5 | **Meets** |
 
-This is a static tip-over moment model (front/rear foot line pivot, restore vs overturn moment from the mass roll-up), not FEA and not a dynamic transport-load check. It has been present since the first `stability_report.md` (rev6) and was re-confirmed unchanged through rev7/rev8/rev9; no cycle has attempted a structural fix because none of the geometry changes since rev6 (tier alignment, deflection rail, cable pass-through, height-stack correction) altered the tip-over inputs (base footprint, foot inset, empty-case mass, tray extension distance are all unchanged by those fixes).
+**Root cause (D-039):** the pre-rev10 model applied identical `total_mass` to both restore and overturn moments, so mass cancelled algebraically; only extension ratio mattered (400/250=1.6 explained the 1.300 vs 2.080 split). The corrected model credits only the extended tier's tray panel + plotter as moving mass and the real computed structural mass plus the other plotter as stationary mass. Both tiers pivot at the front foot line (Y=0), consistent with `apply_tray_extension`. No ballast was required.
 
-**Why this was not silently forced to pass:** the two honest paths to close it are (a) increase the restoring moment — added base mass/ballast, a wider effective foot stance within the fixed 650×550 footprint, or a mechanical prop/leg that deploys with the upper tray — or (b) reduce the overturning moment — shorten the upper tray's 400 mm extension (which TZ line 179 states as a *minimum*, so shortening it would itself be a TZ deviation requiring the same kind of owner decision as the R10 radius). Neither has been applied because both change either mass distribution or a TZ-floor dimension, and this repository's standing rule is that a safety-relevant physical-quantity change gets recorded evidence and a decision, not a silent parameter edit.
-
-**Status:** tracked as `FAILING` in `state/REQUIREMENTS_TRACEABILITY.csv` PLT-010. Requires either an engineering fix (ballast/prop/footprint) evaluated with the same rigor as the tray-deflection fix (PLT-008), or an owner-accepted deviation with a stated mitigation (e.g. a physical warning label plus an operational rule never to fully extend the upper tray with the lower tray's mass absent, mirroring the existing simultaneous-extension interlock). Not authoritative for Gate G4 regardless of outcome — Gate G4 needs a qualified engineering review, not an agent-computed static model.
+**Status:** tracked as `PASSING` in `state/REQUIREMENTS_TRACEABILITY.csv` PLT-010 under the indicative model. Still **not authoritative for Gate G4** — Gate G4 needs qualified engineering review (FEA, dynamic transport loads, real measured masses), not an agent-computed static model.

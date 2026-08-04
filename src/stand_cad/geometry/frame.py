@@ -7,6 +7,7 @@ from build123d import Align, Cylinder, Location, Part
 from stand_cad.geometry.datums import Datums
 from stand_cad.geometry.primitives import box_from_bounds
 from stand_cad.geometry.registry import PartRecord
+from stand_cad.geometry.trays import _tray_bounds, _tray_frame_rail_bounds
 from stand_cad.parameters import Parameters
 
 FRAME_MATERIAL = "aluminium_angle_15x15x1.5"
@@ -289,6 +290,22 @@ def build_frame_cladding(params: Parameters, datums: Datums) -> list[PartRecord]
                 solid=solid,
             )
         )
+
+    for level, datum in (
+        ("LOWER", datums.plotter1_physical),
+        ("UPPER", datums.plotter2_physical),
+    ):
+        tray_b = _tray_bounds(params, datum)
+        for side, suffix in (("left", "L"), ("right", "R"), ("center", "C")):
+            rail_bounds = _tray_frame_rail_bounds(params, tray_b, side=side)
+            solid = box_from_bounds(*rail_bounds)
+            parts.append(
+                PartRecord(
+                    part_id=f"PANEL-CLAD-FRONT-TRAY-{level}-{suffix}-001",
+                    material=FRAME_CLAD_MATERIAL,
+                    solid=solid,
+                )
+            )
     return parts
 
 

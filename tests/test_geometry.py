@@ -299,14 +299,53 @@ def test_registry_single_mains_inlet_and_no_laptop_monitor_router(params, transp
         assert not any(word in material for word in forbidden)
 
 
-def test_indicative_tip_factor_non_authoritative(params):
+def test_indicative_tip_factor_non_authoritative(params, transport):
     """PLT-010 indicative — NOT authoritative for Gate G4 engineering review."""
-    factor = indicative_tip_factor(params, extended_level="lower")
     minimum = float(params.value("stability.tip_factor_min"))
-    assert factor >= minimum, (
-        f"indicative tip factor {factor:.3f} < {minimum} "
-        "(NOT authoritative for Gate G4 — concept-stage estimate only)"
+    for level in ("lower", "upper"):
+        factor = indicative_tip_factor(params, transport.parts, extended_level=level)
+        assert factor >= minimum, (
+            f"indicative tip factor ({level}) {factor:.3f} < {minimum} "
+            "(NOT authoritative for Gate G4 — concept-stage estimate only)"
+        )
+
+
+def test_stability_split_mass_conservation(params, transport):
+    """PLT-010 D-039 — moving + stationary masses equal total installed system mass."""
+    from stand_cad.geometry.analysis import stability_report_inputs
+
+    parts = transport.parts
+    structural = sum(
+        1
+        for _ in (
+            stability_report_inputs(params, parts, extended_level="lower"),
+            stability_report_inputs(params, parts, extended_level="upper"),
+        )
     )
+    assert structural == 2
+    for level in ("lower", "upper"):
+        report = stability_report_inputs(params, parts, extended_level=level)
+        split_total = report.moving_mass_kg + report.stationary_mass_kg
+        assert split_total == pytest.approx(report.total_mass_kg, rel=1e-6, abs=1e-4)
+
+
+def test_tray_rail_front_cladding(params, transport):
+    """PLT-010 — opal cladding is volumetrically coincident with each tray-support rail."""
+    for level in ("LOWER", "UPPER"):
+        for suffix in ("L", "R", "C"):
+            rail_id = f"FRAME-RAIL-TRAY-{level}-{suffix}-001"
+            clad_id = f"PANEL-CLAD-FRONT-TRAY-{level}-{suffix}-001"
+            assert clad_id in transport.parts
+            rail = transport.parts[rail_id]
+            clad = transport.parts[clad_id]
+            assert clad.material == "cast_opal_pmma_3mm"
+            assert clad.verify_on_real_machine is False
+            rail_bb = bounding_box_bounds(rail.solid)
+            clad_bb = bounding_box_bounds(clad.solid)
+            for axis in range(3):
+                assert clad_bb[axis][0] == pytest.approx(rail_bb[axis][0], abs=0.5)
+                assert clad_bb[axis][1] == pytest.approx(rail_bb[axis][1], abs=0.5)
+            assert rail_bb[1][0] == pytest.approx(15.0, abs=0.5)
 
 
 def test_indicative_tray_deflection_non_authoritative(params):

@@ -13,6 +13,7 @@ if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
 from stand_cad.geometry.analysis import (  # noqa: E402
+    StabilityReportInputs,
     empty_case_mass_kg,
     indicative_tray_deflection_mm,
     indicative_tray_deflection_single_span_mm,
@@ -132,33 +133,63 @@ def write_stability_report(
     if output_path is None:
         output_path = DEFAULT_VALIDATION_DIR / "stability_report.md"
     params = load_parameters(params_path)
-    lower = stability_report_inputs(params, extended_level="lower")
-    upper = stability_report_inputs(params, extended_level="upper")
+    state = build_transport_assembly(params)
+    parts = state.parts
+    lower = stability_report_inputs(params, parts, extended_level="lower")
+    upper = stability_report_inputs(params, parts, extended_level="upper")
     minimum = float(params.value("stability.tip_factor_min"))
     rev = CONCEPT_REVISION
+
+    def _tier_section(report: StabilityReportInputs) -> list[str]:
+        title = (
+            "Lower tray extended"
+            if report.extended_level == "lower"
+            else "Upper tray extended"
+        )
+        other_idx = 1 if report.extended_level == "upper" else 2
+        other_mass = params.plotter_mass_kg(other_idx)
+        return [
+            f"## {title} (pivot: {report.pivot_edge})",
+            "",
+            f"- Extension: {report.extension_mm:.0f} mm "
+            f"(`trays.{report.extended_level}_extension`)",
+            f"- Pivot Y: {report.pivot_y_mm:.1f} mm (`hardware.foot_diameter_mm`/2)",
+            f"- Moving mass: {report.moving_mass_kg:.3f} kg "
+            "(extended tier tray panel + that tier's plotter only)",
+            f"- Moving CoG Y at rest: {report.moving_cog_y_rest_mm:.1f} mm",
+            f"- Moving CoG Y fully extended: {report.moving_cog_y_extended_mm:.1f} mm "
+            f"(rest − extension; sign matches `apply_tray_extension`)",
+            f"- Stationary mass: {report.stationary_mass_kg:.3f} kg "
+            f"(computed structural {report.structural_mass_kg:.3f} kg − moving tray panel "
+            f"+ other plotter {other_mass:.1f} kg)",
+            f"- Stationary CoG Y: {report.stationary_cog_y_mm:.1f} mm",
+            f"- Restore arm: {report.restore_arm_mm:.1f} mm "
+            f"(stationary CoG Y − pivot Y)",
+            f"- Overturn arm: {report.overturn_arm_mm:.1f} mm "
+            f"(pivot Y − moving CoG Y extended)",
+            f"- Restore moment: {report.restore_moment_n_mm:.0f} N·mm",
+            f"- Overturn moment: {report.overturn_moment_n_mm:.0f} N·mm",
+            f"- **Tip factor: {report.factor:.3f}** (minimum {minimum})",
+            f"- Legacy pre-D-039 factor (mass-cancelling model): {report.legacy_factor:.3f}",
+            "",
+        ]
+
     lines = [
-        f"# PLT-006 rev{rev} indicative stability report — NOT authoritative for Gate G4",
+        f"# PLT-010 rev{rev} indicative stability report — NOT authoritative for Gate G4",
         "",
-        "Static tip-over moment model: one tray fully extended, both plotters installed,",
-        "empty-case mass from `mass_targets.empty_case_target_max_kg` (concept placeholder).",
+        "Split stationary/moving mass static-moment model (D-039): one tray fully extended,",
+        "both plotters installed, structural mass from live `empty_case_mass_kg()` — not the",
+        "`mass_targets.empty_case_target_max_kg` placeholder used by the retired model.",
         "",
-        "## Lower tray extended (pivot: front foot line Y=0)",
+        "### Model correction (D-039)",
         "",
-        f"- Extension: {lower.extension_mm:.0f} mm (`trays.lower_extension`)",
-        f"- Total mass: {lower.total_mass_kg:.3f} kg (empty {lower.empty_mass_kg:.1f} + "
-        f"{lower.plotter_count}× plotter {lower.plotter_mass_kg:.1f} kg)",
-        f"- Restore arm: {lower.restore_arm_mm:.1f} mm (support_y {lower.support_y_mm:.1f} − "
-        f"foot inset {lower.foot_inset_mm:.1f})",
-        f"- Overturn arm: {lower.overturn_arm_mm:.1f} mm (extension/2)",
-        f"- Restore moment: {lower.restore_moment_n_mm:.0f} N·mm",
-        f"- Overturn moment: {lower.overturn_moment_n_mm:.0f} N·mm",
-        f"- **Tip factor: {lower.factor:.3f}** (minimum {minimum})",
+        "The pre-rev10 model applied identical `total_mass` to both restore and overturn",
+        "moments, so mass cancelled algebraically and only extension ratio mattered.",
+        "Both tiers slide toward the front (Y=0) per `apply_tray_extension`; pivot is the",
+        "front foot line for both tiers.",
         "",
-        "## Upper tray extended (pivot: rear foot line Y=depth)",
-        "",
-        f"- Extension: {upper.extension_mm:.0f} mm (`trays.upper_extension`)",
-        f"- **Tip factor: {upper.factor:.3f}** (minimum {minimum})",
-        "",
+        *_tier_section(lower),
+        *_tier_section(upper),
         "## Operational media pass-through (D-028 — structural, not open)",
         "",
         f"- Manufacturer clearance each end: "

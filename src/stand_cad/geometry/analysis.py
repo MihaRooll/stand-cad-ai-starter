@@ -239,24 +239,36 @@ class StabilityReportInputs:
     pivot_edge: str
     extended_level: str
     extension_mm: float
-    empty_mass_kg: float
+    structural_mass_kg: float
     plotter_mass_kg: float
     plotter_count: int
     foot_inset_mm: float
+    pivot_y_mm: float
     case_depth_mm: float
-    support_y_mm: float
+    moving_mass_kg: float
+    moving_cog_y_rest_mm: float
+    moving_cog_y_extended_mm: float
+    stationary_mass_kg: float
+    stationary_cog_y_mm: float
     restore_arm_mm: float
     overturn_arm_mm: float
     total_mass_kg: float
     restore_moment_n_mm: float
     overturn_moment_n_mm: float
     factor: float
+    legacy_factor: float
 
 
-def stability_report_inputs(
-    params: Parameters, *, extended_level: str = "lower"
-) -> StabilityReportInputs:
-    """Return substituted numbers for stability_report.md arithmetic."""
+def _extended_tier_ids(extended_level: str) -> tuple[str, str, str, int]:
+    if extended_level == "lower":
+        return "TRAY-LOWER-001", "EQUIP-PLOTTER1-001", "EQUIP-PLOTTER2-001", 2
+    if extended_level == "upper":
+        return "TRAY-UPPER-001", "EQUIP-PLOTTER2-001", "EQUIP-PLOTTER1-001", 1
+    raise ValueError(f"unknown extended_level: {extended_level}")
+
+
+def _legacy_tip_factor(params: Parameters, *, extended_level: str) -> float:
+    """Pre-D-039 model retained for before/after reporting only."""
     foot_inset = float(params.value("hardware.foot_diameter_mm")) / 2
     depth = float(params.value("case.depth"))
     support_y = depth / 2
@@ -264,50 +276,97 @@ def stability_report_inputs(
     extension = float(params.value(ext_key))
     empty_mass = float(params.value("mass_targets.empty_case_target_max_kg"))
     plotter_mass = params.plotter_mass_kg(1) + params.plotter_mass_kg(2)
-    plotter_count = 2
     total_mass = empty_mass + plotter_mass
     overturn_arm = extension / 2
     restore_arm = support_y - foot_inset
     g = 9.80665
     restore_moment = total_mass * g * restore_arm
     overturn_moment = total_mass * g * overturn_arm
-    factor = restore_moment / overturn_moment if overturn_moment > 0 else float("inf")
-    pivot_edge = (
-        "front foot line (Y=0)"
-        if extended_level == "lower"
-        else "rear foot line (Y=depth)"
+    return restore_moment / overturn_moment if overturn_moment > 0 else float("inf")
+
+
+def stability_report_inputs(
+    params: Parameters,
+    parts: dict[str, PartRecord],
+    *,
+    extended_level: str = "lower",
+) -> StabilityReportInputs:
+    """Return substituted numbers for stability_report.md arithmetic."""
+    foot_inset = float(params.value("hardware.foot_diameter_mm")) / 2
+    depth = float(params.value("case.depth"))
+    pivot_y = foot_inset
+    ext_key = "trays.lower_extension" if extended_level == "lower" else "trays.upper_extension"
+    extension = float(params.value(ext_key))
+    tray_id, plotter_id, other_plotter_id, other_plotter_index = _extended_tier_ids(
+        extended_level
     )
+
+    tray_mass = part_mass_kg(parts[tray_id], params)
+    moving_plotter_mass = params.plotter_mass_kg(1 if extended_level == "lower" else 2)
+    moving_mass = tray_mass + moving_plotter_mass
+    tray_cog = _solid_centroid_mm(parts[tray_id])
+    plotter_cog = _solid_centroid_mm(parts[plotter_id])
+    moving_cog_y_rest = (
+        tray_cog[1] * tray_mass + plotter_cog[1] * moving_plotter_mass
+    ) / moving_mass
+    moving_cog_y_extended = moving_cog_y_rest - extension
+
+    stationary_samples: list[tuple[tuple[float, float, float], float]] = []
+    for record in parts.values():
+        if record.verify_on_real_machine or record.part_id == tray_id:
+            continue
+        mass = part_mass_kg(record, params)
+        if mass <= 0:
+            continue
+        stationary_samples.append((_solid_centroid_mm(record), mass))
+    other_plotter_mass = params.plotter_mass_kg(other_plotter_index)
+    stationary_samples.append((_solid_centroid_mm(parts[other_plotter_id]), other_plotter_mass))
+    stationary_mass = sum(mass for _, mass in stationary_samples)
+    _, stationary_cog_y, _ = weighted_centre_of_mass_mm(stationary_samples)
+
+    restore_arm = stationary_cog_y - pivot_y
+    overturn_arm = pivot_y - moving_cog_y_extended
+    g = 9.80665
+    restore_moment = stationary_mass * g * restore_arm
+    overturn_moment = moving_mass * g * overturn_arm
+    factor = restore_moment / overturn_moment if overturn_moment > 0 else float("inf")
+
+    structural_mass = empty_case_mass_kg(parts, params)
+    plotter_mass = params.plotter_mass_kg(1) + params.plotter_mass_kg(2)
+    total_mass = structural_mass + plotter_mass
+
     return StabilityReportInputs(
-        pivot_edge=pivot_edge,
+        pivot_edge=f"front foot line (Y={foot_inset:.1f} mm, foot inset)",
         extended_level=extended_level,
         extension_mm=extension,
-        empty_mass_kg=empty_mass,
+        structural_mass_kg=structural_mass,
         plotter_mass_kg=plotter_mass,
-        plotter_count=plotter_count,
+        plotter_count=2,
         foot_inset_mm=foot_inset,
+        pivot_y_mm=pivot_y,
         case_depth_mm=depth,
-        support_y_mm=support_y,
+        moving_mass_kg=moving_mass,
+        moving_cog_y_rest_mm=moving_cog_y_rest,
+        moving_cog_y_extended_mm=moving_cog_y_extended,
+        stationary_mass_kg=stationary_mass,
+        stationary_cog_y_mm=stationary_cog_y,
         restore_arm_mm=restore_arm,
         overturn_arm_mm=overturn_arm,
         total_mass_kg=total_mass,
         restore_moment_n_mm=restore_moment,
         overturn_moment_n_mm=overturn_moment,
         factor=factor,
+        legacy_factor=_legacy_tip_factor(params, extended_level=extended_level),
     )
 
 
-def indicative_tip_factor(params: Parameters, *, extended_level: str = "lower") -> float:
+def indicative_tip_factor(
+    params: Parameters,
+    parts: dict[str, PartRecord],
+    *,
+    extended_level: str = "lower",
+) -> float:
     """Indicative tip-over factor with one tray extended — NOT G4 stability analysis."""
-    foot_inset = float(params.value("hardware.foot_diameter_mm")) / 2
-    depth = float(params.value("case.depth"))
-    support_y = depth / 2
-    ext_key = "trays.lower_extension" if extended_level == "lower" else "trays.upper_extension"
-    extension = float(params.value(ext_key))
-    empty_mass = float(params.value("mass_targets.empty_case_target_max_kg"))
-    plotter_mass = params.plotter_mass_kg(1) + params.plotter_mass_kg(2)
-    total_mass = empty_mass + plotter_mass
-    overturn_arm = extension / 2
-    restore_arm = support_y - foot_inset
-    overturn = total_mass * 9.80665 * overturn_arm
-    restore = total_mass * 9.80665 * restore_arm
-    return restore / overturn if overturn > 0 else float("inf")
+    return stability_report_inputs(
+        params, parts, extended_level=extended_level
+    ).factor
