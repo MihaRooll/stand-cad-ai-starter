@@ -87,6 +87,15 @@ FILM_BODY_PALETTE: tuple[tuple[int, int, int], ...] = (
 
 DEFAULT_RGB = (190, 190, 195)
 
+# Coplanar faces (e.g. frame rail + flush cladding) can share identical depth after projection.
+# Higher priority wins depth ties so cosmetic surfaces render over structural mates.
+DEPTH_EPSILON_MM = 1e-6
+MATERIAL_RENDER_PRIORITY: dict[str, int] = {
+    "cast_opal_pmma_3mm": 1,
+    "white_composite_3_4mm": 1,
+    "transparent_petg_2mm": 1,
+}
+
 # Contrast backgrounds for legibility (Finding 1 / Finding 5 — near-white panel on white PNG).
 BASE_PLATE_CLOSEUP_BACKGROUND_RGB = (150, 150, 150)
 SIDE_VIEW_BACKGROUND_RGB = (150, 150, 150)
@@ -175,8 +184,8 @@ _SKIP_PNG_RASTER_PREFIXES = ("ENV-PLOTTER",)
 
 def _collect_meshes(
     parts: dict[str, PartRecord], linear_deflection: float
-) -> list[tuple[np.ndarray, np.ndarray, tuple[int, int, int]]]:
-    meshes: list[tuple[np.ndarray, np.ndarray, tuple[int, int, int]]] = []
+) -> list[tuple[np.ndarray, np.ndarray, tuple[int, int, int], int]]:
+    meshes: list[tuple[np.ndarray, np.ndarray, tuple[int, int, int], int]] = []
     for part_id, record in parts.items():
         if part_id.startswith(_SKIP_PNG_RASTER_PREFIXES):
             continue
@@ -188,7 +197,8 @@ def _collect_meshes(
             color = FILM_BODY_PALETTE[index % len(FILM_BODY_PALETTE)]
         else:
             color = MATERIAL_RGB.get(record.material, DEFAULT_RGB)
-        meshes.append((verts, tris, color))
+        priority = MATERIAL_RENDER_PRIORITY.get(record.material, 0)
+        meshes.append((verts, tris, color, priority))
     return meshes
 
 
@@ -241,6 +251,7 @@ def _map_to_screen(
 def _rasterize_triangle(
     image: np.ndarray,
     depth: np.ndarray,
+    priority_buf: np.ndarray,
     x0: float,
     y0: float,
     z0: float,
@@ -251,6 +262,9 @@ def _rasterize_triangle(
     y2: float,
     z2: float,
     color: tuple[int, int, int],
+    priority: int,
+    *,
+    depth_epsilon: float = DEPTH_EPSILON_MM,
 ) -> None:
     min_x = max(int(np.floor(min(x0, x1, x2))), 0)
     max_x = min(int(np.ceil(max(x0, x1, x2))), image.shape[1] - 1)
@@ -270,9 +284,69 @@ def _rasterize_triangle(
                 continue
             z = w0 * z0 + w1 * z1 + w2 * z2
             # view_dir points from model toward camera, so depth increases for nearer points.
-            if z > depth[py, px]:
+            current_depth = depth[py, px]
+            current_priority = int(priority_buf[py, px])
+            nearer = z > current_depth + depth_epsilon
+            tie_win = (
+                z > current_depth - depth_epsilon and priority > current_priority
+            )
+            if nearer or tie_win:
                 depth[py, px] = z
+                priority_buf[py, px] = priority
                 image[py, px] = color
+
+
+def _render_assembly_rgb(
+    state: AssemblyState,
+    view: ViewSpec,
+    *,
+    width: int = 1280,
+    height: int = 960,
+    linear_deflection: float = 1.5,
+    background_rgb: tuple[int, int, int] = (255, 255, 255),
+) -> np.ndarray:
+    """Rasterize one orthographic view to an HxWx3 uint8 RGB array."""
+    right, up, view_dir = _view_basis(view)
+    meshes = _collect_meshes(state.parts, linear_deflection)
+    if not meshes:
+        raise RuntimeError(f"No tessellated geometry for state {state.name!r}")
+
+    all_x: list[np.ndarray] = []
+    all_y: list[np.ndarray] = []
+    for verts, tris, _, _ in meshes:
+        px, py, _ = _project_vertices(verts, right, up, view_dir)
+        all_x.append(px[tris].reshape(-1))
+        all_y.append(py[tris].reshape(-1))
+    fit_x = np.concatenate(all_x)
+    fit_y = np.concatenate(all_y)
+    cx, cy, scale = _fit_to_canvas(fit_x, fit_y, width, height)
+
+    bg = np.array(background_rgb, dtype=np.uint8)
+    image = np.tile(bg, (height, width, 1))
+    zbuf = np.full((height, width), -np.inf, dtype=float)
+    priority_buf = np.full((height, width), -1, dtype=np.int8)
+
+    for verts, tris, color, priority in meshes:
+        px, py, pz = _project_vertices(verts, right, up, view_dir)
+        sx, sy = _map_to_screen(px, py, width, height, cx, cy, scale)
+        for i0, i1, i2 in tris:
+            _rasterize_triangle(
+                image,
+                zbuf,
+                priority_buf,
+                sx[i0],
+                sy[i0],
+                pz[i0],
+                sx[i1],
+                sy[i1],
+                pz[i1],
+                sx[i2],
+                sy[i2],
+                pz[i2],
+                color,
+                priority,
+            )
+    return image
 
 
 def render_assembly_view(
@@ -286,44 +360,14 @@ def render_assembly_view(
     background_rgb: tuple[int, int, int] = (255, 255, 255),
 ) -> None:
     """Render one orthographic PNG for an assembly state."""
-    right, up, view_dir = _view_basis(view)
-    meshes = _collect_meshes(state.parts, linear_deflection)
-    if not meshes:
-        raise RuntimeError(f"No tessellated geometry for state {state.name!r}")
-
-    all_x: list[np.ndarray] = []
-    all_y: list[np.ndarray] = []
-    for verts, tris, _ in meshes:
-        px, py, _ = _project_vertices(verts, right, up, view_dir)
-        all_x.append(px[tris].reshape(-1))
-        all_y.append(py[tris].reshape(-1))
-    fit_x = np.concatenate(all_x)
-    fit_y = np.concatenate(all_y)
-    cx, cy, scale = _fit_to_canvas(fit_x, fit_y, width, height)
-
-    bg = np.array(background_rgb, dtype=np.uint8)
-    image = np.tile(bg, (height, width, 1))
-    zbuf = np.full((height, width), -np.inf, dtype=float)
-
-    for verts, tris, color in meshes:
-        px, py, pz = _project_vertices(verts, right, up, view_dir)
-        sx, sy = _map_to_screen(px, py, width, height, cx, cy, scale)
-        for i0, i1, i2 in tris:
-            _rasterize_triangle(
-                image,
-                zbuf,
-                sx[i0],
-                sy[i0],
-                pz[i0],
-                sx[i1],
-                sy[i1],
-                pz[i1],
-                sx[i2],
-                sy[i2],
-                pz[i2],
-                color,
-            )
-
+    image = _render_assembly_rgb(
+        state,
+        view,
+        width=width,
+        height=height,
+        linear_deflection=linear_deflection,
+        background_rgb=background_rgb,
+    )
     output_path.parent.mkdir(parents=True, exist_ok=True)
     write_png(output_path, image)
 

@@ -20,7 +20,7 @@ from stand_cad.geometry.primitives import bounding_box_bounds, bounding_box_size
 from stand_cad.geometry.registry import PartRecord
 from stand_cad.parameters import Parameters, load_parameters
 
-CONCEPT_REVISION = 10
+CONCEPT_REVISION = 11
 DEFAULT_STEP_NAME = (
     f"light_plotter_tower_ASSEMBLY_CONCEPT_REFERENCE_ONLY_rev{CONCEPT_REVISION}.step"
 )

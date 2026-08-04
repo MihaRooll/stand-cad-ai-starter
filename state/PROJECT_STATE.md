@@ -162,6 +162,10 @@ Evidence collected is not a gate verdict: G0 remains an unconfirmed Human Gate.
 
 ## Current blockers
 
+### Verification-tooling fix — render Z-buffer tie-break (D-040, rev11)
+
+- `scripts/render_validation_views.py`'s PNG rasterizer had a Z-buffer tie-break defect: coplanar cladding-over-rail pairs (`PANEL-CLAD-FRONT-{BASE,ORG,TOP,TRAY-*}-001` vs their rails) always resolved to the structural rail winning, because the strict `z > depth` comparison let whichever part was inserted first (always the rail) win every coincident-depth pixel. This meant "frame concealed" render evidence since fidelity cycle 4 (rev5) never actually showed the cladding — the geometry was always correct, the tool's PNG output was not. Fixed with a material-priority epsilon tie-break (`MATERIAL_RENDER_PRIORITY`, `DEPTH_EPSILON_MM=1e-6`); regression test `tests/test_render_tiebreak.py` covers both insertion orders. Independently confirmed by adversarial review: `rev10`→`rev11` pixel histograms show an exact aluminium↔cladding swap (e.g. transport_iso.png ∓30064 px) on all four checked views, zero change to mass/stability/deflection numbers. `SLIDE-*` hardware remains visible (unchanged, known non-blocking follow-up — separate owner decision, not fixed in this cycle). See D-040.
+
 ### Stability — indicative PLT-010 closed in rev10 (D-039)
 
 - Upper tray fully extended (400 mm) with both plotters installed: corrected tip-over factor **1.596** (meets TZ line 508 floor of **1.5**). Lower tray: **3.563**. Legacy mass-cancelling model had upper at **1.300** — a modelling flaw, not a geometry limitation. No ballast added. See `output/validation/rev10/stability_report.md`, `state/REQUIREMENTS_TRACEABILITY.csv` PLT-010 (`PASSING`), and `docs/10_USER_INPUT_REQUIRED.md` section J. Still **not authoritative for Gate G4** — needs qualified engineering review.
