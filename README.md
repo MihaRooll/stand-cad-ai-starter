@@ -20,6 +20,7 @@ After the first setup:
 1. Regenerate concept and validation artifacts: `uv run python scripts/regenerate.py`
 2. Serve the three.js viewer with live reload: `uv run python scripts/serve_viewer.py --watch`, then open `http://127.0.0.1:8000/viewer/index.html`
 3. When something misbehaves, run the environment doctor: `uv run python scripts/doctor.py`
+4. Before modeling, skim [`docs/14_CAD_MODELING_CONVENTIONS.md`](docs/14_CAD_MODELING_CONVENTIONS.md) for established patterns (cladding bounds, render tie-break, stability model) so a fix with a documented precedent is not re-derived from scratch.
 
 See [`viewer/README.md`](viewer/README.md) for viewer controls, manifest paths, and troubleshooting.
 

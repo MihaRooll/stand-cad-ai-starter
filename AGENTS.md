@@ -55,6 +55,7 @@ For each meaningful geometry change:
 6. Review at least orthographic front/right/top and isometric views.
 7. Store evidence under `output/validation/<revision>/`.
 8. Update traceability and project state.
+9. Check `docs/14_CAD_MODELING_CONVENTIONS.md` for an established pattern before re-deriving a fix — cladding bounds, render depth tie-break, and the stability moment split all have documented precedents there.
 
 Never use `--no-sandbox` merely to make an MCP script work. Never expose MCP HTTP mode outside localhost; the reviewed server documentation states that HTTP mode has no built-in authentication.
 

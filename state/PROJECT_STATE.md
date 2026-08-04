@@ -5,6 +5,7 @@
 - Current gate: G0 (human verdict unconfirmed)
 - Status: F-5 closed (D-038); PLT-010 stability closed (D-039, upper 1.596 / lower 3.563, both ≥1.5 floor); render Z-buffer tie-break fixed (D-040, adversarial-reviewer cycle 1 PASS) — cladding now correctly visible in evidence PNGs, zero change to mass/stability/deflection numbers
 - Last updated: 2026-08-04 (D-040; render tie-break fix; `CONCEPT_REVISION` 10→11; rev11)
+- **Tooling/process (D-041, 2026-08-05):** `pytest-xdist` + `-n auto` (serial 153 s → parallel 72.05 s, 325 tests unchanged); `Quick`/`Full` profile guidance; operational-orchestrator turn-ending directive; `docs/14_CAD_MODELING_CONVENTIONS.md` — no geometry/gate impact
 
 ## PLT-009 height-stack fix (2026-08-04, D-038)
 

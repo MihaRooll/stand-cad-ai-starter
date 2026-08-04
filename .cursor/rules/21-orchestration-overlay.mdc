@@ -20,6 +20,11 @@ These bind the existing profile names to local commands; do not invent new profi
 - Never invoke `scripts/verify-harness.ps1`; it does not exist here.
 - Never call bare `python`: PATH resolves to 3.11 and this project requires 3.12. Always `uv run`.
 
+### When to use each profile
+
+- `Full` is required: before reporting a stage or revision as fully closed to Main or the human; after any change to `pyproject.toml`/`uv.lock`; after any change to `scripts/setup_windows.ps1` itself; and at least once before a `git commit` that a stage orchestrator presents as that stage's final commit.
+- `Quick` suffices for every intermediate implement → review → fix cycle inside a stage, and for any change confined to `state/**`, `docs/**`, or `.cursor/**` (no product code, no config, no dependency change).
+
 ## Toolkit infrastructure absent here
 
 `SKILL.md` and `contracts.md` were imported verbatim and still mention toolkit-only machinery. None of it exists in this repository:
