@@ -311,25 +311,30 @@ def test_indicative_tip_factor_non_authoritative(params):
 def test_indicative_tray_deflection_non_authoritative(params):
     """PLT-011 indicative — NOT authoritative for Gate G4 FEA.
 
-    Under the corrected rail-to-rail span the ceiling is not met with the current
-    unsourced E (see output/validation/rev1/deflection_report.md).
+    Three-rail model: conservative independent half-span beams (P/2 on L/2).
     """
     deflection = indicative_tray_deflection_mm(params)
     assert deflection > 0
     assert deflection < float("inf")
+    span_mm = float(params.value("plotter.physical_width"))
+    load_n = float(params.value("trays.design_load_kg")) * 9.80665
+    e_mpa = float(params.value("materials.tray_panel_youngs_modulus_mpa"))
+    width_mm = float(params.value("plotter.physical_depth"))
+    t_mm = params.tray_panel_thickness_mm
+    i_mm4 = width_mm * t_mm**3 / 12
     assert deflection == pytest.approx(
-        5
-        * float(params.value("trays.design_load_kg"))
-        * 9.80665
-        * float(params.value("plotter.physical_width")) ** 3
-        / (
-            384
-            * float(params.value("materials.tray_panel_youngs_modulus_mpa"))
-            * float(params.value("plotter.physical_depth"))
-            * params.tray_panel_thickness_mm ** 3
-            / 12
-        ),
+        5 * (load_n / 2) * (span_mm / 2) ** 3 / (384 * e_mpa * i_mm4),
         rel=1e-6,
+    )
+
+
+def test_indicative_tray_deflection_meets_tz_ceiling(params):
+    """PLT-011 — indicative three-rail model must stay under TZ line 184 ceiling."""
+    deflection = indicative_tray_deflection_mm(params)
+    ceiling = float(params.value("trays.deflection_max_mm"))
+    assert deflection < ceiling, (
+        f"indicative tray deflection {deflection:.3f} mm >= {ceiling} mm "
+        "(TZ line 184 / trays.deflection_max_mm — regression on three-rail fix)"
     )
 
 

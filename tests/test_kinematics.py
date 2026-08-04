@@ -63,6 +63,67 @@ def _extended_tray_solid(params, level: str):
     return tray_fully_extended_solid(params, datums, level)
 
 
+def test_centre_slide_rails_exist_kinematic_and_clear(params, transport):
+    """PLT-011/PLT-008 — centre slides in kinematic group and full-extension set."""
+    from stand_cad.geometry.datums import Datums
+    from stand_cad.geometry.kinematics import (
+        LOWER_KINEMATIC_GROUP,
+        UPPER_KINEMATIC_GROUP,
+        slides_fully_extended_solids,
+    )
+
+    for slide_id, group in (
+        ("SLIDE-LOWER-CENTER-001", LOWER_KINEMATIC_GROUP),
+        ("SLIDE-UPPER-CENTER-001", UPPER_KINEMATIC_GROUP),
+    ):
+        assert slide_id in transport.parts
+        assert slide_id in group
+        rail_id = slide_id.replace("SLIDE-", "FRAME-RAIL-TRAY-").replace(
+            "CENTER-001", "C-001"
+        )
+        assert rail_id in transport.parts
+        assert rail_id not in group
+
+    datums = Datums.from_parameters(params)
+    assert len(slides_fully_extended_solids(params, datums, "lower")) == 3
+    assert len(slides_fully_extended_solids(params, datums, "upper")) == 3
+
+    shuttle_x = bounding_box_bounds(transport.parts["INTERLOCK-SHUTTLE-001"].solid)[0]
+    center_x = bounding_box_bounds(transport.parts["SLIDE-LOWER-CENTER-001"].solid)[0]
+    assert center_x[1] <= shuttle_x[0] or center_x[0] >= shuttle_x[1], (
+        "centre slide X-window must not overlap interlock shuttle X-window"
+    )
+
+
+def test_centre_slide_clear_of_soft_stop(params, transport):
+    """PLT-008 F-1 — centre slide must not volumetrically overlap rear soft stop."""
+    for soft_id, slide_id in (
+        ("SOFTSTOP-LOWER-001", "SLIDE-LOWER-CENTER-001"),
+        ("SOFTSTOP-UPPER-001", "SLIDE-UPPER-CENTER-001"),
+    ):
+        vol = intersection_volume(
+            transport.parts[soft_id].solid,
+            transport.parts[slide_id].solid,
+        )
+        assert vol == pytest.approx(0.0, abs=1e-3), (
+            f"{soft_id} vs {slide_id} intersection {vol} mm^3 must be zero"
+        )
+
+
+def test_centre_slide_clear_of_media_test_bodies(params):
+    """PLT-008 F-2 — centre slides clear of all media-path test bodies on both tiers."""
+    operating = build_operating_with_test_bodies_assembly(params)
+    for level in ("L1", "L2"):
+        slide_id = f"SLIDE-{'LOWER' if level == 'L1' else 'UPPER'}-CENTER-001"
+        center_slide = operating.parts[slide_id].solid
+        for body_kind in ("PRIMARY", "LONG"):
+            body_id = f"TESTBODY-{body_kind}-{level}-001"
+            vol = intersection_volume(center_slide, operating.parts[body_id].solid)
+            assert vol == pytest.approx(0.0, abs=1e-3), (
+                f"{slide_id} intersects {body_id} by {vol} mm^3"
+            )
+
+
 def test_tray_extension_rear_face_clearance(params, service_p1, service_p2):
     """PLT-008 partial — rear face past front plane by front_overhang_min_mm."""
     front_limit = -float(params.value("trays.front_overhang_min_mm"))

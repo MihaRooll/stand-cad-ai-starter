@@ -197,13 +197,8 @@ def empty_case_mass_kg(parts: dict[str, PartRecord], params: Parameters) -> floa
     return total
 
 
-def indicative_tray_deflection_mm(params: Parameters) -> float:
-    """Indicative simply-supported tray mid-span deflection — NOT G4 FEA.
-
-    Tray slides run front-to-back (Y) at the left/right (X) edges, so the panel
-    spans rail-to-rail across X (~plotter.physical_width) with load distributed
-    along Y (~plotter.physical_depth).
-    """
+def indicative_tray_deflection_single_span_mm(params: Parameters) -> float:
+    """Legacy single-span model (two rails only) — retained for before/after reporting."""
     load_n = float(params.value("trays.design_load_kg")) * 9.80665
     span_mm = float(params.value("plotter.physical_width"))
     thickness_mm = params.tray_panel_thickness_mm
@@ -211,6 +206,30 @@ def indicative_tray_deflection_mm(params: Parameters) -> float:
     width_mm = float(params.value("plotter.physical_depth"))
     i_mm4 = width_mm * thickness_mm**3 / 12
     return 5 * load_n * span_mm**3 / (384 * e_mpa * i_mm4)
+
+
+def indicative_tray_deflection_mm(params: Parameters) -> float:
+    """Indicative tray mid-span deflection under three-rail support — NOT G4 FEA.
+
+    Tray slides run front-to-back (Y) at left, right, and centre (X), bisecting
+    the rail-to-rail span (~plotter.physical_width) into two half-spans. Load is
+    distributed along Y (~plotter.physical_depth).
+
+    Conservative hand-check simplification (not FEA, not exact continuous-beam):
+    each half-span is modelled as an **independent** simply-supported beam carrying
+    half the total UDL (P/2 on span L/2), ignoring elastic continuity at the centre
+    support. A true two-equal-span continuous beam under UDL would give ~2.4× lower
+    peak deflection; this model is therefore conservative, not optimistic.
+    """
+    load_n = float(params.value("trays.design_load_kg")) * 9.80665
+    span_mm = float(params.value("plotter.physical_width"))
+    half_span_mm = span_mm / 2
+    half_load_n = load_n / 2
+    thickness_mm = params.tray_panel_thickness_mm
+    e_mpa = float(params.value("materials.tray_panel_youngs_modulus_mpa"))
+    width_mm = float(params.value("plotter.physical_depth"))
+    i_mm4 = width_mm * thickness_mm**3 / 12
+    return 5 * half_load_n * half_span_mm**3 / (384 * e_mpa * i_mm4)
 
 
 @dataclass(frozen=True)

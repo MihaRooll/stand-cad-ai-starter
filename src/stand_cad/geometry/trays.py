@@ -42,10 +42,18 @@ def _slide_bounds(
     if side == "left":
         sx0 = x0
         sx1 = x0 + rail_w
-    else:
+    elif side == "right":
         sx0 = x1 - rail_w
         sx1 = x1
-    return (sx0, y0, z_tray_bottom - rail_h, sx1, y1, z_tray_bottom)
+    elif side == "center":
+        cx = (x0 + x1) / 2
+        half_w = rail_w / 2
+        sx0 = cx - half_w
+        sx1 = cx + half_w
+    else:
+        raise ValueError(f"unknown slide side: {side}")
+    y_max = _centre_rail_y_max(params, tray_bounds) if side == "center" else y1
+    return (sx0, y0, z_tray_bottom - rail_h, sx1, y_max, z_tray_bottom)
 
 
 def _soft_stop_bounds(
@@ -59,6 +67,17 @@ def _soft_stop_bounds(
     cz = (z0 + z1) / 2
     half = size / 2
     return (cx - half, cy - half, cz - half, cx + half, cy + half, cz + half)
+
+
+def _centre_rail_y_max(
+    params: Parameters,
+    tray_bounds: tuple[float, float, float, float, float, float],
+) -> float:
+    """Y upper bound for centre slide/frame rail — clear of rear soft stop envelope."""
+    _x0, _y0, _z0, _x1, y1, _z_tray_bottom = tray_bounds
+    soft_half = float(params.value("trays.soft_stop_size_mm")) / 2
+    gap = float(params.value("tolerance.part_assembly_feature_mm"))
+    return y1 - soft_half - gap
 
 
 def _vib_mount_positions(
@@ -117,7 +136,14 @@ def _tray_frame_rail_bounds(
     z_top = z_base + profile
     if side == "left":
         return (x0, y0, z_base, x0 + profile, y1, z_top)
-    return (x1 - profile, y0, z_base, x1, y1, z_top)
+    if side == "right":
+        return (x1 - profile, y0, z_base, x1, y1, z_top)
+    if side == "center":
+        cx = (x0 + x1) / 2
+        half_p = profile / 2
+        y_max = _centre_rail_y_max(params, tray_bounds)
+        return (cx - half_p, y0, z_base, cx + half_p, y_max, z_top)
+    raise ValueError(f"unknown frame-rail side: {side}")
 
 
 def build_tray_level_parts(
@@ -155,7 +181,11 @@ def build_tray_level_parts(
             solid=box_from_bounds(*tray_b),
         ),
     ]
-    for side, suffix in (("left", "LEFT"), ("right", "RIGHT")):
+    for side, suffix, rail_suffix in (
+        ("left", "LEFT", "L"),
+        ("right", "RIGHT", "R"),
+        ("center", "CENTER", "C"),
+    ):
         slide_b = _slide_bounds(params, tray_b, side=side)
         parts.append(
             PartRecord(
@@ -166,10 +196,9 @@ def build_tray_level_parts(
             )
         )
         rail_b = _tray_frame_rail_bounds(params, tray_b, side=side)
-        lr = "L" if side == "left" else "R"
         parts.append(
             PartRecord(
-                part_id=f"{rail_prefix}-{lr}-001",
+                part_id=f"{rail_prefix}-{rail_suffix}-001",
                 material=FRAME_MATERIAL,
                 solid=box_from_bounds(*rail_b),
             )
