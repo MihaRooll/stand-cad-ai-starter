@@ -43,9 +43,9 @@ plotter:
   x: {value: 40, provenance: derived, note: "side_clear + (internal_width − physical_width)/2 = 20 + (610−570)/2 = 40 mm"}
   lower_y: {value: 15, provenance: derived, note: "PLT-007 — reduced from TZ 20 mm so lower tray full extension (250 mm) clears front_overhang_min 40 mm with 195 mm Cameo 4 depth: 15+195−250=−40; front storage clearance 15 mm"}
   lower_z: {value: 30, provenance: verified, note: "TZ section 5 — lower tray / plotter 1 datum Z"}
-  upper_y: {value: 145, provenance: derived, note: "lower_y + upper_setback = 15 + 130; supersedes TZ section 5 Y=170 and interim 150@lower_y=20"}
+  upper_y: {value: 15, provenance: derived, note: "lower_y + upper_setback = 15 + 0 (D-033, owner 2026-08-04); supersedes TZ section 5 Y=170, interim 150@lower_y=20, and 145@setback130 (D-029)"}
   upper_z: {value: 211, provenance: derived, note: "lower_z + tier_clearance_min_mm + tray_panel_thickness_mm = 30 + 170 + 11"}
-  upper_setback: {value: 130, provenance: verified, note: "Owner 2026-08-04 — plotter 2 set back 130 mm (supersedes TZ 150 mm); must equal upper_y - lower_y"}
+  upper_setback: {value: 0, provenance: verified, note: "Owner 2026-08-04 (D-033) — tier 2 aligned flush with tier 1 front face; setback removed. Supersedes 130 mm (D-029) and TZ 150 mm. Must equal upper_y - lower_y. Access to tier 2 solved by trays.lower_quick_access_extension_mm on tier 1 instead of a Y offset."}
   feed_plane_z_from_base: {value: "TO_MEASURE", provenance: to_measure, note: "TZ section 7 and section 16 item 1 — must not be guessed"}
   feed_plane_z_provisional_mm: {value: 40, provenance: to_measure, note: "Provisional mid-low front-feed slot height above tray finished top; VERIFY ON REAL MACHINE before production DXF"}
   envelope_offset_x_mm: {value: 7, provenance: derived, note: "(design_width − physical_width)/2; legacy TZ clearance margin per side in X"}
@@ -67,6 +67,7 @@ plotter_cameo5:
 
 trays:
   lower_extension: {value: 250, provenance: verified, note: "TZ section 7 — minimum full extension, lower tray"}
+  lower_quick_access_extension_mm: {value: 130, provenance: verified, note: "Owner 2026-08-04 (D-033) — minimum tier-1 forward slide for quick access to load/unload film now that tier 2 is aligned directly above; distinct from and strictly less than full-service lower_extension (250 mm)"}
   upper_extension: {value: 400, provenance: verified, note: "TZ section 7 — minimum full extension, upper tray"}
   rated_load_kg: {value: 15, provenance: verified, note: "TZ section 7 — minimum slide rating per pair"}
   rated_load_preferred_kg: {value: 20, provenance: verified, note: "TZ section 7 — preferred slide rating per pair"}
@@ -166,7 +167,7 @@ operational:
 hardware:
   handle_grip_length_mm: {value: 110, provenance: verified, note: "TZ:304 — minimum grip length"}
   handle_grip_depth_mm: {value: 35, provenance: verified, note: "TZ:304 — minimum grip depth"}
-  handle_mount_y_mm: {value: 100, provenance: derived, note: "Front grip centre Y=100 → band [45,155] mm; clears plotter2 Y≥145, frame posts Y≤40, and organizer Z≥396 (PLT-007)"}
+  handle_mount_y_mm: {value: 100, provenance: derived, note: "Front grip centre Y=100 → band [45,155] mm; clears frame posts Y≤40 and organizer Z≥396; EQUIP-/ENV- bodies are excluded from the handle sightline check by design (test_handle_cutout_sightline_clear); tier 2 front Y moved to 15 mm (D-033) does not change this — the check never depended on plotter Y"}
   handle_mount_z_mm: {value: 263, provenance: derived, note: "Side-panel centre Z=(foot_height_mm+case.height)/2=(9+517)/2=263 mm; owner 2026-08-04 override of TZ line 235 CoM placement (D-030). Loaded-case indicative CoM z≈216.0 mm (case+2 plotters, mass-report model) → handle +47 mm above CoM; empty-case CoM z≈224.7 mm → +38 mm"}
   service_port_cutout_width_mm: {value: 16, provenance: to_measure, note: "PROVISIONAL panel-mount USB-A coupler body cutout width; connector type NOT decided — do not use for production DXF"}
   service_port_cutout_height_mm: {value: 8, provenance: to_measure, note: "PROVISIONAL panel-mount USB-A coupler body cutout height; VERIFY connector selection before production DXF"}

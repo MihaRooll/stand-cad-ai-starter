@@ -225,6 +225,24 @@ def build_service_plotter_2_assembly(
     )
 
 
+def build_tray1_quick_access_assembly(
+    params: Parameters, *, shelf_count: int | None = None
+) -> AssemblyState:
+    """Tier 1 tray quick-access — documented minimum 130 mm forward slide (D-033).
+
+    Distinct from build_service_plotter_1_assembly (250 mm full-service extension):
+    this is a lesser, quick-access position and does not engage the tray-extension
+    interlock (shuttle stays neutral) — tier 2 stays closed.
+    """
+    return _build_state(
+        params,
+        "tray1_quick_access",
+        shelf_count=shelf_count,
+        lower_extension_mm=float(params.value("trays.lower_quick_access_extension_mm")),
+        shuttle_position=ShuttlePosition.NEUTRAL,
+    )
+
+
 def build_operating_with_test_bodies_assembly(
     params: Parameters, *, shelf_count: int | None = None
 ) -> AssemblyState:

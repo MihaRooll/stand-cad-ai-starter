@@ -86,7 +86,8 @@ def test_plotter_physical_bodies(params, transport, datums):
         assert bounds[2][1] == pytest.approx(datum.z.max_mm, abs=tol)
 
 
-def test_plotter_setback_from_built_geometry(transport, datums):
+def test_plotter_front_faces_aligned_from_built_geometry(transport, datums):
+    """D-033 — tier 1 and tier 2 plotter front faces share the same Y."""
     p1_front = datums.plotter1_physical.y.min_mm
     p2_front = datums.plotter2_physical.y.min_mm
     p1_solid = transport.parts["EQUIP-PLOTTER1-001"].solid
@@ -96,7 +97,7 @@ def test_plotter_setback_from_built_geometry(transport, datums):
     )
     expected_setback = p2_front - p1_front
     assert measured_setback == pytest.approx(expected_setback)
-    assert measured_setback == pytest.approx(130.0)
+    assert measured_setback == pytest.approx(0.0)
 
 
 def test_plotter_envelopes_no_3d_intersection_and_z_clearance(params, transport):
@@ -988,16 +989,17 @@ def test_pass_through_depth_exceeds_case_envelope(params):
     assert depth < required
 
 
-def test_tier_y_clearances_cameo4_130_setback(params):
-    """PLT-007 — tier Y positions for 195 mm Cameo 4 depth and 130 mm setback."""
+def test_tier_y_clearances_aligned_front_faces(params):
+    """D-033 — tier 2 front face aligned with tier 1; setback removed, owner 2026-08-04."""
     lower_y = float(params.value("plotter.lower_y"))
     upper_y = float(params.value("plotter.upper_y"))
     depth = float(params.value("plotter.physical_depth"))
     case_depth = float(params.value("case.depth"))
-    assert upper_y - lower_y == pytest.approx(130.0)
+    assert upper_y == pytest.approx(lower_y)
+    assert float(params.value("plotter.upper_setback")) == pytest.approx(0.0)
     assert params.material_travel_clearance_front_mm(1) == pytest.approx(15.0)
-    assert params.material_travel_clearance_rear_mm(2) == pytest.approx(210.0)
-    assert lower_y + depth <= upper_y + depth
+    assert params.material_travel_clearance_rear_mm(2) == pytest.approx(340.0)
+    assert lower_y + depth <= case_depth
     assert upper_y + depth <= case_depth
 
 

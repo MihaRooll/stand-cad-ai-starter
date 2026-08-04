@@ -172,7 +172,7 @@ def write_stability_report(
         ),
         "- Active cutting requires front and rear media openings (330 mm rear slots at L1/L2) "
         "and/or tray extension plus external rear supports (`services.rearsupport_*`).",
-        f"- Closed-tray clearances at tier Y (130 mm setback): plotter 1 front "
+        f"- Closed-tray clearances (D-033 aligned front faces, setback removed): plotter 1 front "
         f"{params.material_travel_clearance_front_mm(1):.0f} mm; plotter 2 rear "
         f"{params.material_travel_clearance_rear_mm(2):.0f} mm",
         "",

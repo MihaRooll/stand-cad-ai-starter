@@ -9,6 +9,7 @@ import pytest
 
 from stand_cad.parameters import (
     HORIZONTAL_SHELF_COUNT,
+    MIN_LOWER_QUICK_ACCESS_EXTENSION_MM,
     REQUIRED_CASE_WIDTH_MM,
     REQUIRED_UPPER_SETBACK_MM,
     Parameters,
@@ -38,8 +39,8 @@ def _valid_doc() -> dict:
             "depth_tolerance_mm": _leaf(5, "derived"),
         },
         "plotter": {
-            "upper_setback": _leaf(130),
-            "upper_y": _leaf(145),
+            "upper_setback": _leaf(0),
+            "upper_y": _leaf(15),
             "lower_y": _leaf(15),
             "lower_z": _leaf(30),
             "upper_z": _leaf(211),
@@ -63,6 +64,10 @@ def _valid_doc() -> dict:
             "depth_mm": _leaf(176),
             "height_mm": _leaf(124),
             "mass_kg": _leaf(5.2),
+        },
+        "trays": {
+            "lower_extension": _leaf(250),
+            "lower_quick_access_extension_mm": _leaf(130),
         },
         "operational": {
             "material_travel_clearance_mm": _leaf(356),
@@ -205,13 +210,13 @@ def test_case_height_inconsistent_with_stack_fails():
     assert "PARAM-006" in _error_codes(doc)
 
 
-def test_plotter_setback_not_130_fails():
+def test_plotter_setback_nonzero_fails():
     doc = _valid_doc()
-    doc["plotter"]["upper_setback"] = _leaf(129)
+    doc["plotter"]["upper_setback"] = _leaf(130)
     assert "PARAM-007" in _error_codes(doc)
 
 
-def test_plotter_setback_130_passes():
+def test_plotter_setback_zero_passes():
     doc = _valid_doc()
     assert "PARAM-007" not in _error_codes(doc)
 
@@ -220,6 +225,25 @@ def test_plotter_setback_inconsistent_with_coordinates_fails():
     doc = _valid_doc()
     doc["plotter"]["upper_y"] = _leaf(180)
     assert "PARAM-008" in _error_codes(doc)
+
+
+def test_quick_access_extension_below_minimum_fails():
+    doc = _valid_doc()
+    doc["trays"]["lower_quick_access_extension_mm"] = _leaf(129)
+    assert "PARAM-013" in _error_codes(doc)
+
+
+def test_quick_access_extension_at_minimum_passes():
+    doc = _valid_doc()
+    doc["trays"]["lower_quick_access_extension_mm"] = _leaf(130)
+    assert "PARAM-013" not in _error_codes(doc)
+    assert "PARAM-014" not in _error_codes(doc)
+
+
+def test_quick_access_extension_not_less_than_full_extension_fails():
+    doc = _valid_doc()
+    doc["trays"]["lower_quick_access_extension_mm"] = _leaf(250)
+    assert "PARAM-014" in _error_codes(doc)
 
 
 def test_tier_clearance_below_minimum_fails():
@@ -264,8 +288,8 @@ def test_production_release_blocks_on_to_measure_parameters():
 def test_production_release_passes_with_no_to_measure_parameters():
     doc = deepcopy(_valid_doc())
     doc["plotter"] = {
-        "upper_setback": _leaf(130),
-        "upper_y": _leaf(145),
+        "upper_setback": _leaf(0),
+        "upper_y": _leaf(15),
         "lower_y": _leaf(15),
         "lower_z": _leaf(30),
         "upper_z": _leaf(211),
@@ -358,8 +382,8 @@ def test_validate_release_readiness_clean_synthetic_doc_has_zero_errors():
     project, equipment = _production_project_and_equipment()
     doc = deepcopy(_valid_doc())
     doc["plotter"] = {
-        "upper_setback": _leaf(130),
-        "upper_y": _leaf(145),
+        "upper_setback": _leaf(0),
+        "upper_y": _leaf(15),
         "lower_y": _leaf(15),
         "lower_z": _leaf(30),
         "upper_z": _leaf(211),
@@ -402,5 +426,6 @@ def test_side_slab_thickness_and_clear_width():
     per_side = (610 - 570) / 2
     assert per_side == pytest.approx(20.0)
     assert REQUIRED_CASE_WIDTH_MM == 650
-    assert REQUIRED_UPPER_SETBACK_MM == 130
+    assert REQUIRED_UPPER_SETBACK_MM == 0
+    assert MIN_LOWER_QUICK_ACCESS_EXTENSION_MM == 130
     assert HORIZONTAL_SHELF_COUNT == 4

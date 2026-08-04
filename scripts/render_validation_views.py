@@ -37,6 +37,7 @@ from stand_cad.geometry.assembly import (
     build_service_plotter_1_assembly,
     build_service_plotter_2_assembly,
     build_transport_assembly,
+    build_tray1_quick_access_assembly,
 )
 from stand_cad.geometry.export import CONCEPT_REVISION, export_transport_mesh_bundle
 from stand_cad.geometry.registry import PartRecord
@@ -429,6 +430,7 @@ def default_render_targets() -> list[RenderTarget]:
         ),
         RenderTarget("service_plotter_1_iso.png", build_service_plotter_1_assembly, iso),
         RenderTarget("service_plotter_2_iso.png", build_service_plotter_2_assembly, iso),
+        RenderTarget("tray1_quick_access_iso.png", build_tray1_quick_access_assembly, iso),
         RenderTarget("organizer_loaded_iso.png", build_organizer_loaded_assembly, organizer_view),
         RenderTarget("panels_hidden_iso.png", build_panels_hidden_assembly, iso),
         RenderTarget(

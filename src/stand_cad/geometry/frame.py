@@ -23,6 +23,23 @@ def _profile_size(params: Parameters) -> float:
     return float(params.value("materials.frame_profile_size_mm"))
 
 
+def _tray1_clearance_notch_x_z(
+    params: Parameters, datums: Datums
+) -> tuple[float, float, float, float]:
+    """X/Z zone tray 1 (+slides) needs clear through the front base rail/cladding.
+
+    Z covers slide-bottom to tray-top so both TRAY-LOWER-001 and
+    SLIDE-LOWER-LEFT/RIGHT-001 have real clearance at any lower_extension
+    position between closed and trays.lower_extension, including the new
+    trays.lower_quick_access_extension_mm rest position (D-033).
+    """
+    lower = datums.plotter1_physical
+    slide_h = float(params.value("trays.slide_rail_height_mm"))
+    z1 = lower.z.min_mm
+    z0 = z1 - params.tray_panel_thickness_mm - slide_h
+    return lower.x.min_mm, z0, lower.x.max_mm, z1
+
+
 def _corner_inset(params: Parameters) -> float:
     """Inset from absolute case corners so hidden frame stays behind R25 exterior."""
     return float(params.value("case.corner_radius"))
@@ -165,6 +182,11 @@ def _perimeter_rail(
     else:
         raise ValueError(f"unknown rail part id: {part_id}")
 
+    if part_id == "FRAME-RAIL-BASE-FRONT-001":
+        x0, z0, x1_notch, z1_notch = _tray1_clearance_notch_x_z(params, datums)
+        notch = box_from_bounds(x0, 0.0, z0, x1_notch, profile, z1_notch)
+        solid = solid - notch
+
     return PartRecord(part_id=part_id, material=FRAME_MATERIAL, solid=solid)
 
 
@@ -217,6 +239,10 @@ def build_frame_cladding(params: Parameters, datums: Datums) -> list[PartRecord]
             profile,
             z_top,
         )
+        if part_id == "PANEL-CLAD-FRONT-BASE-001":
+            x0, z0, x1_notch, z1_notch = _tray1_clearance_notch_x_z(params, datums)
+            notch = box_from_bounds(x0, 0.0, z0, x1_notch, profile, z1_notch)
+            solid = solid - notch
         parts.append(PartRecord(part_id=part_id, material=FRAME_CLAD_MATERIAL, solid=solid))
 
     side_clear = _side_clearance_mm(params)

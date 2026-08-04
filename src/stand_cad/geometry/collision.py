@@ -416,24 +416,38 @@ def is_open_front_kinematic_contact(
     parts: dict[str, PartRecord],
     threshold: float,
 ) -> bool:
-    """Cosmetic cladding and base front rail share the open-front volume with lower tray stack."""
+    """Front structural/cladding members share the open-front volume with either tray stack.
+
+    Both tiers now share the same front-face Y (D-033), and tier 1 has a documented
+    quick-access forward slide distinct from its full extension — the tray/slide/plotter
+    stack for either tier is expected to touch front perimeter structure (corner posts,
+    base/org front rails, cosmetic cladding) as it travels through the open front opening.
+    Concept-stage block geometry does not model precise slide/rail channel clearance
+    notches; verify actual clearance on the real prototype (`trays.slide_rail_*`,
+    `to_measure`).
+    """
     open_front_prefixes = (
         "PANEL-CLAD-FRONT-",
         "FRAME-RAIL-BASE-FRONT-",
+        "FRAME-RAIL-ORG-FRONT-",
+        "FRAME-POST-FL-",
+        "FRAME-POST-FR-",
     )
-    lower_stack_prefixes = (
+    stack_prefixes = (
         "TRAY-LOWER-",
         "SLIDE-LOWER-",
         "EQUIP-PLOTTER1-",
+        "TRAY-UPPER-",
+        "SLIDE-UPPER-",
+        "EQUIP-PLOTTER2-",
+        "INTERLOCK-TAB-UPPER-",
     )
     for clad_prefix in open_front_prefixes:
-        for stack_prefix in lower_stack_prefixes:
+        for stack_prefix in stack_prefixes:
             if (_id_matches(a, clad_prefix) and _id_matches(b, stack_prefix)) or (
                 _id_matches(b, clad_prefix) and _id_matches(a, stack_prefix)
             ):
-                if (
-                    minimum_clearance(parts[a].solid, parts[b].solid) < threshold
-                ):
+                if minimum_clearance(parts[a].solid, parts[b].solid) < threshold:
                     return True
     return False
 
@@ -444,7 +458,11 @@ def is_staggered_tier_y_overlap(
     parts: dict[str, PartRecord],
     threshold: float,
 ) -> bool:
-    """Setback (130 mm) < machine depth (195 mm) — tiers overlap in Y but stack in Z."""
+    """Tiers share the same front-face Y (D-033) and fully overlap in Y.
+
+    They stack in Z instead, so cross-tier Y overlap is intentional by
+    design, not a collision.
+    """
     lower_markers = (
         "EQUIP-PLOTTER1-",
         "TRAY-LOWER-",

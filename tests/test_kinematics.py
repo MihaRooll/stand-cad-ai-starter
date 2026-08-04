@@ -12,6 +12,7 @@ from stand_cad.geometry.assembly import (
     build_service_plotter_1_assembly,
     build_service_plotter_2_assembly,
     build_transport_assembly,
+    build_tray1_quick_access_assembly,
 )
 from stand_cad.geometry.collision import (
     COLLISION_THRESHOLD_PATH,
@@ -50,6 +51,11 @@ def service_p2(params):
     return build_service_plotter_2_assembly(params)
 
 
+@pytest.fixture(scope="module")
+def tray1_quick_access(params):
+    return build_tray1_quick_access_assembly(params)
+
+
 def _extended_tray_solid(params, level: str):
     from stand_cad.geometry.datums import Datums
 
@@ -69,6 +75,22 @@ def test_tray_extension_rear_face_clearance(params, service_p1, service_p2):
         assert rear_face_y <= front_limit, (
             f"{tray_id} rear Y={rear_face_y} must be <= {front_limit}"
         )
+
+
+def test_tray1_quick_access_forward_travel_is_130mm(params, transport, tray1_quick_access):
+    """D-033 — tier 1 tray forward slide is a real, dimensioned, >=130 mm travel."""
+    quick_access_mm = float(params.value("trays.lower_quick_access_extension_mm"))
+    assert quick_access_mm >= 130.0
+    closed_front_y = bounding_box_bounds(transport.parts["TRAY-LOWER-001"].solid)[1][0]
+    quick_front_y = bounding_box_bounds(tray1_quick_access.parts["TRAY-LOWER-001"].solid)[1][0]
+    assert closed_front_y - quick_front_y == pytest.approx(quick_access_mm)
+
+
+def test_tray1_quick_access_distinct_from_full_extension(params):
+    """D-033 — quick access (130 mm) is a lesser position than full service extension (250 mm)."""
+    quick_access_mm = float(params.value("trays.lower_quick_access_extension_mm"))
+    full_extension_mm = float(params.value("trays.lower_extension"))
+    assert quick_access_mm < full_extension_mm
 
 
 def test_lid_envelope_no_intersection_in_service_states(params, service_p1, service_p2):
@@ -132,6 +154,7 @@ def test_interlock_shuttle_neutral_no_tray_interference(params, transport):
         "service_plotter_1",
         "service_plotter_2",
         "operating_with_test_bodies",
+        "tray1_quick_access",
     ],
 )
 def test_numeric_collision_clearance(params, builder_name):
@@ -141,6 +164,7 @@ def test_numeric_collision_clearance(params, builder_name):
         "service_plotter_1": build_service_plotter_1_assembly,
         "service_plotter_2": build_service_plotter_2_assembly,
         "operating_with_test_bodies": build_operating_with_test_bodies_assembly,
+        "tray1_quick_access": build_tray1_quick_access_assembly,
     }
     state = builders[builder_name](params)
     violations = check_collision_pairs(state.parts, params, builder_name)
