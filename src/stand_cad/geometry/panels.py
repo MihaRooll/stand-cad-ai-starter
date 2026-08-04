@@ -375,6 +375,19 @@ def _build_side_slab_with_handle(
         z1=mount_z + grip_depth / 2,
         edge_radius=HANDLE_CUTOUT_EDGE_RADIUS_MM,
     )
+    if side == "right":
+        port_w = float(params.value("hardware.service_port_cutout_width_mm"))
+        port_h = float(params.value("hardware.service_port_cutout_height_mm"))
+        port_z = float(params.value("hardware.service_port_mount_z_mm"))
+        solid = _subtract_box(
+            solid,
+            x0 + (x1 - x0) / 2 - port_w / 2,
+            depth - gap - 1.0,
+            port_z - port_h / 2,
+            x0 + (x1 - x0) / 2 + port_w / 2,
+            depth + 1.0,
+            port_z + port_h / 2,
+        )
     return PartRecord(part_id=part_id, material=OUTER_PANEL_MATERIAL, solid=solid)
 
 

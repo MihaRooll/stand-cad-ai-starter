@@ -4,7 +4,9 @@ The Light Plotter Tower technical specification (`ИИ советы/Cursor_Opus5
 
 ## A. Physical measurements on real equipment (TZ section 16)
 
-Before releasing production files, measure on two real Cameo 5 units:
+**Cameo 4 governing dimensions CLOSED (2026-08-04):** width 570 mm, depth 195 mm, height 170 mm, mass 4.7 kg — Silhouette Cameo 4 spec sheet. Cameo 5 slot-2 mass 5.2 kg confirmed. Service-port **connector type** remains open (`hardware.service_port_*` cutout is provisional `to_measure`).
+
+Before releasing production files, measure on two real plotters:
 
 1. Feed-plane height above the machine's lower support plane — unblocks `plotter.feed_plane_z_from_base`.
 2. Rear material exit coordinates.

@@ -14,6 +14,7 @@ from stand_cad.geometry.analysis import (
 )
 from stand_cad.geometry.assembly import (
     build_film_body_parts,
+    build_operating_with_test_bodies_assembly,
     build_organizer_loaded_assembly,
     build_transport_assembly,
 )
@@ -26,11 +27,8 @@ from stand_cad.geometry.primitives import (
     minimum_clearance,
 )
 from stand_cad.parameters import (
-    FILM_HEADROOM_MIN_MM,
-    ORGANIZER_CLEAR_MIN_MM,
-    REQUIRED_CASE_ENVELOPE_MM,
+    HORIZONTAL_ORGANIZER_CLEAR_MIN_MM,
     load_parameters,
-    with_cells,
 )
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
@@ -56,7 +54,11 @@ def test_overall_assembly_bounding_box(params, transport):
     tol = float(params.value("tolerance.assembly_mm"))
     compound = transport.compound()
     size = bounding_box_size(compound)
-    expected = REQUIRED_CASE_ENVELOPE_MM
+    expected = (
+        float(params.value("case.width")),
+        float(params.value("case.depth")),
+        float(params.value("case.height")),
+    )
     for actual, target in zip(size, expected, strict=True):
         assert actual == pytest.approx(target, abs=tol)
 
@@ -67,6 +69,7 @@ def test_plotter_physical_bodies(params, transport, datums):
     pd = float(params.value("plotter.physical_depth"))
     ph = float(params.value("plotter.physical_height"))
     expected_size = (pw, pd, ph)
+    assert pw == pytest.approx(570.0)
 
     for index, part_id in ((1, "EQUIP-PLOTTER1-001"), (2, "EQUIP-PLOTTER2-001")):
         solid = transport.parts[part_id].solid
@@ -93,7 +96,7 @@ def test_plotter_setback_from_built_geometry(transport, datums):
     )
     expected_setback = p2_front - p1_front
     assert measured_setback == pytest.approx(expected_setback)
-    assert measured_setback == pytest.approx(150.0)
+    assert measured_setback == pytest.approx(130.0)
 
 
 def test_plotter_envelopes_no_3d_intersection_and_z_clearance(params, transport):
@@ -109,16 +112,19 @@ def test_plotter_envelopes_no_3d_intersection_and_z_clearance(params, transport)
     assert measured_clearance == pytest.approx(expected_clearance, abs=tol)
     assert expected_clearance == pytest.approx(
         float(params.value("plotter.upper_z"))
-        - float(params.value("plotter.lower_z"))
-        - float(params.value("plotter.physical_height"))
-        - 2 * float(params.envelope_offset_z_mm),
+        - params.tier_envelope_offset_z_mm
+        - (
+            float(params.value("plotter.lower_z"))
+            - params.tier_envelope_offset_z_mm
+            + params.tier_envelope_height_mm
+        ),
         abs=tol,
     )
 
 
 def test_organizer_clear_volume(params, transport, datums):
     clear = datums.organizer_clear_volume
-    min_w, min_d, min_h = ORGANIZER_CLEAR_MIN_MM
+    min_w, min_d, min_h = HORIZONTAL_ORGANIZER_CLEAR_MIN_MM
     assert clear.x.size_mm >= min_w
     assert clear.y.size_mm >= min_d
     assert clear.z.size_mm >= min_h
@@ -134,11 +140,9 @@ def test_organizer_clear_volume(params, transport, datums):
     allowed = {
         "ORG-FLOOR-001",
         "ORG-INSERT-001",
-        "ORG-COMB-RAIL-001",
-        "RETAINER-001",
     }
     for part_id, record in transport.parts.items():
-        if part_id in allowed or part_id.startswith("DIVIDER-"):
+        if part_id in allowed or part_id.startswith("SHELF-"):
             continue
         encroachment = intersection_volume(record.solid, interior)
         assert encroachment == pytest.approx(0.0, abs=1e-3), (
@@ -158,48 +162,45 @@ MEDIA_PATH_SUPPORT_PARTS = frozenset(
 )
 
 
-@pytest.mark.parametrize("cells", list(range(6, 13)))
-def test_divider_regeneration_for_cell_counts(params, cells):
-    """PLT-006 — divider/slot count and slot engagement for cells 6..12."""
-    p = with_cells(params, cells)
-    state = build_transport_assembly(p, cells=cells)
-    assert p.divider_count == cells - 1
-    divider_ids = [pid for pid in state.parts if pid.startswith("DIVIDER-")]
-    assert len(divider_ids) == p.divider_count
-    datums = Datums.from_parameters(p)
-    rail = state.parts["ORG-COMB-RAIL-001"].solid
-    threshold = float(p.value("tolerance.part_assembly_feature_mm"))
+def test_tier_clearance_minimum(params):
+    """PLT-007 — both plotter tiers meet owner 170 mm minimum bay clearance."""
+    p = load_parameters(PARAMETERS_PATH)
+    tier_min = float(p.value("plotter.tier_clearance_min_mm"))
+    assert p.tier_clearance_lower_mm == pytest.approx(170.0)
+    assert p.tier_clearance_upper_mm == pytest.approx(170.0)
+    assert p.tier_clearance_lower_mm >= tier_min
+    assert p.tier_clearance_upper_mm >= tier_min
+
+
+def test_horizontal_shelf_regeneration(params):
+    """PLT-007 — three shelf dividers for four compartments."""
+    state = build_transport_assembly(params)
+    assert params.horizontal_shelf_divider_count == 3
+    shelf_ids = [pid for pid in state.parts if pid.startswith("SHELF-")]
+    assert len(shelf_ids) == 3
+    datums = Datums.from_parameters(params)
     org_z = datums.organizer_floor_top_z_mm
-    for divider_id in divider_ids:
-        divider = state.parts[divider_id].solid
-        assert divider.volume > 0
-        bounds = bounding_box_bounds(divider)
-        assert bounds[2][0] == pytest.approx(org_z, abs=threshold)
-        rail_penetration = intersection_volume(divider, rail)
-        assert rail_penetration <= threshold, (
-            f"{divider_id} penetrates ORG-COMB-RAIL-001 solid by "
-            f"{rail_penetration} mm^3 (max {threshold} mm^3)"
-        )
+    threshold = float(params.value("tolerance.part_assembly_feature_mm"))
+    for shelf_id in shelf_ids:
+        shelf = state.parts[shelf_id].solid
+        assert shelf.volume > 0
+        bounds = bounding_box_bounds(shelf)
+        assert bounds[2][0] >= org_z - threshold
 
 
-def test_film_vertical_headroom_in_cell_zero(params, transport):
-    """PLT-005 — 320x500 mm film envelope in cell 0 with Parameters-derived headroom."""
+def test_film_horizontal_compartment_height(params, transport):
+    """PLT-007 — flat film bodies sit in 25 mm clear compartments."""
     p = params
     datums = Datums.from_parameters(p)
-    org_x = float(p.value("film_storage.x"))
-    rail_front = float(p.value("film_storage.comb_rail_front_depth_mm"))
-    org_y = float(p.value("film_storage.y")) + rail_front
-    cell_w = p.cell_width_mm
-    film_h = float(p.value("film_storage.film_design_height"))
-    film_d = float(p.value("film_storage.film_depth"))
-    insert_t = p.org_insert_thickness_mm
-    z0 = datums.organizer_floor_top_z_mm + insert_t
-    film = box_from_bounds(org_x, org_y, z0, org_x + cell_w, org_y + film_d, z0 + film_h)
-    headroom = float(p.value("film_storage.clear_height")) - film_h
-    assert headroom >= FILM_HEADROOM_MIN_MM
-    assert headroom == pytest.approx(p.film_headroom_mm)
+    clear_h = float(p.value("film_storage_horizontal.compartment_clear_height_mm"))
+    film_t = float(p.value("media_path.test_body_primary.thickness"))
+    assert film_t < clear_h
+    parts = build_film_body_parts(params, datums, shelf_indices=(0,))
+    film = parts[0].solid
+    size = bounding_box_size(film)
+    assert size[2] == pytest.approx(film_t, abs=0.5)
     for part_id, record in transport.parts.items():
-        if part_id.startswith(("DIVIDER-", "ORG-", "RETAINER-")):
+        if part_id.startswith(("SHELF-", "ORG-")):
             continue
         if part_id.startswith(("ENV-", "EQUIP-", "LID-")):
             continue
@@ -229,8 +230,7 @@ MEDIA_SWEEP_SKIP_PREFIXES = (
     "TESTBODY-",
     "LID-",
     "ORG-",
-    "DIVIDER-",
-    "RETAINER-",
+    "SHELF-",
     "LIGHT-",
     "CTRL-",
     "CABLE-",
@@ -508,21 +508,22 @@ def test_frame_corner_post_rail_connectivity(
 
 
 def test_organizer_front_open(params, transport, datums):
-    """PLT-004 AC-3/4 — no outer front panel; retainer still present above organizer floor."""
+    """PLT-007 — no outer front panel; horizontal shelves present above organizer floor."""
     assert "PANEL-OUT-FRONT-001" not in transport.parts
     org = datums.organizer_clear_volume
     z_base = datums.organizer_floor_top_z_mm + params.org_insert_thickness_mm
-    z_low = z_base + params.front_retainer_height_mm
-    retainer = transport.parts["RETAINER-001"].solid
-    retainer_probe = box_from_bounds(
+    shelf = transport.parts["SHELF-000"].solid
+    shelf_probe = box_from_bounds(
         (org.x.min_mm + org.x.max_mm) / 2 - 5,
-        org.y.min_mm,
-        z_base + 5,
+        org.y.min_mm + 5,
+        z_base + float(params.value("film_storage_horizontal.compartment_clear_height_mm")) - 2,
         (org.x.min_mm + org.x.max_mm) / 2 + 5,
-        org.y.min_mm + 10,
-        z_low - 5,
+        org.y.min_mm + 15,
+        z_base
+        + float(params.value("film_storage_horizontal.compartment_clear_height_mm"))
+        + 2,
     )
-    assert intersection_volume(retainer_probe, retainer) > 0
+    assert intersection_volume(shelf_probe, shelf) > 0
 
 
 def test_rear_media_feed_slots(params, transport, datums):
@@ -596,6 +597,8 @@ def test_handle_cutout_sightline_clear(params, transport, datums):
                     for other_id, record in transport.parts.items():
                         if other_id == part_id:
                             continue
+                        if other_id.startswith(("ENV-", "EQUIP-", "LID-")):
+                            continue
                         vol = intersection_volume(probe, record.solid)
                         assert vol <= threshold, (
                             f"{part_id} handle grid ({x:.1f},{y:.1f},{z:.1f}) "
@@ -630,14 +633,14 @@ def test_organizer_top_open(params, transport, datums):
         assert vol == pytest.approx(0.0, abs=1e-3), f"{part_id} covers organizer top"
 
 
-def test_divider_count_formula(params):
-    """PLT-004 AC-6 — divider_count = cells - 1 (default cells=10 → 9 dividers)."""
-    cells = int(params.value("film_storage.cells"))
-    assert params.divider_count == cells - 1
-    assert params.divider_count == 9
+def test_shelf_divider_count_formula(params):
+    """PLT-007 — shelf_count=4 → three horizontal SHELF-* dividers."""
+    shelf_count = int(params.value("film_storage_horizontal.shelf_count"))
+    assert params.horizontal_shelf_divider_count == shelf_count - 1
+    assert params.horizontal_shelf_divider_count == 3
     transport = build_transport_assembly(params)
-    dividers = [pid for pid in transport.parts if pid.startswith("DIVIDER-")]
-    assert len(dividers) == params.divider_count
+    shelves = [pid for pid in transport.parts if pid.startswith("SHELF-")]
+    assert len(shelves) == params.horizontal_shelf_divider_count
 
 
 def test_bottom_vent_slots(params, transport, datums):
@@ -682,58 +685,38 @@ def test_bottom_vent_slots(params, transport, datums):
     assert solid_point_state(bottom, between_x, cy, z_mid) == "IN"
 
 
-def test_divider_dimensions_are_full_size(params, transport):
-    """Finding 3 — divider bbox matches TZ dimensions (not render-scale sawteeth)."""
-    divider = transport.parts["DIVIDER-000"].solid
-    bounds = bounding_box_bounds(divider)
+def test_shelf_dimensions(params, transport):
+    """PLT-007 — horizontal shelf spans organizer clear width × depth."""
+    shelf = transport.parts["SHELF-000"].solid
+    bounds = bounding_box_bounds(shelf)
     tol = float(params.value("tolerance.part_cnc_laser_mm"))
-    divider_t = float(params.value("film_storage.divider_thickness"))
-    divider_d = float(params.value("film_storage.divider_depth"))
-    divider_h = params.divider_height_mm + params.org_insert_thickness_mm
-    size = bounding_box_size(divider)
-    assert size[0] == pytest.approx(divider_t, abs=tol)
-    assert size[1] == pytest.approx(divider_d, abs=tol)
-    assert size[2] == pytest.approx(divider_h, abs=tol + 1.0)
-    assert bounds[2][1] - bounds[2][0] >= 300.0
+    divider_t = float(params.value("film_storage_horizontal.divider_thickness"))
+    clear_w = float(params.value("film_storage_horizontal.clear_width"))
+    clear_d = float(params.value("film_storage_horizontal.clear_depth"))
+    org_x = float(params.value("film_storage_horizontal.x"))
+    org_y = float(params.value("film_storage_horizontal.y"))
+    size = bounding_box_size(shelf)
+    assert size[0] == pytest.approx(clear_w, abs=tol)
+    assert size[1] == pytest.approx(clear_d, abs=tol)
+    assert size[2] == pytest.approx(divider_t, abs=tol)
+    assert bounds[0][0] == pytest.approx(org_x, abs=tol)
+    assert bounds[1][0] == pytest.approx(org_y, abs=tol)
 
 
-def test_divider_finger_cutout(params, transport, datums):
-    """Finding 3 — semicircular finger notch removes material at divider top-front."""
-    divider = transport.parts["DIVIDER-000"].solid
-    finger_r = params.finger_cutout_radius_mm
-    org_y = float(params.value("film_storage.y"))
-    org_z = datums.organizer_floor_top_z_mm
-    insert_t = params.org_insert_thickness_mm
-    divider_h = params.divider_height_mm
-    z_top = org_z + insert_t + divider_h
-    x_min = float(params.value("film_storage.x"))
-    divider_t = float(params.value("film_storage.divider_thickness"))
-    x_mid = x_min + divider_t / 2
-    probe = box_from_bounds(
-        x_mid - 0.25,
-        org_y + finger_r - 0.25,
-        z_top - finger_r - 0.25,
-        x_mid + 0.25,
-        org_y + finger_r + 0.25,
-        z_top - finger_r + 0.25,
-    )
-    assert intersection_volume(probe, divider) == pytest.approx(0.0, abs=1e-3)
-
-
-def test_film_body_count_all_cells(params):
-    """Finding 4 — default film bodies cover every organizer cell."""
+def test_film_body_count_all_shelves(params):
+    """PLT-007 — default film bodies cover every horizontal shelf compartment."""
     datums = Datums.from_parameters(params)
-    cells = int(params.value("film_storage.cells"))
+    shelf_count = int(params.value("film_storage_horizontal.shelf_count"))
     parts = build_film_body_parts(params, datums)
-    assert len(parts) == cells
+    assert len(parts) == shelf_count
     assert all(record.material == "film_sheet_reference" for record in parts)
 
 
-@pytest.mark.parametrize("cell_index", list(range(10)))
-def test_film_bodies_no_adjacent_intersection(params, cell_index):
-    """Finding 4 — film stacks do not intersect neighbouring film bodies."""
+@pytest.mark.parametrize("shelf_index", list(range(4)))
+def test_film_bodies_no_adjacent_intersection(params, shelf_index):
+    """PLT-007 — flat film sheets do not intersect neighbouring film bodies."""
     state = build_organizer_loaded_assembly(params)
-    film_id = f"FILM-BODY-{cell_index:03d}"
+    film_id = f"FILM-BODY-{shelf_index:03d}"
     assert film_id in state.parts
     film = state.parts[film_id].solid
     threshold = float(params.value("tolerance.part_assembly_feature_mm"))
@@ -744,20 +727,25 @@ def test_film_bodies_no_adjacent_intersection(params, cell_index):
         assert encroach <= threshold, f"{film_id} intersects {part_id} by {encroach} mm^3"
 
 
-def test_film_bodies_fit_clear_width(params):
-    """PLT-005 — all film bodies fit organizer clear width (no FILM-BODY-009 overshoot)."""
+def test_film_bodies_span_sheet_depth_across_width(params):
+    """PLT-007 — 500 mm sheet edge spans organizer clear width."""
     datums = Datums.from_parameters(params)
-    org_x = float(params.value("film_storage.x"))
-    clear_w = float(params.value("film_storage.clear_width"))
-    cell_w = params.cell_width_mm
-    divider_t = float(params.value("film_storage.divider_thickness"))
+    org_x = float(params.value("film_storage_horizontal.x"))
+    sheet_span_x = float(params.value("film_storage_horizontal.sheet_depth_mm"))
     parts = build_film_body_parts(params, datums)
-    last = parts[-1]
-    bounds = bounding_box_bounds(last.solid)
-    assert last.part_id == "FILM-BODY-009"
-    assert bounds[0][1] == pytest.approx(org_x + clear_w, abs=0.5)
-    expected_x0 = org_x + 9 * (cell_w + divider_t)
-    assert bounds[0][0] == pytest.approx(expected_x0, abs=0.5)
+    first = parts[0]
+    bounds = bounding_box_bounds(first.solid)
+    assert bounds[0][0] == pytest.approx(org_x, abs=0.5)
+    assert bounds[0][1] == pytest.approx(org_x + sheet_span_x, abs=0.5)
+
+
+def test_handle_mount_z_side_panel_centred(params):
+    """PLT-007 — handle Z at side-panel centre, not CoM."""
+    foot_h = float(params.value("materials.foot_height_mm"))
+    height = float(params.value("case.height"))
+    expected = (foot_h + height) / 2
+    assert float(params.value("hardware.handle_mount_z_mm")) == pytest.approx(expected)
+    assert expected == pytest.approx(263.0)
 
 
 def test_side_slab_bullnose_radius(params):
@@ -801,19 +789,20 @@ def test_frame_front_rail_cladding(params, transport):
 
 
 def test_top_warm_member_is_light_strip(params, transport, datums):
-    """PLT-006 AC-C4 — warm top bar is LIGHT-STRIP-001, not RETAINER-001."""
+    """PLT-006/007 AC-C4 — warm top bar is LIGHT-STRIP-001, not a shelf divider."""
     light = transport.parts["LIGHT-STRIP-001"]
-    retainer = transport.parts["RETAINER-001"]
+    shelf = transport.parts["SHELF-002"]
     light_bb = bounding_box_bounds(light.solid)
-    retainer_bb = bounding_box_bounds(retainer.solid)
+    shelf_bb = bounding_box_bounds(shelf.solid)
     top_z = float(params.value("top_structure.z_min_mm"))
     (_lx0, _lx1), (_ly_min, _ly1), (lz_min, _lz1) = light_bb
-    (_rx0, _rx1), (_ry_min, _ry1), (rz_min, _rz1) = retainer_bb
+    (_sx0, _sx1), (_sy_min, _sy1), (sz_min, sz_max) = shelf_bb
     assert lz_min == pytest.approx(top_z, abs=1.0)
-    assert rz_min < datums.organizer_floor_top_z_mm + 50.0
+    assert sz_max < datums.organizer_floor_top_z_mm + params.horizontal_shelf_stack_height_mm
     assert light.material == "service_volume"
-    assert retainer.material == "transparent_petg_2mm"
-    assert _lz1 > rz_min + 200.0
+    assert shelf.material == "transparent_petg_2mm"
+    assert lz_min >= top_z - 1.0
+    assert sz_max < lz_min
 
 
 def test_rear_vent_slots_grid(params, transport, datums):
@@ -939,3 +928,92 @@ def test_side_slab_meets_rear_panel(params, transport, datums):
     left_bounds = bounding_box_bounds(left)
     assert left_bounds[1][1] == pytest.approx(depth - gap, abs=tol + 0.5)
     assert minimum_clearance(left, rear) < tol
+
+
+def test_storage_state_does_not_claim_356mm_travel(params):
+    """Closed niche is storage — 356 mm Silhouette travel clearance not required."""
+    required = float(params.value("operational.material_travel_clearance_mm"))
+    assert params.material_travel_clearance_front_mm(1) == pytest.approx(15.0)
+    assert params.material_travel_clearance_front_mm(1) < required
+
+
+def test_cutting_extended_tray_front_clearance_below_manufacturer_minimum(params):
+    """Full tray extension — front travel clearance still below 356 mm at case.depth=550."""
+    required = float(params.value("operational.material_travel_clearance_mm"))
+    lower_ext = float(params.value("trays.lower_extension"))
+    front = params.material_travel_clearance_front_mm(1, tray_extension_mm=lower_ext)
+    assert front == pytest.approx(-235.0)
+    assert front < required
+    rear = params.material_travel_clearance_rear_mm(1, tray_extension_mm=lower_ext)
+    assert rear == pytest.approx(590.0)
+    assert rear >= required
+
+
+def test_pass_through_depth_exceeds_case_envelope(params):
+    """Open front-to-rear pass-through needs 907 mm — case.depth 550 mm cannot close."""
+    required = params.pass_through_depth_required_mm()
+    assert required == pytest.approx(907.0)
+    depth = float(params.value("case.depth"))
+    assert depth < required
+
+
+def test_tier_y_clearances_cameo4_130_setback(params):
+    """PLT-007 — tier Y positions for 195 mm Cameo 4 depth and 130 mm setback."""
+    lower_y = float(params.value("plotter.lower_y"))
+    upper_y = float(params.value("plotter.upper_y"))
+    depth = float(params.value("plotter.physical_depth"))
+    case_depth = float(params.value("case.depth"))
+    assert upper_y - lower_y == pytest.approx(130.0)
+    assert params.material_travel_clearance_front_mm(1) == pytest.approx(15.0)
+    assert params.material_travel_clearance_rear_mm(2) == pytest.approx(210.0)
+    assert lower_y + depth <= upper_y + depth
+    assert upper_y + depth <= case_depth
+
+
+def test_operating_state_front_rear_pass_through_open(params):
+    """PLT-007 — front opening and rear feed slots stay open in operating state."""
+    from stand_cad.geometry.panels import _feed_plane_z
+    from stand_cad.geometry.primitives import solid_point_state
+
+    state = build_operating_with_test_bodies_assembly(params)
+    datums = Datums.from_parameters(params)
+    rear = state.parts["PANEL-OUT-REAR-001"].solid
+    width = datums.case_envelope.x.max_mm
+    depth = datums.case_envelope.y.max_mm
+    cx = width / 2.0
+    slot_w = float(params.value("media_path.clear_width"))
+    slot_h = float(params.value("media_path.slot_height_target"))
+    gap = float(params.value("materials.outer_panel_shadow_gap_mm"))
+    thickness = float(params.value("materials.outer_panel_thickness_mm"))
+    y_rear_mid = depth - gap - thickness / 2
+
+    for level in ("L1", "L2"):
+        feed_z = _feed_plane_z(params, level)
+        assert solid_point_state(rear, cx, y_rear_mid, feed_z) == "OUT"
+        assert solid_point_state(rear, cx - slot_w / 2 + 1, y_rear_mid, feed_z) == "OUT"
+        assert solid_point_state(rear, cx + slot_w / 2 - 1, y_rear_mid, feed_z) == "OUT"
+        assert solid_point_state(rear, cx, y_rear_mid, feed_z - slot_h / 2 + 1) == "OUT"
+        assert solid_point_state(rear, cx, y_rear_mid, feed_z + slot_h / 2 - 1) == "OUT"
+
+        y_front = 1.0
+        blockers = [
+            pid
+            for pid, rec in state.parts.items()
+            if pid.startswith("PANEL-OUT-")
+            and solid_point_state(rec.solid, cx, y_front, feed_z) in ("IN", "ON")
+        ]
+        assert not blockers, f"{level} front pass-through blocked by {blockers}"
+
+
+def test_service_port_cutout_on_right_panel(params, transport):
+    """PLT-007 — provisional USB service port through-cut on right side slab."""
+    from stand_cad.geometry.primitives import solid_point_state
+
+    panel = transport.parts["PANEL-OUT-RIGHT-001"].solid
+    width = float(params.value("case.width"))
+    depth = float(params.value("case.depth"))
+    side_clear = params.side_slab_thickness_mm
+    port_z = float(params.value("hardware.service_port_mount_z_mm"))
+    x_mid = width - side_clear / 2
+    y_rear = depth - float(params.value("materials.outer_panel_shadow_gap_mm")) - 0.5
+    assert solid_point_state(panel, x_mid, y_rear, port_z) == "OUT"

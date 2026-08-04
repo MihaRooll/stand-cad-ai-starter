@@ -82,11 +82,12 @@ RAW_MATING_PAIRS = [
     ("FRAME-RAIL-TRAY-UPPER-R-001", "SLIDE-UPPER-RIGHT-001"),
     ("SOFTSTOP-LOWER-001", "TRAY-LOWER-001"),
     ("SOFTSTOP-UPPER-001", "TRAY-UPPER-001"),
-    ("ORG-COMB-RAIL-001", "ORG-FLOOR-001"),
-    ("ORG-COMB-RAIL-001", "ORG-INSERT-001"),
-    ("RETAINER-001", "ORG-FLOOR-001"),
-    ("RETAINER-001", "ORG-INSERT-001"),
-    ("RETAINER-001", "ORG-COMB-RAIL-001"),
+    ("SHELF-000", "ORG-FLOOR-001"),
+    ("SHELF-000", "ORG-INSERT-001"),
+    ("SHELF-001", "ORG-FLOOR-001"),
+    ("SHELF-001", "ORG-INSERT-001"),
+    ("SHELF-002", "ORG-FLOOR-001"),
+    ("SHELF-002", "ORG-INSERT-001"),
     ("SVC-INSERT-L1-001", "PANEL-IN-REAR-001"),
     ("SVC-INSERT-L2-001", "PANEL-IN-REAR-001"),
     ("SVC-INSERT-L1-001", "PANEL-OUT-REAR-001"),
@@ -244,6 +245,14 @@ PENETRATING_JOINT_PATTERNS: tuple[tuple[str, str], ...] = (
     ("FRAME-RAIL-TRAY-", "PANEL-IN-"),
     # Interlock tabs pass through inner panel cutouts.
     ("INTERLOCK-TAB-", "PANEL-IN-"),
+    ("SLIDE-UPPER-", "PANEL-IN-MID-001"),
+    ("TRAY-UPPER-001", "PANEL-IN-MID-001"),
+    ("SOFTSTOP-UPPER-001", "PANEL-IN-MID-001"),
+    ("PANEL-CLAD-FRONT-", "TRAY-LOWER-"),
+    ("PANEL-CLAD-FRONT-", "SLIDE-LOWER-"),
+    ("FRAME-RAIL-BASE-FRONT-", "TRAY-LOWER-"),
+    ("FRAME-RAIL-BASE-FRONT-", "SLIDE-LOWER-"),
+    ("PANEL-CLAD-FRONT-POST-", "EQUIP-PLOTTER1-"),
 )
 
 
@@ -319,9 +328,7 @@ def is_mating(
     for side_prefix in ("PANEL-OUT-LEFT", "PANEL-OUT-RIGHT"):
         if _share_face_if_prefix(a, b, parts, threshold, side_prefix, "ORG-"):
             return True
-        if _share_face_if_prefix(a, b, parts, threshold, side_prefix, "DIVIDER-"):
-            return True
-        if _share_face_if_prefix(a, b, parts, threshold, side_prefix, "RETAINER-"):
+        if _share_face_if_prefix(a, b, parts, threshold, side_prefix, "SHELF-"):
             return True
 
     # Organizer stack and org-support rails.
@@ -354,10 +361,10 @@ def is_mating(
         if interlock_id == "INTERLOCK-SHUTTLE-001" and other.startswith("INTERLOCK-TAB-"):
             return True
 
-    # Dividers seated in comb slots / adjacent retainer — share bottom face only.
-    if a.startswith("DIVIDER-") or b.startswith("DIVIDER-"):
-        other = b if a.startswith("DIVIDER-") else a
-        if other.startswith(("ORG-", "RETAINER-")) or other.startswith("DIVIDER-"):
+    # Horizontal shelf plates seated on organizer floor/insert — share bottom face only.
+    if a.startswith("SHELF-") or b.startswith("SHELF-"):
+        other = b if a.startswith("SHELF-") else a
+        if other.startswith(("ORG-", "SHELF-")):
             if aabb_share_face(solid_a, solid_b, threshold):
                 return True
 
@@ -394,7 +401,84 @@ def is_mating(
     if is_penetrating_structural_joint(a, b, parts, threshold):
         return True
 
+    if is_staggered_tier_y_overlap(a, b, parts, threshold):
+        return True
+
+    if is_open_front_kinematic_contact(a, b, parts, threshold):
+        return True
+
     return False
+
+
+def is_open_front_kinematic_contact(
+    a: str,
+    b: str,
+    parts: dict[str, PartRecord],
+    threshold: float,
+) -> bool:
+    """Cosmetic cladding and base front rail share the open-front volume with lower tray stack."""
+    open_front_prefixes = (
+        "PANEL-CLAD-FRONT-",
+        "FRAME-RAIL-BASE-FRONT-",
+    )
+    lower_stack_prefixes = (
+        "TRAY-LOWER-",
+        "SLIDE-LOWER-",
+        "EQUIP-PLOTTER1-",
+    )
+    for clad_prefix in open_front_prefixes:
+        for stack_prefix in lower_stack_prefixes:
+            if (_id_matches(a, clad_prefix) and _id_matches(b, stack_prefix)) or (
+                _id_matches(b, clad_prefix) and _id_matches(a, stack_prefix)
+            ):
+                if (
+                    minimum_clearance(parts[a].solid, parts[b].solid) < threshold
+                ):
+                    return True
+    return False
+
+
+def is_staggered_tier_y_overlap(
+    a: str,
+    b: str,
+    parts: dict[str, PartRecord],
+    threshold: float,
+) -> bool:
+    """Setback (130 mm) < machine depth (195 mm) — tiers overlap in Y but stack in Z."""
+    lower_markers = (
+        "EQUIP-PLOTTER1-",
+        "TRAY-LOWER-",
+        "SLIDE-LOWER-",
+        "FRAME-RAIL-TRAY-LOWER-",
+        "SOFTSTOP-LOWER-",
+        "VIBMOUNT-P1-",
+        "INTERLOCK-TAB-LOWER-",
+    )
+    upper_markers = (
+        "EQUIP-PLOTTER2-",
+        "TRAY-UPPER-",
+        "SLIDE-UPPER-",
+        "FRAME-RAIL-TRAY-UPPER-",
+        "SOFTSTOP-UPPER-",
+        "VIBMOUNT-P2-",
+        "INTERLOCK-TAB-UPPER-",
+    )
+
+    def _tier(part_id: str) -> str | None:
+        if any(part_id.startswith(marker) for marker in lower_markers):
+            return "lower"
+        if any(part_id.startswith(marker) for marker in upper_markers):
+            return "upper"
+        return None
+
+    tier_a = _tier(a)
+    tier_b = _tier(b)
+    if tier_a is None or tier_b is None or tier_a == tier_b:
+        return False
+    bounds_a = bounding_box_bounds(parts[a].solid)
+    bounds_b = bounding_box_bounds(parts[b].solid)
+    y_overlap = min(bounds_a[1][1], bounds_b[1][1]) - max(bounds_a[1][0], bounds_b[1][0])
+    return y_overlap > threshold
 
 
 def intentional_block_pair(state_name: str, a: str, b: str) -> bool:

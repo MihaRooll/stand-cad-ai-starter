@@ -1,10 +1,24 @@
 # Project state
 
-- Project: Light desktop tower for two Silhouette Cameo 5 plotters plus vertical film organizer, 650 × 550 × 690 mm (see ADR-005 and `ИИ советы/Cursor_Opus5_TZ_Light_Plotter_Tower.md`)
-- Current phase: Phase 0 — repository and toolchain baseline
-- Current gate: G0
-- Status: Native Windows toolchain verified; G0 exit-criteria evidence collected
-- Last updated: 2026-08-04 (PLT-006 rev5 implement)
+- Project: Light desktop tower for two Silhouette plotters plus horizontal film storage, **650 × 550 × 517 mm** (derived height; see ADR-005 and `ИИ советы/Cursor_Opus5_TZ_Light_Plotter_Tower.md`)
+- Current phase: PLT-007 horizontal reconfiguration → **rev6** evidence pack (CONCEPT / REFERENCE_ONLY)
+- Current gate: G0 (human verdict unconfirmed)
+- Status: PLT-007 implement complete pending adversarial review
+- Last updated: 2026-08-04 (PLT-007 rev6 implement; Main rulings D-027/D-028)
+
+## PLT-007 horizontal reconfig + Cameo 4 governing envelope (2026-08-04)
+
+- **Envelope:** 650 × 550 × 517 mm; **610 mm clear width** (20 mm side wall, **R10** bullnose — D-027 rejects 620/630 widening)
+- **Governing machine:** Silhouette Cameo 4 — 570 × 195 × 170 mm, 4.7 kg (`plotter_cameo4`); design envelope 584 × 219 × 178 mm; slot 2 mass 5.2 kg (Cameo 5)
+- **Film storage:** 4 horizontal shelves, 25 mm compartment height, 500 mm sheet edge across width
+- **Tier layout:** setback 130 mm; `lower_y`=15, `upper_y`=145 (D-029); tier clear height ≥170 mm each
+- **Storage clearances (closed trays):** plotter 1 front **15 mm**; plotter 2 rear **210 mm** to case back
+- **Operational clearance (structural — settled):** manufacturer pass-through **907 mm** (356+195+356) **exceeds** case depth 550 mm → **closed niche is storage/transport only** (D-028). Active cutting requires material through front **and** rear openings (330 mm slots at L1/L2 feed planes) and/or tray extension plus **external rear supports** (`services.rearsupport_*`). Tests: `test_pass_through_depth_exceeds_case_envelope`, `test_operating_state_front_rear_pass_through_open`.
+- **Delivered:** service-port cutout (provisional); handle Z=263 (side-panel centre); frame cladding; grey backgrounds; `CONCEPT_REVISION`=6
+- **Evidence target:** `output/validation/rev6/views/`; STEP/manifest `*_rev6.*`
+- **Tests:** 124 pytest passing; ruff clean; `scripts/setup_windows.ps1` exit 0
+- **Pre-change SHA:** `69b1261`
+- **Next:** adversarial-reviewer on rev6; verifier Full profile
 
 ## PLT-006 fidelity cycle 4 (2026-08-04)
 

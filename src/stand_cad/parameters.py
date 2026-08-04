@@ -1,8 +1,10 @@
 """Fail-closed loader and validation for config/parameters.yaml.
 
 This module deliberately has no CAD dependency so parameter gates can be tested quickly.
-Derived quantities (cell_width_mm, divider_count) are computed on access from verified
-leaves — never stored as hardcoded YAML values.
+Derived quantities (shelf_stack_height_mm, tier clearances, case.height consistency) are
+computed on access from verified leaves — never stored as stale hardcoded YAML values.
+
+Vertical film storage removed in PLT-007; recovery point commit 69b1261.
 """
 
 from __future__ import annotations
@@ -18,19 +20,24 @@ from .schema import ValidationIssue, validate_documents
 
 PROVENANCE_VALUES = frozenset({"verified", "derived", "to_measure"})
 
-# Acceptance-criteria thresholds from the TZ (not config values — see config/parameters.yaml).
-CELL_WIDTH_ABSOLUTE_FLOOR_MM = 25  # TZ section 6 — minimum usable cell width
-REQUIRED_CASE_ENVELOPE_MM = (650, 550, 690)  # TZ section 4
-ORGANIZER_CLEAR_MIN_MM = (610, 510, 325)  # TZ section 4/6, width/depth/height
-REQUIRED_UPPER_SETBACK_MM = 150  # TZ section 2/5
-FILM_HEADROOM_MIN_MM = 5  # TZ line 153
+# Acceptance-criteria thresholds (see config/parameters.yaml notes).
+REQUIRED_CASE_WIDTH_MM = 650  # TZ section 4 — not flexible per owner 2026-08-04
+CASE_DEPTH_TARGET_MM = 550  # TZ section 4 target; tolerance below
+CASE_DEPTH_TOLERANCE_MM = 5  # Owner 2026-08-04 allowance
+REQUIRED_UPPER_SETBACK_MM = 130  # Owner 2026-08-04 (supersedes TZ 150 mm)
+HORIZONTAL_ORGANIZER_CLEAR_MIN_MM = (610, 330, 100)  # width, depth, stack height (4×25 mm)
+HORIZONTAL_SHELF_COUNT = 4  # Owner 2026-08-04 verified default
+TIER_CLEARANCE_MIN_MM = 170  # Owner 2026-08-04; matches plotter.tier_clearance_min_mm leaf
 
 PARAMETER_GROUPS = (
     "case",
     "tolerance",
     "plotter",
+    "plotter_cameo4",
+    "plotter_cameo5",
+    "operational",
     "trays",
-    "film_storage",
+    "film_storage_horizontal",
     "media_path",
     "materials",
     "lighting",
@@ -106,35 +113,136 @@ class Parameters:
         return self.get(path).value
 
     @property
-    def cell_width_mm(self) -> float:
-        """Derived cell width: (internal_width - (cells-1)*divider_thickness) / cells."""
-        internal_width = float(self.value("case.internal_width"))
-        cells = int(self.value("film_storage.cells"))
-        divider_thickness = float(self.value("film_storage.divider_thickness"))
-        return (internal_width - (cells - 1) * divider_thickness) / cells
+    def horizontal_shelf_stack_height_mm(self) -> float:
+        """Derived stack height: shelf_count × clear + (shelf_count−1) × divider_t."""
+        shelves = int(self.value("film_storage_horizontal.shelf_count"))
+        clear_h = float(self.value("film_storage_horizontal.compartment_clear_height_mm"))
+        divider_t = float(self.value("film_storage_horizontal.divider_thickness"))
+        return shelves * clear_h + (shelves - 1) * divider_t
 
     @property
-    def divider_count(self) -> int:
-        """Derived divider count: cells - 1."""
-        return int(self.value("film_storage.cells")) - 1
+    def horizontal_shelf_divider_count(self) -> int:
+        """Horizontal shelf dividers between compartments: shelf_count − 1."""
+        return int(self.value("film_storage_horizontal.shelf_count")) - 1
+
+    @property
+    def computed_case_height_mm(self) -> float:
+        """Overall case height = organizer floor Z + shelf stack + top_structure.height_mm."""
+        org_z = float(self.value("film_storage_horizontal.z"))
+        top_h = float(self.value("top_structure.height_mm"))
+        return org_z + self.horizontal_shelf_stack_height_mm + top_h
+
+    @property
+    def computed_organizer_z_mm(self) -> float:
+        """Organizer floor top Z = upper_z + tier_clearance_min + frame profile."""
+        upper_z = float(self.value("plotter.upper_z"))
+        tier_min = float(self.value("plotter.tier_clearance_min_mm"))
+        profile = float(self.value("materials.frame_profile_size_mm"))
+        return upper_z + tier_min + profile
+
+    @property
+    def computed_upper_z_mm(self) -> float:
+        """Upper tray datum: lower_z + tier_clearance_min + tray_panel_thickness."""
+        lower_z = float(self.value("plotter.lower_z"))
+        tier_min = float(self.value("plotter.tier_clearance_min_mm"))
+        return lower_z + tier_min + self.tray_panel_thickness_mm
+
+    @property
+    def side_slab_thickness_mm(self) -> float:
+        """Side slab thickness = (case.width − internal_width) / 2."""
+        return self.side_clearance_mm
+
+    @property
+    def side_clearance_mm(self) -> float:
+        """Derived side clearance: (case.width − internal_width) / 2."""
+        width = float(self.value("case.width"))
+        internal = float(self.value("case.internal_width"))
+        return (width - internal) / 2
+
+    @property
+    def tier_envelope_height_mm(self) -> float:
+        """Protective design envelope height for tier niches (Cameo 4 derived design_height)."""
+        return float(self.value("plotter.design_height"))
+
+    @property
+    def tier_envelope_offset_z_mm(self) -> float:
+        """Z offset centering governing physical plotter in design envelope."""
+        return float(self.value("plotter.envelope_offset_z_mm"))
+
+    def plotter_mass_kg(self, index: int) -> float:
+        """Per-slot mass — slot 1 Cameo 4, slot 2 Cameo 5 (either machine either tier model)."""
+        if index == 1:
+            return float(self.value("plotter_cameo4.mass_kg"))
+        if index == 2:
+            return float(self.value("plotter_cameo5.mass_kg"))
+        raise ValueError("plotter index must be 1 or 2")
+
+    def plotter_y_front_mm(self, index: int, *, tray_extension_mm: float = 0.0) -> float:
+        """Plotter front face Y after optional tray extension (negative dy = forward)."""
+        prefix = "lower" if index == 1 else "upper"
+        return float(self.value(f"plotter.{prefix}_y")) - tray_extension_mm
+
+    def plotter_y_rear_mm(self, index: int, *, tray_extension_mm: float = 0.0) -> float:
+        """Plotter rear face Y after optional tray extension."""
+        return self.plotter_y_front_mm(index, tray_extension_mm=tray_extension_mm) + float(
+            self.value("plotter.physical_depth")
+        )
+
+    def material_travel_clearance_front_mm(
+        self, index: int, *, tray_extension_mm: float = 0.0
+    ) -> float:
+        """Clear Y from case front (Y=0) to plotter front face — cutting/service check."""
+        return self.plotter_y_front_mm(index, tray_extension_mm=tray_extension_mm)
+
+    def material_travel_clearance_rear_mm(
+        self, index: int, *, tray_extension_mm: float = 0.0
+    ) -> float:
+        """Clear Y from plotter rear face to case rear (case.depth)."""
+        depth = float(self.value("case.depth"))
+        return depth - self.plotter_y_rear_mm(index, tray_extension_mm=tray_extension_mm)
+
+    def pass_through_depth_required_mm(self) -> float:
+        """Linear Y span for 356 mm front + machine + 356 mm rear pass-through."""
+        required = float(self.value("operational.material_travel_clearance_mm"))
+        machine_d = float(self.value("plotter.physical_depth"))
+        return 2 * required + machine_d
+
+    @property
+    def tier_clearance_lower_mm(self) -> float:
+        """Lower tier: tray top (lower_z) to underside of upper tray (upper_z − tray_t)."""
+        lower_z = float(self.value("plotter.lower_z"))
+        upper_z = float(self.value("plotter.upper_z"))
+        return (upper_z - self.tray_panel_thickness_mm) - lower_z
+
+    @property
+    def tier_clearance_upper_mm(self) -> float:
+        """Upper tier: tray top (upper_z) to underside of ORG frame rail (org_z − profile)."""
+        upper_z = float(self.value("plotter.upper_z"))
+        org_z = float(self.value("film_storage_horizontal.z"))
+        profile = float(self.value("materials.frame_profile_size_mm"))
+        return (org_z - profile) - upper_z
+
+    @property
+    def side_panel_centre_z_mm(self) -> float:
+        """Handle mount Z — side panel vertical centre from foot top to case height."""
+        foot_h = float(self.value("materials.foot_height_mm"))
+        height = float(self.value("case.height"))
+        return (foot_h + height) / 2
 
     @property
     def envelope_offset_x_mm(self) -> float:
-        """X offset centering physical plotter in design envelope."""
         return (
             float(self.value("plotter.design_width")) - float(self.value("plotter.physical_width"))
         ) / 2
 
     @property
     def envelope_offset_y_mm(self) -> float:
-        """Y offset centering physical plotter in design envelope."""
         return (
             float(self.value("plotter.design_depth")) - float(self.value("plotter.physical_depth"))
         ) / 2
 
     @property
     def envelope_offset_z_mm(self) -> float:
-        """Z offset centering physical plotter in design envelope."""
         return (
             float(self.value("plotter.design_height"))
             - float(self.value("plotter.physical_height"))
@@ -147,13 +255,13 @@ class Parameters:
         prefix = "lower" if index == 1 else "upper"
         ox = self.envelope_offset_x_mm
         oy = self.envelope_offset_y_mm
-        oz = self.envelope_offset_z_mm
+        oz = self.tier_envelope_offset_z_mm
         px = float(self.value("plotter.x"))
         py = float(self.value(f"plotter.{prefix}_y"))
         pz = float(self.value(f"plotter.{prefix}_z"))
         dw = float(self.value("plotter.design_width"))
         dd = float(self.value("plotter.design_depth"))
-        dh = float(self.value("plotter.design_height"))
+        dh = self.tier_envelope_height_mm
         return (
             (px - ox, px - ox + dw),
             (py - oy, py - oy + dd),
@@ -161,7 +269,6 @@ class Parameters:
         )
 
     def plotter_physical_bounds(self, index: int) -> tuple[tuple[float, float], ...]:
-        """Return ((x_min, x_max), (y_min, y_max), (z_min, z_max)) for plotter 1 or 2 body."""
         if index not in (1, 2):
             raise ValueError("plotter index must be 1 or 2")
         prefix = "lower" if index == 1 else "upper"
@@ -179,26 +286,22 @@ class Parameters:
 
     @property
     def plotter_envelope_z_clearance_mm(self) -> float:
-        """Vertical clearance between plotter 1 and 2 design envelopes (Parameters-derived)."""
         env1 = self.plotter_envelope_bounds(1)
         env2 = self.plotter_envelope_bounds(2)
         return env2[2][0] - env1[2][1]
 
     @property
     def tray_panel_thickness_mm(self) -> float:
-        """Midpoint of tray sandwich panel thickness range for concept geometry."""
         t_min = float(self.value("materials.tray_panel_thickness_min_mm"))
         t_max = float(self.value("materials.tray_panel_thickness_max_mm"))
         return (t_min + t_max) / 2
 
     @property
     def interlock_tab_engagement_mm(self) -> float:
-        """Tab protrusion derived from assembly-feature tolerance."""
         return 6 * float(self.value("tolerance.part_assembly_feature_mm"))
 
     @property
     def interlock_shuttle_travel_mm(self) -> float:
-        """Vertical shuttle travel between neutral and block positions."""
         lower_slide_z = float(self.value("plotter.lower_z")) - self.tray_panel_thickness_mm
         upper_slide_z = float(self.value("plotter.upper_z")) - self.tray_panel_thickness_mm
         slide_h = float(self.value("trays.slide_rail_height_mm"))
@@ -206,58 +309,23 @@ class Parameters:
 
     @property
     def interlock_shuttle_channel_width_mm(self) -> float:
-        """Compact captive-channel width for INTERLOCK-SHUTTLE-001."""
         return 4 * self.interlock_tab_engagement_mm
 
     @property
     def org_insert_thickness_mm(self) -> float:
-        """HDPE insert thickness; uses documented provisional when leaf is TO_MEASURE."""
         val = self.value("materials.org_insert_thickness_mm")
         if isinstance(val, (int, float)) and not isinstance(val, bool):
             return float(val)
         return float(self.value("materials.org_insert_provisional_mm"))
 
-    @property
-    def comb_slot_clearance_mm(self) -> float:
-        """Slot clearance derived from assembly-feature tolerance."""
-        return float(self.value("tolerance.part_assembly_feature_mm"))
 
-    @property
-    def divider_height_mm(self) -> float:
-        """Midpoint of divider height range for concept geometry."""
-        h_min = float(self.value("film_storage.divider_height_min"))
-        h_max = float(self.value("film_storage.divider_height_max"))
-        return (h_min + h_max) / 2
-
-    @property
-    def front_retainer_height_mm(self) -> float:
-        """Midpoint of front retainer height range."""
-        h_min = float(self.value("film_storage.front_retainer_height_min"))
-        h_max = float(self.value("film_storage.front_retainer_height_max"))
-        return (h_min + h_max) / 2
-
-    @property
-    def finger_cutout_radius_mm(self) -> float:
-        """Midpoint of divider finger-cutout radius range for concept geometry."""
-        r_min = float(self.value("film_storage.finger_cutout_radius_min"))
-        r_max = float(self.value("film_storage.finger_cutout_radius_max"))
-        return (r_min + r_max) / 2
-
-    @property
-    def film_headroom_mm(self) -> float:
-        """Vertical clearance above design film height inside organizer."""
-        return float(self.value("film_storage.clear_height")) - float(
-            self.value("film_storage.film_design_height")
-        )
-
-
-def with_cells(params: Parameters, cells: int) -> Parameters:
-    """Return a Parameters copy with film_storage.cells overridden."""
+def with_shelf_count(params: Parameters, shelf_count: int) -> Parameters:
+    """Return a Parameters copy with film_storage_horizontal.shelf_count overridden."""
     raw = deepcopy(params._raw)
-    section = raw.setdefault("film_storage", {})
-    leaf = section.get("cells", {})
-    section["cells"] = {
-        "value": cells,
+    section = raw.setdefault("film_storage_horizontal", {})
+    leaf = section.get("shelf_count", {})
+    section["shelf_count"] = {
+        "value": shelf_count,
         "provenance": leaf.get("provenance", "verified"),
         "note": leaf.get("note", ""),
     }
@@ -265,7 +333,6 @@ def with_cells(params: Parameters, cells: int) -> Parameters:
 
 
 def load_parameters(path: str | Path) -> Parameters:
-    """Load parameters from a UTF-8 YAML file."""
     text = Path(path).read_text(encoding="utf-8")
     doc = yaml.safe_load(text)
     if not isinstance(doc, dict):
@@ -278,7 +345,6 @@ def validate_parameters(
     *,
     production_release: bool = False,
 ) -> list[ValidationIssue]:
-    """Validate parameters fail-closed; collect all issues in one pass."""
     issues: list[ValidationIssue] = []
 
     for leaf in params.leaves():
@@ -291,47 +357,24 @@ def validate_parameters(
                 )
             )
 
-    cells = params.value("film_storage.cells")
-    if not isinstance(cells, int) or isinstance(cells, bool) or not 6 <= cells <= 12:
+    shelf_count = params.value("film_storage_horizontal.shelf_count")
+    if (
+        not isinstance(shelf_count, int)
+        or isinstance(shelf_count, bool)
+        or shelf_count != HORIZONTAL_SHELF_COUNT
+    ):
         issues.append(
             ValidationIssue(
                 "ERROR",
                 "PARAM-002",
-                "film_storage.cells must be an integer in [6, 12]",
+                f"film_storage_horizontal.shelf_count must be exactly {HORIZONTAL_SHELF_COUNT}",
             )
         )
 
-    cell_width = params.cell_width_mm
-    if cell_width < CELL_WIDTH_ABSOLUTE_FLOOR_MM:
-        issues.append(
-            ValidationIssue(
-                "ERROR",
-                "PARAM-003",
-                (
-                    f"cell_width_mm ({cell_width}) is below the "
-                    f"{CELL_WIDTH_ABSOLUTE_FLOOR_MM} mm absolute floor"
-                ),
-            )
-        )
-
-    min_stack = params.value("film_storage.min_stack_width_mm")
-    if isinstance(min_stack, (int, float)) and not isinstance(min_stack, bool):
-        if cell_width < float(min_stack):
-            issues.append(
-                ValidationIssue(
-                    "ERROR",
-                    "PARAM-004",
-                    (
-                        f"cell_width_mm ({cell_width}) is below "
-                        f"film_storage.min_stack_width_mm ({min_stack})"
-                    ),
-                )
-            )
-
-    clear_width = params.value("film_storage.clear_width")
-    clear_depth = params.value("film_storage.clear_depth")
-    clear_height = params.value("film_storage.clear_height")
-    min_clear_width, min_clear_depth, min_clear_height = ORGANIZER_CLEAR_MIN_MM
+    clear_width = params.value("film_storage_horizontal.clear_width")
+    clear_depth = params.value("film_storage_horizontal.clear_depth")
+    stack_h = params.horizontal_shelf_stack_height_mm
+    min_clear_width, min_clear_depth, min_stack_h = HORIZONTAL_ORGANIZER_CLEAR_MIN_MM
     if (
         isinstance(clear_width, (int, float))
         and not isinstance(clear_width, bool)
@@ -342,7 +385,7 @@ def validate_parameters(
                 "ERROR",
                 "PARAM-005",
                 (
-                    f"film_storage.clear_width ({clear_width}) is below "
+                    f"film_storage_horizontal.clear_width ({clear_width}) is below "
                     f"{min_clear_width} mm minimum"
                 ),
             )
@@ -357,40 +400,61 @@ def validate_parameters(
                 "ERROR",
                 "PARAM-005",
                 (
-                    f"film_storage.clear_depth ({clear_depth}) is below "
+                    f"film_storage_horizontal.clear_depth ({clear_depth}) is below "
                     f"{min_clear_depth} mm minimum"
                 ),
             )
         )
-    if (
-        isinstance(clear_height, (int, float))
-        and not isinstance(clear_height, bool)
-        and clear_height < min_clear_height
-    ):
+    if stack_h < min_stack_h:
         issues.append(
             ValidationIssue(
                 "ERROR",
                 "PARAM-005",
                 (
-                    f"film_storage.clear_height ({clear_height}) is below "
-                    f"{min_clear_height} mm minimum"
+                    f"horizontal shelf stack height ({stack_h}) is below "
+                    f"{min_stack_h} mm minimum"
                 ),
             )
         )
 
-    envelope = (
-        params.value("case.width"),
-        params.value("case.depth"),
-        params.value("case.height"),
-    )
-    if envelope != REQUIRED_CASE_ENVELOPE_MM:
+    case_width = params.value("case.width")
+    if case_width != REQUIRED_CASE_WIDTH_MM:
+        issues.append(
+            ValidationIssue(
+                "ERROR",
+                "PARAM-006",
+                f"case.width ({case_width}) must be exactly {REQUIRED_CASE_WIDTH_MM} mm",
+            )
+        )
+
+    case_depth = params.value("case.depth")
+    depth_tol = float(params.value("case.depth_tolerance_mm"))
+    if (
+        isinstance(case_depth, (int, float))
+        and not isinstance(case_depth, bool)
+        and abs(float(case_depth) - CASE_DEPTH_TARGET_MM) > depth_tol
+    ):
         issues.append(
             ValidationIssue(
                 "ERROR",
                 "PARAM-006",
                 (
-                    f"case envelope {envelope} must be exactly "
-                    f"{REQUIRED_CASE_ENVELOPE_MM}"
+                    f"case.depth ({case_depth}) must be within ±{depth_tol} mm of "
+                    f"{CASE_DEPTH_TARGET_MM} mm target"
+                ),
+            )
+        )
+
+    case_height = params.value("case.height")
+    computed_height = params.computed_case_height_mm
+    if case_height != computed_height:
+        issues.append(
+            ValidationIssue(
+                "ERROR",
+                "PARAM-006",
+                (
+                    f"case.height ({case_height}) must equal computed stack sum "
+                    f"({computed_height} mm)"
                 ),
             )
         )
@@ -423,21 +487,31 @@ def validate_parameters(
             )
         )
 
-    film_design_height = params.value("film_storage.film_design_height")
-    headroom = clear_height - film_design_height
-    if headroom < FILM_HEADROOM_MIN_MM:
+    tier_min = float(params.value("plotter.tier_clearance_min_mm"))
+    if params.tier_clearance_lower_mm < tier_min:
         issues.append(
             ValidationIssue(
                 "ERROR",
-                "PARAM-009",
+                "PARAM-012",
                 (
-                    f"film headroom ({headroom} mm) is below "
-                    f"{FILM_HEADROOM_MIN_MM} mm minimum"
+                    f"lower tier clearance ({params.tier_clearance_lower_mm} mm) is below "
+                    f"{tier_min} mm minimum"
+                ),
+            )
+        )
+    if params.tier_clearance_upper_mm < tier_min:
+        issues.append(
+            ValidationIssue(
+                "ERROR",
+                "PARAM-012",
+                (
+                    f"upper tier clearance ({params.tier_clearance_upper_mm} mm) is below "
+                    f"{tier_min} mm minimum"
                 ),
             )
         )
 
-    divider_thickness = params.value("film_storage.divider_thickness")
+    divider_thickness = params.value("film_storage_horizontal.divider_thickness")
     materials_divider = params.value("materials.divider_thickness_mm")
     if divider_thickness != materials_divider:
         issues.append(
@@ -445,13 +519,13 @@ def validate_parameters(
                 "ERROR",
                 "PARAM-010",
                 (
-                    f"film_storage.divider_thickness ({divider_thickness}) must equal "
+                    f"film_storage_horizontal.divider_thickness ({divider_thickness}) must equal "
                     f"materials.divider_thickness_mm ({materials_divider})"
                 ),
             )
         )
 
-    max_load = params.value("film_storage.max_load_kg")
+    max_load = params.value("film_storage_horizontal.max_load_kg")
     marked_limit = params.value("mass_targets.film_marked_limit_kg")
     if max_load != marked_limit:
         issues.append(
@@ -459,7 +533,7 @@ def validate_parameters(
                 "ERROR",
                 "PARAM-011",
                 (
-                    f"film_storage.max_load_kg ({max_load}) must equal "
+                    f"film_storage_horizontal.max_load_kg ({max_load}) must equal "
                     f"mass_targets.film_marked_limit_kg ({marked_limit})"
                 ),
             )
@@ -486,7 +560,6 @@ def validate_release_readiness(
     *,
     allow_demo: bool = False,
 ) -> list[ValidationIssue]:
-    """Combined production gate: project/equipment docs plus parameter validation."""
     production_release = bool(project_doc.get("project", {}).get("production_release", False))
     issues = validate_documents(project_doc, equipment_doc, allow_demo=allow_demo)
     issues += validate_parameters(params, production_release=production_release)

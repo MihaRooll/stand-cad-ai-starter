@@ -49,14 +49,14 @@ def _build_static_parts(
     params: Parameters,
     datums: Datums,
     *,
-    cells: int | None = None,
+    shelf_count: int | None = None,
 ) -> dict[str, PartRecord]:
     """Frame, panels, organizer, dividers, services, hardware, equipment, trays (closed)."""
     return _merge_parts(
         build_frame_parts(params, datums),
         build_panel_parts(params, datums),
         build_organizer_parts(params, datums),
-        build_divider_parts(params, datums, cells=cells),
+        build_divider_parts(params, datums, shelf_count=shelf_count),
         build_service_parts(params, datums),
         build_hardware_parts(params, datums),
         build_equipment_parts(params, datums),
@@ -68,7 +68,7 @@ def _build_state(
     params: Parameters,
     name: str,
     *,
-    cells: int | None = None,
+    shelf_count: int | None = None,
     lower_extension_mm: float = 0.0,
     upper_extension_mm: float = 0.0,
     shuttle_position: ShuttlePosition = ShuttlePosition.NEUTRAL,
@@ -76,7 +76,7 @@ def _build_state(
     include_lid_envelopes: bool = False,
 ) -> AssemblyState:
     datums = Datums.from_parameters(params)
-    parts = _build_static_parts(params, datums, cells=cells)
+    parts = _build_static_parts(params, datums, shelf_count=shelf_count)
     if include_lid_envelopes:
         for record in build_lid_envelope_parts(params, datums):
             parts[record.part_id] = record
@@ -117,35 +117,36 @@ def build_film_body_parts(
     params: Parameters,
     datums: Datums,
     *,
-    cell_indices: tuple[int, ...] | None = None,
+    shelf_indices: tuple[int, ...] | None = None,
 ) -> list[PartRecord]:
-    """Representative vertical film envelopes (320 x 500 mm) for validation renders."""
-    cells = int(params.value("film_storage.cells"))
-    if cell_indices is None:
-        cell_indices = tuple(range(cells))
-    org_x = float(params.value("film_storage.x"))
-    rail_front = float(params.value("film_storage.comb_rail_front_depth_mm"))
-    org_y = float(params.value("film_storage.y")) + rail_front
-    cell_w = params.cell_width_mm
-    divider_t = float(params.value("film_storage.divider_thickness"))
-    film_h = float(params.value("film_storage.film_design_height"))
-    film_d = float(params.value("film_storage.film_depth"))
-    z0 = datums.organizer_floor_top_z_mm + params.org_insert_thickness_mm
+    """Representative flat film sheets (330 x 500 mm, 3 mm reference thickness) per shelf."""
+    shelf_count = int(params.value("film_storage_horizontal.shelf_count"))
+    if shelf_indices is None:
+        shelf_indices = tuple(range(shelf_count))
+    org_x = float(params.value("film_storage_horizontal.x"))
+    org_y = float(params.value("film_storage_horizontal.y"))
+    sheet_span_x = float(params.value("film_storage_horizontal.sheet_depth_mm"))
+    sheet_span_y = float(params.value("film_storage_horizontal.sheet_width_mm"))
+    film_t = float(params.value("media_path.test_body_primary.thickness"))
+    clear_h = float(params.value("film_storage_horizontal.compartment_clear_height_mm"))
+    divider_t = float(params.value("film_storage_horizontal.divider_thickness"))
+    z_base = datums.organizer_floor_top_z_mm + params.org_insert_thickness_mm
     parts: list[PartRecord] = []
-    for index in cell_indices:
-        x0 = org_x + index * (cell_w + divider_t)
+    for index in shelf_indices:
+        z0 = z_base + index * (clear_h + divider_t)
+        z1 = z0 + film_t
         part_id = f"FILM-BODY-{index:03d}"
         parts.append(
             PartRecord(
                 part_id=part_id,
                 material=FILM_BODY_MATERIAL,
                 solid=box_from_bounds(
-                    x0,
+                    org_x,
                     org_y,
                     z0,
-                    x0 + cell_w,
-                    org_y + film_d,
-                    z0 + film_h,
+                    org_x + sheet_span_x,
+                    org_y + sheet_span_y,
+                    z1,
                 ),
             )
         )
@@ -153,10 +154,10 @@ def build_film_body_parts(
 
 
 def build_organizer_loaded_assembly(
-    params: Parameters, *, cells: int | None = None
+    params: Parameters, *, shelf_count: int | None = None
 ) -> AssemblyState:
-    """Transport state with representative film bodies in several organizer cells."""
-    state = build_transport_assembly(params, cells=cells)
+    """Transport state with representative flat film bodies in each shelf compartment."""
+    state = build_transport_assembly(params, shelf_count=shelf_count)
     datums = Datums.from_parameters(params)
     for record in build_film_body_parts(params, datums):
         state.parts[record.part_id] = record
@@ -166,37 +167,44 @@ def build_organizer_loaded_assembly(
 
 
 def build_panels_hidden_assembly(
-    params: Parameters, *, cells: int | None = None
+    params: Parameters, *, shelf_count: int | None = None
 ) -> AssemblyState:
     """Transport state with outer shell panels suppressed for internal-structure review."""
-    state = build_transport_assembly(params, cells=cells)
+    state = build_transport_assembly(params, shelf_count=shelf_count)
     state.parts = _suppress_outer_shell(state.parts)
     state.name = "panels_hidden"
     return state
 
 
 def build_transport_shell_top_view_assembly(
-    params: Parameters, *, cells: int | None = None
+    params: Parameters, *, shelf_count: int | None = None
 ) -> AssemblyState:
     """Transport state for orthographic top evidence (no lid — open organizer top)."""
-    state = build_transport_assembly(params, cells=cells)
+    state = build_transport_assembly(params, shelf_count=shelf_count)
     state.name = "transport_shell_top_view"
     return state
 
 
-def build_transport_assembly(params: Parameters, *, cells: int | None = None) -> AssemblyState:
+def build_transport_assembly(
+    params: Parameters, *, shelf_count: int | None = None
+) -> AssemblyState:
     """Transport state — both trays closed, shuttle neutral."""
-    return _build_state(params, "transport", cells=cells, shuttle_position=ShuttlePosition.NEUTRAL)
+    return _build_state(
+        params,
+        "transport",
+        shelf_count=shelf_count,
+        shuttle_position=ShuttlePosition.NEUTRAL,
+    )
 
 
 def build_service_plotter_1_assembly(
-    params: Parameters, *, cells: int | None = None
+    params: Parameters, *, shelf_count: int | None = None
 ) -> AssemblyState:
     """Service plotter 1 — lower tray extended, upper closed, shuttle blocks upper."""
     return _build_state(
         params,
         "service_plotter_1",
-        cells=cells,
+        shelf_count=shelf_count,
         lower_extension_mm=float(params.value("trays.lower_extension")),
         shuttle_position=ShuttlePosition.BLOCKS_UPPER,
         include_lid_envelopes=True,
@@ -204,13 +212,13 @@ def build_service_plotter_1_assembly(
 
 
 def build_service_plotter_2_assembly(
-    params: Parameters, *, cells: int | None = None
+    params: Parameters, *, shelf_count: int | None = None
 ) -> AssemblyState:
     """Service plotter 2 — upper tray extended, lower closed, shuttle blocks lower."""
     return _build_state(
         params,
         "service_plotter_2",
-        cells=cells,
+        shelf_count=shelf_count,
         upper_extension_mm=float(params.value("trays.upper_extension")),
         shuttle_position=ShuttlePosition.BLOCKS_LOWER,
         include_lid_envelopes=True,
@@ -218,13 +226,13 @@ def build_service_plotter_2_assembly(
 
 
 def build_operating_with_test_bodies_assembly(
-    params: Parameters, *, cells: int | None = None
+    params: Parameters, *, shelf_count: int | None = None
 ) -> AssemblyState:
     """Operating state — both trays closed with representative media-path test bodies."""
     return _build_state(
         params,
         "operating_with_test_bodies",
-        cells=cells,
+        shelf_count=shelf_count,
         shuttle_position=ShuttlePosition.NEUTRAL,
         include_test_bodies=True,
     )

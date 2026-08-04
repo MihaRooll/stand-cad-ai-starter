@@ -26,7 +26,7 @@ class BoxDatum:
 
 @dataclass(frozen=True)
 class Datums:
-    """TZ section 5 coordinate chain — all values from Parameters."""
+    """Coordinate chain — all values from Parameters."""
 
     origin: tuple[float, float, float]
     case_envelope: BoxDatum
@@ -53,12 +53,12 @@ class Datums:
                 z=AxisBounds(*triple[2]),
             )
 
-        org_x = float(params.value("film_storage.x"))
-        org_y = float(params.value("film_storage.y"))
-        org_z = float(params.value("film_storage.z"))
-        clear_w = float(params.value("film_storage.clear_width"))
-        clear_d = float(params.value("film_storage.clear_depth"))
-        clear_h = float(params.value("film_storage.clear_height"))
+        org_x = float(params.value("film_storage_horizontal.x"))
+        org_y = float(params.value("film_storage_horizontal.y"))
+        org_z = float(params.value("film_storage_horizontal.z"))
+        clear_w = float(params.value("film_storage_horizontal.clear_width"))
+        clear_d = float(params.value("film_storage_horizontal.clear_depth"))
+        clear_h = params.horizontal_shelf_stack_height_mm
 
         top_z_min = float(params.value("top_structure.z_min_mm"))
         top_z_max = float(params.value("top_structure.z_max_mm"))

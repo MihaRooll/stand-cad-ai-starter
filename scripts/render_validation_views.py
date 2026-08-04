@@ -397,8 +397,8 @@ def build_light_strip_only_assembly(params: Parameters) -> AssemblyState:
     return build_single_part_assembly(params, "LIGHT-STRIP-001")
 
 
-def build_retainer_only_assembly(params: Parameters) -> AssemblyState:
-    return build_single_part_assembly(params, "RETAINER-001")
+def build_shelf_only_assembly(params: Parameters) -> AssemblyState:
+    return build_single_part_assembly(params, "SHELF-001")
 
 
 def default_render_targets() -> list[RenderTarget]:
@@ -440,8 +440,8 @@ def default_render_targets() -> list[RenderTarget]:
             organizer_view,
         ),
         RenderTarget(
-            "evidence_retainer_only.png",
-            build_retainer_only_assembly,
+            "evidence_shelf_only.png",
+            build_shelf_only_assembly,
             organizer_view,
         ),
     ]

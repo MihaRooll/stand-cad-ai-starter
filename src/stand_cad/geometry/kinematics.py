@@ -84,22 +84,25 @@ def _shuttle_y_span(
     *,
     position: ShuttlePosition,
 ) -> tuple[float, float]:
-    """Compact Y extent for shuttle — not the full tray travel sweep."""
+    """Y extent for shuttle — spans the slide path it must block in service states."""
     channel_w = params.interlock_shuttle_channel_width_mm
     if position == ShuttlePosition.NEUTRAL:
         y_center = (
             datums.plotter1_physical.y.max_mm + datums.plotter2_physical.y.min_mm
         ) / 2
-    elif position == ShuttlePosition.BLOCKS_UPPER:
+        half = channel_w / 2
+        return y_center - half, y_center + half
+    if position == ShuttlePosition.BLOCKS_UPPER:
         lower_ext = float(params.value("trays.lower_extension"))
-        tab_front_y = datums.plotter1_physical.y.max_mm - lower_ext
-        y_center = tab_front_y - params.interlock_tab_engagement_mm / 2
-    else:
         upper_ext = float(params.value("trays.upper_extension"))
-        tab_front_y = datums.plotter2_physical.y.min_mm - upper_ext
-        y_center = tab_front_y + params.interlock_tab_engagement_mm / 2
-    half = channel_w / 2
-    return y_center - half, y_center + half
+        tab_front_y = datums.plotter1_physical.y.max_mm - lower_ext
+        upper_slide_front_y = datums.plotter2_physical.y.min_mm - upper_ext
+        return upper_slide_front_y, tab_front_y + params.interlock_tab_engagement_mm
+    upper_ext = float(params.value("trays.upper_extension"))
+    lower_ext = float(params.value("trays.lower_extension"))
+    tab_front_y = datums.plotter2_physical.y.min_mm - upper_ext
+    lower_slide_front_y = datums.plotter1_physical.y.max_mm - lower_ext
+    return tab_front_y - params.interlock_tab_engagement_mm, lower_slide_front_y
 
 
 def _interlock_shuttle_bounds(

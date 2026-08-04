@@ -247,7 +247,7 @@ def build_service_parts(params: Parameters, datums: Datums) -> list[PartRecord]:
 
     ch_w = float(params.value("services.cable_channel_width_mm"))
     ch_h = float(params.value("services.cable_channel_height_mm"))
-    org_y = float(params.value("film_storage.y"))
+    org_y = float(params.value("film_storage_horizontal.y"))
     parts.append(
         PartRecord(
             part_id="CABLE-CH-001",

@@ -175,16 +175,15 @@ def structural_mass_samples(
 def plotter_mass_samples(
     parts: dict[str, PartRecord], params: Parameters, *, lower_extension_mm: float = 0.0
 ) -> list[tuple[tuple[float, float, float], float]]:
-    """Point-mass samples for both plotters; lower plotter CoM shifts with tray extension."""
-    plotter_mass = float(params.value("plotter.design_mass_kg"))
+    """Point-mass samples for both plotters; slot 1 = Cameo 4, slot 2 = Cameo 5."""
     samples: list[tuple[tuple[float, float, float], float]] = []
-    for part_id, extension in (
-        ("EQUIP-PLOTTER1-001", lower_extension_mm),
-        ("EQUIP-PLOTTER2-001", 0.0),
+    for index, part_id, extension in (
+        (1, "EQUIP-PLOTTER1-001", lower_extension_mm),
+        (2, "EQUIP-PLOTTER2-001", 0.0),
     ):
         record = parts[part_id]
         cx, cy, cz = _solid_centroid_mm(record)
-        samples.append(((cx, cy + extension / 2, cz), plotter_mass))
+        samples.append(((cx, cy + extension / 2, cz), params.plotter_mass_kg(index)))
     return samples
 
 
@@ -245,9 +244,9 @@ def stability_report_inputs(
     ext_key = "trays.lower_extension" if extended_level == "lower" else "trays.upper_extension"
     extension = float(params.value(ext_key))
     empty_mass = float(params.value("mass_targets.empty_case_target_max_kg"))
-    plotter_mass = float(params.value("plotter.design_mass_kg"))
+    plotter_mass = params.plotter_mass_kg(1) + params.plotter_mass_kg(2)
     plotter_count = 2
-    total_mass = empty_mass + plotter_mass * plotter_count
+    total_mass = empty_mass + plotter_mass
     overturn_arm = extension / 2
     restore_arm = support_y - foot_inset
     g = 9.80665
@@ -286,8 +285,8 @@ def indicative_tip_factor(params: Parameters, *, extended_level: str = "lower") 
     ext_key = "trays.lower_extension" if extended_level == "lower" else "trays.upper_extension"
     extension = float(params.value(ext_key))
     empty_mass = float(params.value("mass_targets.empty_case_target_max_kg"))
-    plotter_mass = float(params.value("plotter.design_mass_kg"))
-    total_mass = empty_mass + plotter_mass * 2
+    plotter_mass = params.plotter_mass_kg(1) + params.plotter_mass_kg(2)
+    total_mass = empty_mass + plotter_mass
     overturn_arm = extension / 2
     restore_arm = support_y - foot_inset
     overturn = total_mass * 9.80665 * overturn_arm
