@@ -165,10 +165,10 @@ MEDIA_PATH_SUPPORT_PARTS = frozenset(
 
 
 def test_tier_clearance_minimum(params):
-    """PLT-007 — both plotter tiers meet owner 170 mm minimum bay clearance."""
+    """PLT-007/PLT-009 — both plotter tiers meet owner 170 mm minimum bay clearance."""
     p = load_parameters(PARAMETERS_PATH)
     tier_min = float(p.value("plotter.tier_clearance_min_mm"))
-    assert p.tier_clearance_lower_mm == pytest.approx(170.0)
+    assert p.tier_clearance_lower_mm == pytest.approx(197.0)
     assert p.tier_clearance_upper_mm == pytest.approx(170.0)
     assert p.tier_clearance_lower_mm >= tier_min
     assert p.tier_clearance_upper_mm >= tier_min
@@ -781,7 +781,7 @@ def test_handle_mount_z_side_panel_centred(params):
     height = float(params.value("case.height"))
     expected = (foot_h + height) / 2
     assert float(params.value("hardware.handle_mount_z_mm")) == pytest.approx(expected)
-    assert expected == pytest.approx(263.0)
+    assert expected == pytest.approx(276.5)
 
 
 def test_vertical_organizer_rightmost_cell_boundary_arithmetic(params):

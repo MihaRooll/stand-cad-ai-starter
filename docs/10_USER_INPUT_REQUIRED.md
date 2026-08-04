@@ -42,9 +42,9 @@ With fixed `case.width`=650 mm and `case.internal_width`=610 mm, `side_clear`=(6
 
 Curved side-profile massing beyond the bullnose and RGBW photometric glow remain deferred.
 
-## E. Handle mount coordinates (PLT-007 / D-030)
+## E. Handle mount coordinates (PLT-007 / D-030, recomputed D-038)
 
-Provisional derived values `hardware.handle_mount_y_mm` (**100 mm**) and `hardware.handle_mount_z_mm` (**263 mm**) position the TZ:304 grip cutout (110×35 mm) in the front plotter-bay gap: Y band **[45, 155]**, Z band **[245.5, 280.5]**. Handle Z is centred on the side panel, **not** at the indicative loaded-case centre of mass (CoM z≈216 mm → **+47 mm** offset above CoM per D-030). Full case-width through-ray grid testing against all transport parts reports zero encroachment (rework F-1). **VERIFY ON REAL MACHINE** before production release.
+Provisional derived values `hardware.handle_mount_y_mm` (**100 mm**) and `hardware.handle_mount_z_mm` (**276.5 mm**) position the TZ:304 grip cutout (110×35 mm) in the front plotter-bay gap: Y band **[45, 155]**, Z band **[259.0, 294.0]** (`handle_cutout_footprint`: `mount_z ± handle_grip_depth_mm/2` = 276.5 ± 17.5, verified by `tests/test_geometry.py::test_handle_cutout_dimensions` and `test_handle_cutout_sightline_clear`). Handle Z is centred on the side panel, **not** at the indicative loaded-case centre of mass (CoM z≈**229.5 mm** per rev9 `mass_report.csv` → **+47 mm** offset above CoM per D-030, values recomputed after D-038 `case.height` +27 mm). Full case-width through-ray grid testing against all transport parts reports zero encroachment (rework F-1). **VERIFY ON REAL MACHINE** before production release.
 
 ## F. Rear vent render evidence (PLT-005 rework F-3)
 
@@ -56,11 +56,15 @@ Owner simplified TZ section 10's certified rear mains inlet (with retention/stra
 
 **To close this item:** measure the outer diameter of the actual extension-cord plug/cable end the owner intends to route through the opening, then update `config/parameters.yaml` and regenerate before production DXF release. The certified-inlet path (TZ section 10) remains deferred, not deleted — `MAINS-INLET-001` stays modeled as a placeholder service volume if a future revision reinstates it.
 
-## H. Tier-2 under-tray hardware vs plotter 1 envelope (F-5 quantified, 2026-08-04 QA sweep cycle 2)
+## H. Tier-2 under-tray hardware vs plotter 1 envelope (F-5) — **RESOLVED** (D-038, 2026-08-04)
 
-Scripted `intersection_volume` measurement (build123d) confirms a real volumetric overlap between `EQUIP-PLOTTER1-001` (Cameo 4 body, Z=[30, 200]) and tier-2 under-tray mounting hardware. At rest (`lower_extension_mm`=0) the overlap is full; as tier-1 tray travel increases, overlap **decreases roughly linearly** because `EQUIP-PLOTTER1-001` is in `LOWER_KINEMATIC_GROUP` and moves forward with the tray, reducing its Y-overlap with the fixed `FRAME-RAIL-TRAY-UPPER-*` rails. For `EQUIP-PLOTTER1-001` vs `FRAME-RAIL-TRAY-UPPER-L-001` as `lower_extension_mm` increases: dy=0 → 43,875.0 mm³; dy=130 (`trays.lower_quick_access_extension_mm`) → still overlapping ≈14,625.0 mm³; dy=180 → 3,375.0 mm³; dy=194 → 225.0 mm³; dy=196 → 0.0 mm³ (clearance ≈1.0 mm); dy=250 (full `trays.lower_extension` service) → 0.0 mm³ (clearance ≈55.0 mm). **Quick-access (130 mm) still has substantial real overlap** — the interference is present at quick-access, not only at rest.
+**Status:** Closed by Main under the owner's standing autonomy grant (PLT-009). **Option 1 applied:** grew `case.height` by **+27 mm** via corrected `plotter.upper_z` formula — `lower_z + tier_clearance_min_mm + slide_rail_height_mm + frame_profile_size_mm + tray_panel_thickness_mm` = 30 + 170 + 12 + 15 + 11 → `upper_z`=**238**, `case.height`=**544**. Zero `intersection_volume` at all 7 tier-2 under-tray parts × 5 tray-1 positions (35 cases); regression `tests/test_kinematics.py::test_plotter1_clear_of_tier2_under_tray_hardware`; evidence pack `output/validation/rev9/`.
 
-**At rest (closed/transport):**
+### Problem history (QA sweep cycle 2 quantification, pre-fix)
+
+Scripted `intersection_volume` measurement (build123d) had confirmed a real volumetric overlap between `EQUIP-PLOTTER1-001` (Cameo 4 body, Z=[30, 200]) and tier-2 under-tray mounting hardware. At rest (`lower_extension_mm`=0) the overlap was full; as tier-1 tray travel increased, overlap **decreased roughly linearly** because `EQUIP-PLOTTER1-001` is in `LOWER_KINEMATIC_GROUP` and moves forward with the tray, reducing its Y-overlap with the fixed `FRAME-RAIL-TRAY-UPPER-*` rails. For `EQUIP-PLOTTER1-001` vs `FRAME-RAIL-TRAY-UPPER-L-001` as `lower_extension_mm` increased: dy=0 → 43,875.0 mm³; dy=130 (`trays.lower_quick_access_extension_mm`) → still overlapping ≈14,625.0 mm³; dy=180 → 3,375.0 mm³; dy=194 → 225.0 mm³; dy=196 → 0.0 mm³ (clearance ≈1.0 mm); dy=250 (full `trays.lower_extension` service) → 0.0 mm³ (clearance ≈55.0 mm). **Quick-access (130 mm) had substantial real overlap** — the interference was present at quick-access, not only at rest.
+
+**At rest (closed/transport) — pre-fix volumes:**
 
 | Pair | Intersection volume (mm³) | Notes |
 |---|---|---|
@@ -72,15 +76,45 @@ Scripted `intersection_volume` measurement (build123d) confirms a real volumetri
 | `EQUIP-PLOTTER1-001` vs `SLIDE-UPPER-CENTER-001` | 8,527.5 | same |
 | `EQUIP-PLOTTER1-001` vs `INTERLOCK-TAB-UPPER-001` | 108 | constant |
 
-**Root cause:** tier-2 under-tray mounting hardware (slide 12 mm + rail profile 15 mm = **27 mm** stack below `TRAY-UPPER-001`'s bottom face) needs clearance below the tray, but `plotter.upper_z`'s derived formula (`lower_z + tier_clearance_min_mm + tray_panel_thickness_mm`) only reserves the tray's own 11 mm panel thickness below the mounting surface. `EQUIP-PLOTTER1-001`'s top (Z=200) exactly meets `TRAY-UPPER-001`'s bottom (Z=200) with **zero gap**. Currently passed in collision sweeps only via the Y-overlap-only `is_staggered_tier_y_overlap()` heuristic in `src/stand_cad/geometry/collision.py`, which does **not** check `intersection_volume`.
+**Root cause (pre-fix):** tier-2 under-tray mounting hardware (slide 12 mm + rail profile 15 mm = **27 mm** stack below `TRAY-UPPER-001`'s bottom face) needed clearance below the tray, but `plotter.upper_z`'s derived formula (`lower_z + tier_clearance_min_mm + tray_panel_thickness_mm`) only reserved the tray's own 11 mm panel thickness below the mounting surface. `EQUIP-PLOTTER1-001`'s top (Z=200) exactly met `TRAY-UPPER-001`'s bottom (Z=200) with **zero gap**. Pre-fix collision sweeps passed only via the Y-overlap-only `is_staggered_tier_y_overlap()` heuristic in `src/stand_cad/geometry/collision.py`, which did **not** check `intersection_volume`.
 
-**Owner decision required (pick one or equivalent):**
+**Closure (D-038):** Main resolved this under the owner's standing autonomy grant — **option 1** (grow `case.height` by +27 mm via extended `upper_z` formula) applied; **option 2** (select shallower slide/rail hardware) not taken. `trays.slide_rail_height_mm` remains `to_measure` and was not retuned. QA sweep cycle 2 had quantified the defect but applied no geometric fix; PLT-009 corrected the formula and closed F-5.
 
-1. Grow `case.height` (currently **517 mm**) by ≈**+27 mm** via extending the `upper_z` / height formula, **or**
-2. Select slide/rail hardware with less under-tray depth (`trays.slide_rail_height_mm` is `to_measure`, not yet selected).
+### Post-fix evidence (rev9)
 
-Both options change fixed dimensional or hardware assumptions outside the current concept geometry authority. **No geometric fix was applied in QA sweep cycle 2** — this item remains a documented follow-up (supersedes the qualitative F-5 note in `state/PROJECT_STATE.md`).
+| Leaf | Old | New |
+|---|---|---|
+| `plotter.upper_z` | 211 | **238** |
+| `case.height` | 517 | **544** |
+| `hardware.handle_mount_z_mm` | 263 | **276.5** (formula unchanged; recomputed from taller case) |
+
+**Confirmed zero-intersection evidence** (`intersection_volume` == 0 at all tray-1 positions {0, 65, 130, 180, 250} mm):
+
+| Hardware part | Z-gap (mm) | Constant across dy? |
+|---|---|---|
+| `FRAME-RAIL-TRAY-UPPER-{L,R,C}-001` | 11.0 | yes |
+| `SLIDE-UPPER-{LEFT,RIGHT,CENTER}-001` | 26.0 | yes |
+| `INTERLOCK-TAB-UPPER-001` | 15.0 | yes |
+
+Regression: `tests/test_kinematics.py::test_plotter1_clear_of_tier2_under_tray_hardware` (7 parts × 5 positions = 35 cases). Evidence pack: `output/validation/rev9/`.
 
 ## I. Light-strip service-volume near-miss (2026-08-04 QA sweep cycle 2)
 
 `LIGHT-STRIP-001` (provisional `service_volume` reference body, `verify_on_real_machine`) sits exactly **0.5 mm** from `FRAME-POST-RR-001` in the closed/transport state — exactly at, not below, the `tolerance.part_assembly_feature_mm` floor (0.5 mm). All tests pass with **zero margin**. Flag only; no geometry change in this cycle. Owner should confirm whether 0.5 mm is acceptable for the real light-strip mounting path or whether the strip position should move before production release.
+
+**Post PLT-009 height-stack fix (rev9):** both `LIGHT-STRIP-001` and `FRAME-POST-RR-001` derive from `top_structure.z_min_mm` (529 mm post-fix, was 502 mm) — the +27 mm shift is common to both, so `minimum_clearance(LIGHT-STRIP-001, FRAME-POST-RR-001)` remains **0.5 mm** unchanged. A 1–2 mm Y-anchor nudge in `services.py` would not remove the genuine XY planform overlap (X∈[610,625]×Y∈[535,544.5] between strip footprint and post `leg_h`); clearing it fully would require shortening `services.light_strip_length_mm` (a `to_measure` hardware leaf) — not applied. **No reposition applied.**
+
+## J. Upper-tray tip-over stability factor below the TZ floor (PLT-010 / TZ line 508) — **OPEN, safety-relevant**
+
+`output/validation/rev9/stability_report.md` (unchanged from rev6/rev8 — pre-existing, not introduced or worsened by D-038):
+
+| Case | Tip factor | TZ floor (line 508) | Status |
+|---|---|---|---|
+| Lower tray fully extended (250 mm), both plotters installed, organizer empty | **2.080** | 1.5 | Meets |
+| Upper tray fully extended (400 mm), both plotters installed, organizer empty | **1.300** | 1.5 | **Fails — 13% short of the floor** |
+
+This is a static tip-over moment model (front/rear foot line pivot, restore vs overturn moment from the mass roll-up), not FEA and not a dynamic transport-load check. It has been present since the first `stability_report.md` (rev6) and was re-confirmed unchanged through rev7/rev8/rev9; no cycle has attempted a structural fix because none of the geometry changes since rev6 (tier alignment, deflection rail, cable pass-through, height-stack correction) altered the tip-over inputs (base footprint, foot inset, empty-case mass, tray extension distance are all unchanged by those fixes).
+
+**Why this was not silently forced to pass:** the two honest paths to close it are (a) increase the restoring moment — added base mass/ballast, a wider effective foot stance within the fixed 650×550 footprint, or a mechanical prop/leg that deploys with the upper tray — or (b) reduce the overturning moment — shorten the upper tray's 400 mm extension (which TZ line 179 states as a *minimum*, so shortening it would itself be a TZ deviation requiring the same kind of owner decision as the R10 radius). Neither has been applied because both change either mass distribution or a TZ-floor dimension, and this repository's standing rule is that a safety-relevant physical-quantity change gets recorded evidence and a decision, not a silent parameter edit.
+
+**Status:** tracked as `FAILING` in `state/REQUIREMENTS_TRACEABILITY.csv` PLT-010. Requires either an engineering fix (ballast/prop/footprint) evaluated with the same rigor as the tray-deflection fix (PLT-008), or an owner-accepted deviation with a stated mitigation (e.g. a physical warning label plus an operational rule never to fully extend the upper tray with the lower tray's mass absent, mirroring the existing simultaneous-extension interlock). Not authoritative for Gate G4 regardless of outcome — Gate G4 needs a qualified engineering review, not an agent-computed static model.

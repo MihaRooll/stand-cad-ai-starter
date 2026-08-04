@@ -1,16 +1,26 @@
 # Project state
 
-- Project: Light desktop tower for two Silhouette plotters plus horizontal film storage, **650 × 550 × 517 mm** (derived height; see ADR-005 and `ИИ советы/Cursor_Opus5_TZ_Light_Plotter_Tower.md`)
-- Current phase: PLT-007 horizontal reconfiguration → **rev8** evidence pack (CONCEPT / REFERENCE_ONLY)
+- Project: Light desktop tower for two Silhouette plotters plus horizontal film storage, **650 × 550 × 544 mm** (derived height; see ADR-005 and `ИИ советы/Cursor_Opus5_TZ_Light_Plotter_Tower.md`)
+- Current phase: PLT-009 height-stack fix → **rev9** evidence pack (CONCEPT / REFERENCE_ONLY)
 - Current gate: G0 (human verdict unconfirmed)
-- Status: QA sweep cycle 2 delivered (film-post notch fix); F-5 quantified; pending adversarial review
-- Last updated: 2026-08-04 (QA sweep cycle 2; film front-withdrawal notch; F-5 quantified)
+- Status: F-5 closed (D-038); height-stack formula corrected; pending adversarial review
+- Last updated: 2026-08-04 (PLT-009; upper_z +27 mm; case.height 544 mm; rev9)
+
+## PLT-009 height-stack fix (2026-08-04, D-038)
+
+- **Fix:** `plotter.upper_z` formula now reserves full tier-2 under-tray stack (slide 12 mm + frame profile 15 mm + tray panel 11 mm) — was missing 27 mm. Propagated +27 mm through `film_storage_horizontal.z`, `top_structure`, `case.height`, `handle_mount_z_mm`.
+- **Values:** `upper_z` 211→**238**; `case.height` 517→**544**; `handle_mount_z_mm` 263→**276.5**; `tier_clearance_lower_mm` 170→197
+- **F-5 closed:** zero `intersection_volume` at all 7 tier-2 under-tray parts × 5 tray-1 positions; Z-gap constant across travel (rails 11 mm, slides 26 mm, interlock tab 15 mm)
+- **Light-strip §I:** `minimum_clearance(LIGHT-STRIP-001, FRAME-POST-RR-001)` still **0.5 mm** (common +27 mm shift); no reposition — XY overlap requires `to_measure` length change
+- **Tests:** 321 pytest passing (285 baseline + 35 F-5 regression + 1 computed_upper_z); ruff clean
+- **Baseline commit:** `d3e4247`
+- **Next:** adversarial-reviewer on F-5 evidence; verifier Full profile
 
 ## QA sweep cycle 2 (2026-08-04)
 
 - **Scope:** scripted `intersection_volume` audit across **8 configuration states** — `transport`, `organizer_loaded`, `panels_hidden`, `operating`, `operating_with_test_bodies`, tier-1 tray at `lower_extension`=0 / `lower_quick_access_extension_mm` (130) / `lower_extension` (250), tier-2 tray at `upper_extension`=0 / 400
 - **Fix delivered:** film-shelf front-withdrawal path collided with `FRAME-POST-FL-001` `leg_h` (≈74.23 mm³ at every withdrawal offset dy=20–340 mm) and `PANEL-CLAD-FRONT-POST-FL-001` (300–900 mm³). Real clearance notch cut in `frame.py` (X=`film_storage_horizontal.x`→`corner_radius+frame_profile_size_mm`, Y=0→profile, Z=organizer clear-volume band only); mirrors `_tray1_clearance_notch_x_z` pattern. Regression: `tests/test_geometry.py::test_film_body_front_withdrawal_clears_front_left_post` (4 shelves × 36 withdrawal steps)
-- **F-5 (supersedes qualitative note below):** `EQUIP-PLOTTER1-001` fully contains tier-2 upper tray rails at rest (43,875 / 43,875 / 42,637.5 mm³) plus slide slivers (8,775 / 8,775 / 8,527.5 mm³) and `INTERLOCK-TAB-UPPER-001` (108 mm³); overlap **decreases roughly linearly** with tier-1 `lower_extension_mm` travel (plotter moves with tray in `LOWER_KINEMATIC_GROUP` vs fixed upper rails) — vs `FRAME-RAIL-TRAY-UPPER-L-001`: dy=130 (quick-access) still ≈14,625 mm³; clears at dy≈196 mm (not ≈210 mm); dy=250 service → 0 mm³ with ≈55 mm clearance (not ≈42.7 mm). Root cause: 27 mm under-tray hardware stack vs zero gap at Z=200. **Not code-fixed this cycle** — owner decision: grow `case.height` ≈+27 mm or select shallower slide/rail hardware. Documented in `docs/10_USER_INPUT_REQUIRED.md` §H; collision still exempted via `is_staggered_tier_y_overlap()` only
+- **F-5 (supersedes qualitative note below):** ~~open~~ **RESOLVED by D-038 (PLT-009)** — see PLT-009 section above. Historical quantification retained in `docs/10_USER_INPUT_REQUIRED.md` §H.
 - **Light-strip near-miss:** `LIGHT-STRIP-001` vs `FRAME-POST-RR-001` exactly **0.5 mm** clearance in transport (zero margin vs `tolerance.part_assembly_feature_mm`). Flagged in `docs/10_USER_INPUT_REQUIRED.md` §I; no geometry change
 - **Tests:** 285 pytest passing (141 baseline + 144 new parametrized cases in `test_film_body_front_withdrawal_clears_front_left_post`); ruff clean
 - **Baseline commit:** `9e38f98`
@@ -39,7 +49,7 @@
 - **Tests:** 132 pytest passing; ruff/setup not re-run this cycle
 - **Pre-change SHA:** `69b1261`
 - **Next:** adversarial-reviewer on rev7; verifier Full profile
-- **Known non-blocking follow-ups from D-033 adversarial review (2026-08-04, not required for this cycle):** F-3 `tests/test_kinematics.py::test_tray1_quick_access_distinct_from_full_extension` is YAML-only (no geometry measurement) — could be strengthened later. **F-5 superseded by QA sweep cycle 2 quantified finding** (see "QA sweep cycle 2" section above and `docs/10_USER_INPUT_REQUIRED.md` §H) — `EQUIP-PLOTTER1-001` vs upper tray rails/slides: real volumetric overlap at rest, decreasing with tier-1 travel (still ≈14,625 mm³ at 130 mm quick-access; clears at ≈196 mm; ≈55 mm clearance at 250 mm service); requires owner decision on `case.height` (+≈27 mm) or slide/rail hardware selection; still passed only via Y-overlap-only `is_staggered_tier_y_overlap()` exemption. F-6 `is_open_front_kinematic_contact()` docstring should mention the tray-1 base-front notch now modeled in `frame.py`.
+- **Known non-blocking follow-ups from D-033 adversarial review (2026-08-04, not required for this cycle):** F-3 `tests/test_kinematics.py::test_tray1_quick_access_distinct_from_full_extension` is YAML-only (no geometry measurement) — could be strengthened later. **F-5 closed by D-038/PLT-009** — zero `intersection_volume` at all 7 tier-2 under-tray parts × 5 tray-1 positions (35 regression cases); see **PLT-009 height-stack fix** section above and `docs/10_USER_INPUT_REQUIRED.md` §H (RESOLVED). F-6 `is_open_front_kinematic_contact()` docstring should mention the tray-1 base-front notch now modeled in `frame.py`.
 
 ## PLT-006 fidelity cycle 4 (2026-08-04)
 
@@ -151,6 +161,10 @@ Evidence collected is not a gate verdict: G0 remains an unconfirmed Human Gate.
 - Author MCP modeling/drawing/repair project rules per `docs/05_IMPLEMENTATION_PLAN.md:14` — precondition now satisfied (MCP connected in-session, 38 tools listed; see D-009). Authoring is unblocked as a separate follow-up packet; not in scope for this cycle. `build123d-mcp@0.3.81 --help` lists only server options, with no rule-install command; rules must be authored in this repository.
 
 ## Current blockers
+
+### Stability — safety-relevant, open
+
+- Upper tray fully extended (400 mm) with both plotters installed: tip-over factor **1.300**, below the TZ line 508 floor of **1.5** (13% short). Lower tray fully extended meets the floor at 2.080. Pre-existing since rev6, unchanged by D-038 (height-stack fix) or any other cycle since — not a new regression. See `docs/10_USER_INPUT_REQUIRED.md` section J and `state/REQUIREMENTS_TRACEABILITY.csv` PLT-010 (status `FAILING`). No fix applied yet: closing it means either adding restoring mass/a deployable prop within the fixed footprint, or an owner-accepted deviation on the 400 mm minimum extension with a stated mitigation. Not authoritative for Gate G4 either way — needs qualified engineering review, not an agent-computed static model.
 
 ### Measurements and manufacturing
 

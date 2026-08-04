@@ -19,7 +19,11 @@ from stand_cad.geometry.collision import (
     check_collision_pairs,
     check_containment_pairs,
 )
-from stand_cad.geometry.kinematics import slides_fully_extended_solids, tray_fully_extended_solid
+from stand_cad.geometry.kinematics import (
+    apply_tray_extension,
+    slides_fully_extended_solids,
+    tray_fully_extended_solid,
+)
 from stand_cad.geometry.primitives import (
     bounding_box_bounds,
     intersection_volume,
@@ -206,6 +210,65 @@ def test_interlock_shuttle_neutral_no_tray_interference(params, transport):
         assert vol == pytest.approx(0.0, abs=1e-3), (
             f"neutral shuttle intersects closed {tray_id}"
         )
+
+
+TIER2_UNDER_TRAY_PARTS = (
+    "FRAME-RAIL-TRAY-UPPER-L-001",
+    "FRAME-RAIL-TRAY-UPPER-R-001",
+    "FRAME-RAIL-TRAY-UPPER-C-001",
+    "SLIDE-UPPER-LEFT-001",
+    "SLIDE-UPPER-RIGHT-001",
+    "SLIDE-UPPER-CENTER-001",
+    "INTERLOCK-TAB-UPPER-001",
+)
+
+TRAY1_EXTENSION_POSITIONS_MM = (0, 65, 130, 180, 250)
+
+# Post-fix Z-gap (plotter top Z=200 → hardware bottom); constant across tray-1 travel.
+EXPECTED_TIER2_Z_GAP_MM = {
+    "FRAME-RAIL-TRAY-UPPER-L-001": 11.0,
+    "FRAME-RAIL-TRAY-UPPER-R-001": 11.0,
+    "FRAME-RAIL-TRAY-UPPER-C-001": 11.0,
+    "SLIDE-UPPER-LEFT-001": 26.0,
+    "SLIDE-UPPER-RIGHT-001": 26.0,
+    "SLIDE-UPPER-CENTER-001": 26.0,
+    "INTERLOCK-TAB-UPPER-001": 15.0,
+}
+
+
+def _plotter1_tier2_z_gap_mm(plotter_solid, hardware_solid) -> float:
+    """Vertical gap between plotter 1 top and tier-2 under-tray hardware bottom."""
+    plotter_bounds = bounding_box_bounds(plotter_solid)
+    hardware_bounds = bounding_box_bounds(hardware_solid)
+    plotter_z_max = plotter_bounds[2][1]
+    hardware_z_min = hardware_bounds[2][0]
+    if hardware_z_min >= plotter_z_max:
+        return hardware_z_min - plotter_z_max
+    return 0.0
+
+
+@pytest.mark.parametrize("lower_extension_mm", TRAY1_EXTENSION_POSITIONS_MM)
+@pytest.mark.parametrize("hardware_id", TIER2_UNDER_TRAY_PARTS)
+def test_plotter1_clear_of_tier2_under_tray_hardware(
+    params, transport, lower_extension_mm, hardware_id
+):
+    """PLT-009 F-5 — zero intersection vs tier-2 under-tray stack at all tray-1 positions."""
+    parts = apply_tray_extension(
+        transport.parts,
+        lower_extension_mm=lower_extension_mm,
+        upper_extension_mm=0.0,
+    )
+    plotter = parts["EQUIP-PLOTTER1-001"].solid
+    hardware = parts[hardware_id].solid
+    vol = intersection_volume(plotter, hardware)
+    z_gap = _plotter1_tier2_z_gap_mm(plotter, hardware)
+    assert vol == pytest.approx(0.0, abs=1e-3), (
+        f"dy={lower_extension_mm} {hardware_id} intersects plotter by {vol} mm^3"
+    )
+    expected_z_gap = EXPECTED_TIER2_Z_GAP_MM[hardware_id]
+    assert z_gap == pytest.approx(expected_z_gap, abs=0.5), (
+        f"dy={lower_extension_mm} {hardware_id} Z-gap={z_gap} mm (expected {expected_z_gap} mm)"
+    )
 
 
 @pytest.mark.parametrize(

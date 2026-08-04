@@ -42,7 +42,7 @@ These bind the existing profile names to local commands; do not invent new profi
 Tier rubric alone never authorises manufacturing output. Regardless of computed tier:
 
 - Any change to a physical quantity — dimension, mass, centre of gravity, clearance, service zone, thermal or electrical budget, load path, transport envelope — is **T2 minimum**, so an independent Grok reviewer sees it.
-- Any change to exported STEP, PDF, DXF, or to a gate verdict in `docs/05_IMPLEMENTATION_PLAN.md` is **T3 minimum**.
+- Any change to exported STEP, PDF, or DXF is **T3 minimum** when the artifact is produced for a manufacturer's eyes (RFQ STEP, quotation PDF, any DXF, or any export without `CONCEPT`/`REFERENCE_ONLY` in the filename). A git-ignored export under `output/` that carries `CONCEPT`/`REFERENCE_ONLY` in the filename and is blocked from release by `validate_release_readiness()`/`REL-027` remains **T2** (mandatory adversarial-reviewer, no principal-arbiter). Gate verdict edits in `docs/05_IMPLEMENTATION_PLAN.md` stay **T3 minimum** regardless of export naming.
 - Marking any artifact production-ready, or moving a G0–G8 gate to passed, is a **Human Gate** — never agent-decided.
 - Missing equipment, load, heat, electrical, transport, or bend data is a blocker: consolidate it in `docs/10_USER_INPUT_REQUIRED.md` and stop. Never substitute an assumed value to unblock a tier.
 

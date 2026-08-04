@@ -141,10 +141,12 @@ class Parameters:
 
     @property
     def computed_upper_z_mm(self) -> float:
-        """Upper tray datum: lower_z + tier_clearance_min + tray_panel_thickness."""
+        """Upper tray datum: lower_z + tier_clearance_min + slide + profile + tray."""
         lower_z = float(self.value("plotter.lower_z"))
         tier_min = float(self.value("plotter.tier_clearance_min_mm"))
-        return lower_z + tier_min + self.tray_panel_thickness_mm
+        slide_h = float(self.value("trays.slide_rail_height_mm"))
+        profile = float(self.value("materials.frame_profile_size_mm"))
+        return lower_z + tier_min + slide_h + profile + self.tray_panel_thickness_mm
 
     @property
     def side_slab_thickness_mm(self) -> float:
