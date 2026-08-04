@@ -55,3 +55,32 @@ TZ line 290 bottom+rear layout unchanged. Primary transport rear view may still 
 Owner simplified TZ section 10's certified rear mains inlet (with retention/strain relief, feeding an internal certified distributor) to a plain grommeted cable pass-through hole for the prototype: he will route a household extension cord/power strip through the hole and plug the plotters and lighting into it himself inside the case. Two provisional leaves remain open (`to_measure`, A-015): `hardware.cable_passthrough_diameter_mm` (30 mm) and `services.cable_passthrough_grommet_wall_mm` (2 mm → 26 mm clear bore) — chosen in a generous 25-35 mm range for a common plug/cable end, not measured against the actual cord. The grommet edge-break radius (`services.cable_passthrough_edge_break_radius_mm`, 1 mm) is settled at TZ:472's own verified R1 value and does not need further measurement.
 
 **To close this item:** measure the outer diameter of the actual extension-cord plug/cable end the owner intends to route through the opening, then update `config/parameters.yaml` and regenerate before production DXF release. The certified-inlet path (TZ section 10) remains deferred, not deleted — `MAINS-INLET-001` stays modeled as a placeholder service volume if a future revision reinstates it.
+
+## H. Tier-2 under-tray hardware vs plotter 1 envelope (F-5 quantified, 2026-08-04 QA sweep cycle 2)
+
+Scripted `intersection_volume` measurement (build123d) confirms a real volumetric overlap between `EQUIP-PLOTTER1-001` (Cameo 4 body, Z=[30, 200]) and tier-2 under-tray mounting hardware. At rest (`lower_extension_mm`=0) the overlap is full; as tier-1 tray travel increases, overlap **decreases roughly linearly** because `EQUIP-PLOTTER1-001` is in `LOWER_KINEMATIC_GROUP` and moves forward with the tray, reducing its Y-overlap with the fixed `FRAME-RAIL-TRAY-UPPER-*` rails. For `EQUIP-PLOTTER1-001` vs `FRAME-RAIL-TRAY-UPPER-L-001` as `lower_extension_mm` increases: dy=0 → 43,875.0 mm³; dy=130 (`trays.lower_quick_access_extension_mm`) → still overlapping ≈14,625.0 mm³; dy=180 → 3,375.0 mm³; dy=194 → 225.0 mm³; dy=196 → 0.0 mm³ (clearance ≈1.0 mm); dy=250 (full `trays.lower_extension` service) → 0.0 mm³ (clearance ≈55.0 mm). **Quick-access (130 mm) still has substantial real overlap** — the interference is present at quick-access, not only at rest.
+
+**At rest (closed/transport):**
+
+| Pair | Intersection volume (mm³) | Notes |
+|---|---|---|
+| `EQUIP-PLOTTER1-001` vs `FRAME-RAIL-TRAY-UPPER-L-001` | 43,875 | 100% of rail volume (Z=[184, 199]) |
+| `EQUIP-PLOTTER1-001` vs `FRAME-RAIL-TRAY-UPPER-R-001` | 43,875 | same |
+| `EQUIP-PLOTTER1-001` vs `FRAME-RAIL-TRAY-UPPER-C-001` | 42,637.5 | same |
+| `EQUIP-PLOTTER1-001` vs `SLIDE-UPPER-LEFT-001` | 8,775 | 1 mm-deep sliver |
+| `EQUIP-PLOTTER1-001` vs `SLIDE-UPPER-RIGHT-001` | 8,775 | same |
+| `EQUIP-PLOTTER1-001` vs `SLIDE-UPPER-CENTER-001` | 8,527.5 | same |
+| `EQUIP-PLOTTER1-001` vs `INTERLOCK-TAB-UPPER-001` | 108 | constant |
+
+**Root cause:** tier-2 under-tray mounting hardware (slide 12 mm + rail profile 15 mm = **27 mm** stack below `TRAY-UPPER-001`'s bottom face) needs clearance below the tray, but `plotter.upper_z`'s derived formula (`lower_z + tier_clearance_min_mm + tray_panel_thickness_mm`) only reserves the tray's own 11 mm panel thickness below the mounting surface. `EQUIP-PLOTTER1-001`'s top (Z=200) exactly meets `TRAY-UPPER-001`'s bottom (Z=200) with **zero gap**. Currently passed in collision sweeps only via the Y-overlap-only `is_staggered_tier_y_overlap()` heuristic in `src/stand_cad/geometry/collision.py`, which does **not** check `intersection_volume`.
+
+**Owner decision required (pick one or equivalent):**
+
+1. Grow `case.height` (currently **517 mm**) by ≈**+27 mm** via extending the `upper_z` / height formula, **or**
+2. Select slide/rail hardware with less under-tray depth (`trays.slide_rail_height_mm` is `to_measure`, not yet selected).
+
+Both options change fixed dimensional or hardware assumptions outside the current concept geometry authority. **No geometric fix was applied in QA sweep cycle 2** — this item remains a documented follow-up (supersedes the qualitative F-5 note in `state/PROJECT_STATE.md`).
+
+## I. Light-strip service-volume near-miss (2026-08-04 QA sweep cycle 2)
+
+`LIGHT-STRIP-001` (provisional `service_volume` reference body, `verify_on_real_machine`) sits exactly **0.5 mm** from `FRAME-POST-RR-001` in the closed/transport state — exactly at, not below, the `tolerance.part_assembly_feature_mm` floor (0.5 mm). All tests pass with **zero margin**. Flag only; no geometry change in this cycle. Owner should confirm whether 0.5 mm is acceptable for the real light-strip mounting path or whether the strip position should move before production release.

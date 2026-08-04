@@ -23,6 +23,24 @@ def _profile_size(params: Parameters) -> float:
     return float(params.value("materials.frame_profile_size_mm"))
 
 
+def _film_storage_front_clearance_notch_x_z(
+    params: Parameters, datums: Datums
+) -> tuple[float, float, float, float]:
+    """X/Z zone front-left post/cladding needs clear for film front withdrawal.
+
+    Spans the organizer film-storage clear-volume band only — plotter-tier post
+    material below ``organizer_floor_top_z_mm`` stays intact for rail connectivity.
+    """
+    inset = _corner_inset(params)
+    profile = _profile_size(params)
+    org_x = float(params.value("film_storage_horizontal.x"))
+    x0 = org_x
+    x1 = inset + profile
+    z0 = datums.organizer_clear_volume.z.min_mm
+    z1 = datums.organizer_clear_volume.z.max_mm
+    return x0, z0, x1, z1
+
+
 def _tray1_clearance_notch_x_z(
     params: Parameters, datums: Datums
 ) -> tuple[float, float, float, float]:
@@ -150,6 +168,12 @@ def build_frame_posts(params: Parameters, datums: Datums) -> list[PartRecord]:
             height=post_height,
             z_base=foot_h,
         )
+        if part_id == "FRAME-POST-FL-001":
+            x0, z0, x1_notch, z1_notch = _film_storage_front_clearance_notch_x_z(
+                params, datums
+            )
+            notch = box_from_bounds(x0, 0.0, z0, x1_notch, profile, z1_notch)
+            solid = solid - notch
         parts.append(PartRecord(part_id=part_id, material=FRAME_MATERIAL, solid=solid))
     return parts
 
@@ -253,11 +277,16 @@ def build_frame_cladding(params: Parameters, datums: Datums) -> list[PartRecord]
         ("FR", width - inset - profile, width - side_clear),
     )
     for suffix, x0, x1 in post_clad_specs:
+        solid = box_from_bounds(x0, 0.0, foot_h, x1, profile, z_top)
+        if suffix == "FL":
+            nx0, nz0, nx1, nz1 = _film_storage_front_clearance_notch_x_z(params, datums)
+            notch = box_from_bounds(nx0, 0.0, nz0, nx1, profile, nz1)
+            solid = solid - notch
         parts.append(
             PartRecord(
                 part_id=f"PANEL-CLAD-FRONT-POST-{suffix}-001",
                 material=FRAME_CLAD_MATERIAL,
-                solid=box_from_bounds(x0, 0.0, foot_h, x1, profile, z_top),
+                solid=solid,
             )
         )
     return parts

@@ -25,6 +25,7 @@ from stand_cad.geometry.primitives import (
     box_from_bounds,
     intersection_volume,
     minimum_clearance,
+    translate_solid,
 )
 from stand_cad.parameters import (
     HORIZONTAL_ORGANIZER_CLEAR_MIN_MM,
@@ -731,6 +732,33 @@ def test_film_bodies_no_adjacent_intersection(params, shelf_index):
             continue
         encroach = intersection_volume(film, record.solid)
         assert encroach <= threshold, f"{film_id} intersects {part_id} by {encroach} mm^3"
+
+
+@pytest.mark.parametrize("shelf_index", list(range(4)))
+@pytest.mark.parametrize(
+    "withdrawal_mm",
+    [float(step) for step in range(0, 351, 10)],
+)
+def test_film_body_front_withdrawal_clears_front_left_post(
+    params, shelf_index, withdrawal_mm
+):
+    """PLT-007 — film sheet front withdrawal must not intersect FL post or cladding."""
+    state = build_organizer_loaded_assembly(params)
+    film_id = f"FILM-BODY-{shelf_index:03d}"
+    assert film_id in state.parts
+    moved = translate_solid(
+        state.parts[film_id].solid,
+        dy=-withdrawal_mm,
+    )
+    for post_id in (
+        "FRAME-POST-FL-001",
+        "PANEL-CLAD-FRONT-POST-FL-001",
+    ):
+        assert post_id in state.parts
+        vol = intersection_volume(moved, state.parts[post_id].solid)
+        assert vol == pytest.approx(0.0, abs=1e-3), (
+            f"{film_id} withdrawn {withdrawal_mm} mm hits {post_id} by {vol} mm^3"
+        )
 
 
 def test_film_bodies_span_sheet_depth_across_width(params):
