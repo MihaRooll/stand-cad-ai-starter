@@ -1,0 +1,218 @@
+# config/parameters.yaml
+#
+# Single dimensional source of truth for the Light Plotter Tower, per
+# "ИИ советы/Cursor_Opus5_TZ_Light_Plotter_Tower.md" ("TZ"), section 12.
+# This supersedes the earlier "mobile floor stand" framing (see docs/adr/ADR-005-*).
+#
+# Every leaf is a mapping {value, provenance, note}. provenance is exactly one of:
+#   verified   - manufacturer documentation or the owner's fixed decision recorded in the TZ.
+#   derived    - computed from verified values; the formula lives in src/stand_cad/parameters.py
+#                docstrings/comments, never re-hardcoded here.
+#   to_measure - must be measured on the real machine/material before production release.
+# src/stand_cad/parameters.py fails closed if a leaf lacks a valid provenance marker.
+#
+# film_storage.cell_width_mm and film_storage.divider_count are NOT stored here: they are
+# derived from case.internal_width, film_storage.cells, and film_storage.divider_thickness at
+# load time (Parameters.cell_width_mm / Parameters.divider_count) so changing `cells` (valid
+# range 6-12, TZ line 108) never leaves a stale hardcoded width or count behind.
+
+schema_version: 1
+units: mm
+
+case:
+  width: {value: 650, provenance: verified, note: "TZ section 4 — overall envelope"}
+  depth: {value: 550, provenance: verified, note: "TZ section 4 — overall envelope"}
+  height: {value: 690, provenance: verified, note: "TZ section 4 — overall envelope"}
+  internal_width: {value: 610, provenance: verified, note: "TZ section 4 — plotter niche / organizer clear width"}
+  corner_radius: {value: 25, provenance: verified, note: "TZ section 8 line 230 — R20-R30 outer shell corner radius; consumed by PANEL-OUT-* corner trims"}
+
+# EXTENSION beyond the TZ section 12 base block; source: TZ section 15.
+tolerance:
+  assembly_mm: {value: 1, provenance: verified, note: "TZ section 15 — overall assembly tolerance"}
+  part_cnc_laser_mm: {value: 0.3, provenance: verified, note: "TZ section 15 — CNC/laser part tolerance unless stated otherwise"}
+  part_assembly_feature_mm: {value: 0.5, provenance: verified, note: "TZ section 15 — assembly-feature tolerance unless stated otherwise"}
+
+plotter:
+  physical_width: {value: 566, provenance: verified, note: "TZ section 3 — Silhouette Cameo 5 manufacturer dimension"}
+  physical_depth: {value: 176, provenance: verified, note: "TZ section 3"}
+  physical_height: {value: 124, provenance: verified, note: "TZ section 3"}
+  design_width: {value: 580, provenance: verified, note: "TZ section 4/5 — protective design envelope"}
+  design_depth: {value: 200, provenance: verified, note: "TZ section 4/5"}
+  design_height: {value: 132, provenance: verified, note: "TZ section 4/5"}
+  design_mass_kg: {value: 5.2, provenance: verified, note: "TZ section 3 — conservative mass; 5.05 kg is reference-only"}
+  x: {value: 42, provenance: verified, note: "TZ section 5 — coordinate table"}
+  lower_y: {value: 20, provenance: verified, note: "TZ section 5"}
+  lower_z: {value: 30, provenance: verified, note: "TZ section 5"}
+  upper_y: {value: 170, provenance: verified, note: "TZ section 5"}
+  upper_z: {value: 190, provenance: verified, note: "TZ section 5"}
+  upper_setback: {value: 150, provenance: verified, note: "TZ section 2/5 — plotter 2 set back exactly 150 mm; must equal upper_y - lower_y"}
+  feed_plane_z_from_base: {value: "TO_MEASURE", provenance: to_measure, note: "TZ section 7 and section 16 item 1 — must not be guessed"}
+  feed_plane_z_provisional_mm: {value: 40, provenance: to_measure, note: "Provisional mid-low front-feed slot height above tray finished top; VERIFY ON REAL MACHINE before production DXF"}
+  envelope_offset_x_mm: {value: 7, provenance: derived, note: "(design_width - physical_width) / 2; recomputed in Parameters.envelope_offset_x_mm"}
+  envelope_offset_y_mm: {value: 12, provenance: derived, note: "(design_depth - physical_depth) / 2; recomputed in Parameters.envelope_offset_y_mm"}
+  envelope_offset_z_mm: {value: 4, provenance: derived, note: "(design_height - physical_height) / 2; recomputed in Parameters.envelope_offset_z_mm"}
+  lid_open_envelope_height_mm: {value: 80, provenance: to_measure, note: "TZ section 16 item 3 — provisional open-lid swept height above physical_height; VERIFY ON REAL MACHINE"}
+
+# EXTENSION beyond the TZ section 12 base block; source: TZ section 7.
+trays:
+  lower_extension: {value: 250, provenance: verified, note: "TZ section 7 — minimum full extension, lower tray"}
+  upper_extension: {value: 400, provenance: verified, note: "TZ section 7 — minimum full extension, upper tray"}
+  rated_load_kg: {value: 15, provenance: verified, note: "TZ section 7 — minimum slide rating per pair"}
+  rated_load_preferred_kg: {value: 20, provenance: verified, note: "TZ section 7 — preferred slide rating per pair"}
+  design_load_kg: {value: 10, provenance: verified, note: "TZ section 7 — design load per tray"}
+  front_overhang_min_mm: {value: 40, provenance: verified, note: "TZ section 7 — minimum protrusion past the front face in service position"}
+  deflection_max_mm: {value: 1.5, provenance: verified, note: "TZ section 7 and 17 — max deflection under design_load_kg"}
+  slide_rail_width_mm: {value: 45, provenance: to_measure, note: "TZ section 7 — full-extension slide pair cross-section; hardware not yet selected"}
+  slide_rail_height_mm: {value: 12, provenance: to_measure, note: "TZ section 7 — slide rail height; hardware not yet selected"}
+  soft_stop_size_mm: {value: 10, provenance: to_measure, note: "TZ section 7 — elastomer soft stop cube edge; free design choice pending selection"}
+  vibration_mount_diameter_mm: {value: 20, provenance: to_measure, note: "TZ section 7 — thin vibration foot diameter; provisional concept value"}
+  vibration_mount_height_mm: {value: 5, provenance: to_measure, note: "TZ section 7 — thin vibration foot height; provisional concept value"}
+
+film_storage:
+  x: {value: 20, provenance: verified, note: "TZ section 5"}
+  y: {value: 20, provenance: verified, note: "TZ section 5"}
+  z: {value: 350, provenance: verified, note: "TZ section 5"}
+  clear_width: {value: 610, provenance: verified, note: "TZ section 4/6 — organizer clear width"}
+  clear_depth: {value: 510, provenance: verified, note: "TZ section 4/6 — target cell depth; TZ section 6 minimum is 505"}
+  clear_depth_min: {value: 505, provenance: verified, note: "TZ section 6 — minimum usable cell depth"}
+  clear_height: {value: 325, provenance: verified, note: "TZ section 4/6"}
+  film_design_height: {value: 320, provenance: verified, note: "TZ section 2/6 — design vertical envelope of one sheet"}
+  film_depth: {value: 500, provenance: verified, note: "TZ section 2/6 — nominal sheet depth"}
+  cells: {value: 10, provenance: verified, note: "TZ section 4 — nominal default cell count; valid range 6-12 per TZ line 108"}
+  divider_thickness: {value: 2, provenance: verified, note: "TZ section 4/6/8"}
+  divider_height_min: {value: 300, provenance: verified, note: "TZ section 6"}
+  divider_height_max: {value: 315, provenance: verified, note: "TZ section 6"}
+  divider_depth: {value: 505, provenance: verified, note: "TZ section 6"}
+  front_retainer_height_min: {value: 40, provenance: verified, note: "TZ section 6"}
+  front_retainer_height_max: {value: 50, provenance: verified, note: "TZ section 6"}
+  finger_cutout_radius_min: {value: 25, provenance: verified, note: "TZ section 6"}
+  finger_cutout_radius_max: {value: 35, provenance: verified, note: "TZ section 6"}
+  floor_design_load_kg: {value: 15, provenance: verified, note: "TZ section 6 — uniform design load on the organizer floor"}
+  max_load_kg: {value: 10, provenance: verified, note: "TZ section 6/11 — marked operating limit"}
+  min_stack_width_mm: {value: "TO_MEASURE", provenance: to_measure, note: "TZ section 16 item 7 — real film thickness/stiffness not yet measured"}
+  comb_slot_depth_mm: {value: 8, provenance: to_measure, note: "Provisional divider retention slot depth in ORG-COMB-RAIL-001; measure on prototype"}
+  comb_slot_clearance_mm: {value: 0.5, provenance: derived, note: "Equals tolerance.part_assembly_feature_mm; slot width = divider_thickness + comb_slot_clearance_mm"}
+  comb_rail_front_depth_mm: {value: 5, provenance: to_measure, note: "Provisional front-to-back depth of comb retention rail strip"}
+
+# EXTENSION beyond the TZ section 12 base block; source: TZ section 7.
+media_path:
+  clear_width: {value: 330, provenance: verified, note: "TZ section 7 — minimum clear width"}
+  clear_height_min: {value: 12, provenance: verified, note: "TZ section 7 — minimum clear slot height"}
+  slot_height_target: {value: 18, provenance: verified, note: "TZ section 7 — target slot height with soft brush"}
+  primary_length: {value: 500, provenance: verified, note: "TZ section 7 (matches film_storage.film_depth)"}
+  long_mat_length: {value: 610, provenance: verified, note: "TZ section 7"}
+  test_body_primary:
+    height: {value: 320, provenance: verified, note: "TZ section 7 — primary test sheet 320x500x3"}
+    depth: {value: 500, provenance: verified, note: "TZ section 7"}
+    thickness: {value: 3, provenance: verified, note: "TZ section 7"}
+  test_body_long:
+    height: {value: 305, provenance: verified, note: "TZ section 7 — long mat/material 305x610x3"}
+    depth: {value: 610, provenance: verified, note: "TZ section 7"}
+    thickness: {value: 3, provenance: verified, note: "TZ section 7"}
+
+# EXTENSION beyond the TZ section 12 base block; source: TZ section 8.
+materials:
+  frame_profile_size_mm: {value: 15, provenance: verified, note: "TZ section 8 — aluminium profile/angle 15x15x1.5"}
+  frame_wall_thickness_mm: {value: 1.5, provenance: verified, note: "TZ section 8"}
+  outer_panel_thickness_mm: {value: 3, provenance: verified, note: "TZ section 8 — cast opal white PMMA"}
+  impact_panel_thickness_min_mm: {value: 3, provenance: verified, note: "TZ section 8 — impact-loaded inner panels"}
+  impact_panel_thickness_max_mm: {value: 4, provenance: verified, note: "TZ section 8"}
+  tray_panel_thickness_min_mm: {value: 10, provenance: verified, note: "TZ section 8 — tray sandwich/aluminium honeycomb panel"}
+  tray_panel_thickness_max_mm: {value: 12, provenance: verified, note: "TZ section 8"}
+  organizer_floor_thickness_min_mm: {value: 10, provenance: verified, note: "TZ section 8"}
+  organizer_floor_thickness_max_mm: {value: 12, provenance: verified, note: "TZ section 8"}
+  divider_thickness_mm: {value: 2, provenance: verified, note: "TZ section 8 (matches film_storage.divider_thickness)"}
+  foot_height_min_mm: {value: 8, provenance: verified, note: "TZ section 8"}
+  foot_height_max_mm: {value: 10, provenance: verified, note: "TZ section 8"}
+  actual_sheet_thickness_mm: {value: "TO_MEASURE", provenance: to_measure, note: "TZ section 16 item 8 — measure after purchase, before cutting joints"}
+  inner_panel_thickness_mm: {value: 3.5, provenance: derived, note: "Midpoint of impact_panel_thickness 3-4 mm range for concept geometry"}
+  organizer_floor_thickness_mm: {value: 11, provenance: derived, note: "Midpoint of organizer_floor_thickness 10-12 mm range for concept geometry"}
+  org_insert_thickness_mm: {value: "TO_MEASURE", provenance: to_measure, note: "TZ:160 — thin HDPE-class insert; measure after material selection"}
+  org_insert_provisional_mm: {value: 1.0, provenance: derived, note: "Concept-stage placeholder when org_insert_thickness_mm is TO_MEASURE; used by Parameters.org_insert_thickness_mm"}
+  foot_height_mm: {value: 9, provenance: derived, note: "Midpoint of foot_height 8-10 mm range for concept geometry"}
+  outer_panel_shadow_gap_mm: {value: 2.5, provenance: derived, note: "Midpoint of TZ section 8 shadow gap 2-3 mm range"}
+  pmma_density_kg_m3: {value: 1180, provenance: verified, note: "Generic cast opal PMMA datasheet range (~1180 kg/m3)"}
+  petg_density_kg_m3: {value: 1270, provenance: verified, note: "Generic PETG datasheet range (~1270 kg/m3)"}
+  aluminium_density_kg_m3: {value: 2680, provenance: verified, note: "5052 aluminium alloy typical density (~2680 kg/m3)"}
+  sandwich_panel_density_kg_m3: {value: 150, provenance: verified, note: "Typical aluminium honeycomb sandwich panel (~150 kg/m3)"}
+  white_composite_density_kg_m3: {value: 1400, provenance: verified, note: "Typical compact white composite sheet (~1400 kg/m3)"}
+  hdpe_density_kg_m3: {value: 950, provenance: verified, note: "Generic HDPE insert material (~950 kg/m3)"}
+  silicone_density_kg_m3: {value: 1100, provenance: verified, note: "Generic silicone foot/elastomer (~1100 kg/m3)"}
+  tray_panel_youngs_modulus_mpa: {value: 3000, provenance: to_measure, note: "Indicative sandwich panel stiffness; no specific datasheet cited — not for G4 FEA"}
+
+lighting:
+  voltage_v: {value: 24, provenance: verified, note: "TZ section 9"}
+  max_power_w: {value: 40, provenance: verified, note: "TZ section 9 — maximum electrical power of the lighting"}
+
+# EXTENSION beyond the TZ section 12 base block; source: TZ section 10.
+thermal:
+  adapter_bay_max_temp_c: {value: 40, provenance: verified, note: "TZ section 10 — after 2 h at 25 C ambient"}
+  film_bay_max_temp_rise_k: {value: 10, provenance: verified, note: "TZ section 10"}
+  ambient_test_temp_c: {value: 25, provenance: verified, note: "TZ section 10"}
+  test_duration_hours: {value: 2, provenance: verified, note: "TZ section 10"}
+
+# EXTENSION beyond the TZ section 12 base block; source: TZ section 7/17.
+stability:
+  tip_factor_min: {value: 1.5, provenance: verified, note: "TZ section 7 and 17 — minimum tip-over safety factor"}
+
+mass_targets:
+  empty_case_max_kg: {value: 12, provenance: verified, note: "TZ section 8 and 17 — hard ceiling"}
+  empty_case_target_min_kg: {value: 9, provenance: verified, note: "TZ section 8 — target range"}
+  empty_case_target_max_kg: {value: 11, provenance: verified, note: "TZ section 8 — target range"}
+  case_with_plotters_no_film_min_kg: {value: 20, provenance: verified, note: "TZ section 8 — approximate"}
+  case_with_plotters_no_film_max_kg: {value: 23, provenance: verified, note: "TZ section 8 — approximate"}
+  operating_total_max_kg: {value: 33, provenance: verified, note: "TZ section 8 — maximum operating mass with film"}
+  film_marked_limit_kg: {value: 10, provenance: verified, note: "TZ section 11 (matches film_storage.max_load_kg)"}
+
+hardware:
+  handle_grip_length_mm: {value: 110, provenance: verified, note: "TZ:304 — minimum grip length"}
+  handle_grip_depth_mm: {value: 35, provenance: verified, note: "TZ:304 — minimum grip depth"}
+  handle_mount_y_mm: {value: 100, provenance: derived, note: "Front grip centre Y=100 → band [45,155] mm; clears plotter2 Y≥170, frame posts Y≤40, and organizer/divider Z≥350 (PLT-005 rework F-1 volume grid vs all 81 transport parts)"}
+  handle_mount_z_mm: {value: 214, provenance: derived, note: "Grip centre Z=214 → band [196.5,231.5] mm in plotter-bay gap above plotter1 Z≤154 at front Y; below organizer floor Z=350; full-width through-ray clear (PLT-005 rework F-1)"}
+  foot_diameter_mm: {value: 30, provenance: verified, note: "TZ:224,300 — minimum foot diameter"}
+  vent_slot_count: {value: 5, provenance: to_measure, note: "TZ line 290 — passive rear ventilation; slot count not specified in TZ"}
+  vent_slot_width_mm: {value: 80, provenance: to_measure, note: "TZ line 290 — provisional rear vent slot width; measure on prototype grille"}
+  vent_slot_height_mm: {value: 8, provenance: to_measure, note: "TZ line 290 — provisional rear vent slot height; measure on prototype grille"}
+  vent_slot_pitch_mm: {value: 12, provenance: to_measure, note: "TZ line 290 — provisional spacing between rear vent slots"}
+  vent_band_z_mm: {value: 45, provenance: to_measure, note: "Provisional Z center of rear vent row above feet; TZ mandates rear/bottom ventilation but gives no slot coordinates"}
+
+top_structure:
+  z_min_mm: {value: 675, provenance: verified, note: "TZ section 5 — top structure lower bound"}
+  z_max_mm: {value: 690, provenance: verified, note: "TZ section 5 — top structure upper bound / case height"}
+
+# EXTENSION beyond the TZ section 12 base block; source: TZ section 7 (interlock).
+interlock:
+  shuttle_travel_mm: {value: 75, provenance: derived, note: "Half the Z gap between lower and upper slide zones minus slide_rail_height_mm; recomputed in Parameters.interlock_shuttle_travel_mm"}
+  tab_engagement_mm: {value: 3, provenance: derived, note: "6 × tolerance.part_assembly_feature_mm (0.5 mm); tab protrusion into shuttle channel"}
+  shuttle_channel_width_mm: {value: 12, provenance: derived, note: "4 × tab_engagement_mm; compact captive-channel cross-section for INTERLOCK-SHUTTLE-001"}
+
+# EXTENSION beyond the TZ section 12 base block; source: TZ sections 7, 9, 10, 13.
+services:
+  svc_insert_width_mm: {value: 340, provenance: derived, note: "media_path.clear_width + margin for replaceable rear feed-slot insert"}
+  svc_insert_height_mm: {value: 18, provenance: derived, note: "Equals media_path.slot_height_target for concept geometry"}
+  svc_insert_thickness_mm: {value: 3.5, provenance: derived, note: "Matches materials.inner_panel_thickness_mm"}
+  edgeguard_depth_mm: {value: 15, provenance: to_measure, note: "Provisional soft brush/radius trim depth at media-path slot edges"}
+  edgeguard_height_mm: {value: 18, provenance: derived, note: "Equals media_path.slot_height_target"}
+  rearsupport_depth_mm: {value: 80, provenance: to_measure, note: "Provisional foldable rear support span for long material"}
+  rearsupport_height_mm: {value: 12, provenance: derived, note: "Equals media_path.clear_height_min"}
+  cover_svc_thickness_mm: {value: 3.5, provenance: derived, note: "Rear/bottom service cover panel thickness (panel height; no separate vertical extent leaf)"}
+  mains_inlet_width_mm: {value: 60, provenance: to_measure, note: "Provisional mains inlet hardware volume width"}
+  mains_inlet_height_mm: {value: 40, provenance: to_measure, note: "Provisional mains inlet hardware volume height"}
+  mains_inlet_depth_mm: {value: 35, provenance: to_measure, note: "Provisional mains inlet protrusion depth from rear panel"}
+  light_strip_length_mm: {value: 600, provenance: to_measure, note: "Provisional RGBW COB strip + heat-sink run length"}
+  light_strip_width_mm: {value: 12, provenance: to_measure, note: "Provisional COB strip + aluminium heat-sink cross-section width"}
+  light_strip_height_mm: {value: 8, provenance: to_measure, note: "Provisional COB strip + heat-sink cross-section height"}
+  adapter_light_width_mm: {value: 80, provenance: to_measure, note: "Provisional 24 V lighting PSU simplified volume width"}
+  adapter_light_depth_mm: {value: 50, provenance: to_measure, note: "Provisional lighting PSU simplified volume depth"}
+  adapter_light_height_mm: {value: 30, provenance: to_measure, note: "Provisional lighting PSU simplified volume height"}
+  ctrl_rgbw_width_mm: {value: 60, provenance: to_measure, note: "Provisional RGBW controller simplified volume width"}
+  ctrl_rgbw_depth_mm: {value: 40, provenance: to_measure, note: "Provisional RGBW controller simplified volume depth"}
+  ctrl_rgbw_height_mm: {value: 25, provenance: to_measure, note: "Provisional RGBW controller simplified volume height"}
+  adapter_plotter_width_mm: {value: 90, provenance: to_measure, note: "Provisional plotter PSU simplified volume width (vented side pocket)"}
+  adapter_plotter_depth_mm: {value: 55, provenance: to_measure, note: "Provisional plotter PSU simplified volume depth"}
+  adapter_plotter_height_mm: {value: 35, provenance: to_measure, note: "Provisional plotter PSU simplified volume height"}
+  cable_channel_width_mm: {value: 25, provenance: to_measure, note: "Provisional cable routing channel width"}
+  cable_channel_height_mm: {value: 20, provenance: to_measure, note: "Provisional cable routing channel height"}
+  airpath_width_mm: {value: 200, provenance: to_measure, note: "Provisional passive bottom/rear air path volume width"}
+  airpath_depth_mm: {value: 80, provenance: to_measure, note: "Provisional passive air path volume depth"}
+  airpath_height_mm: {value: 30, provenance: to_measure, note: "Provisional passive air path volume height"}

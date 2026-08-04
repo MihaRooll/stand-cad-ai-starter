@@ -20,6 +20,10 @@ def _positive(value: Any) -> bool:
     return isinstance(value, (int, float)) and not isinstance(value, bool) and value > 0
 
 
+# Once config/parameters.yaml exists, stand_cad.parameters.validate_release_readiness is the
+# authoritative combined production gate, not validate_documents alone.
+
+
 def validate_documents(
     project_doc: dict[str, Any],
     equipment_doc: dict[str, Any],

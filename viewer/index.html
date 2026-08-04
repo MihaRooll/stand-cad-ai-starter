@@ -1,0 +1,1121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Light Plotter Tower — Assembly Viewer</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; font-family: system-ui, -apple-system, Segoe UI, sans-serif; }
+    body { display: flex; background: #e8e8ec; color: #1a1a1e; overflow: hidden; }
+
+    #sidebar {
+      width: 320px; min-width: 280px; max-width: 40vw;
+      background: #f4f4f7; border-right: 1px solid #c8c8d0;
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    #sidebar header { padding: 12px 14px 8px; border-bottom: 1px solid #d8d8de; }
+    #sidebar h1 { margin: 0; font-size: 1rem; font-weight: 600; }
+    #sidebar .sub { margin: 4px 0 0; font-size: 0.78rem; color: #555; }
+
+    #controls { padding: 10px 14px; border-bottom: 1px solid #d8d8de; font-size: 0.82rem; }
+    #controls label { display: block; margin: 6px 0 2px; }
+    #controls select { width: 100%; padding: 4px 6px; font-size: 0.78rem; }
+    #controls input[type="range"] { width: 100%; }
+    #controls .row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+    #controls button {
+      flex: 1 1 auto; min-width: 4.5rem; padding: 5px 8px; font-size: 0.75rem;
+      border: 1px solid #b0b0b8; border-radius: 4px; background: #fff; cursor: pointer;
+    }
+    #controls button:hover { background: #eef; }
+    #controls button.active { background: #dde; border-color: #88a; }
+
+    .clip-row { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
+    .clip-row input[type="range"] { flex: 1; }
+    .clip-row input[type="checkbox"] { flex-shrink: 0; }
+
+    #tree-wrap { flex: 1; overflow: auto; padding: 8px 10px 14px; font-size: 0.8rem; }
+    details { margin: 2px 0; }
+    details > summary {
+      cursor: pointer; user-select: none; padding: 3px 4px; border-radius: 3px;
+      list-style: none; display: flex; align-items: center; gap: 6px;
+    }
+    details > summary::-webkit-details-marker { display: none; }
+    details > summary:hover { background: #e8e8ef; }
+    .part-row {
+      display: flex; align-items: center; gap: 6px;
+      padding: 2px 4px 2px 22px; border-radius: 3px;
+    }
+    .part-row:hover { background: #ececf2; }
+    .part-row label { cursor: pointer; flex: 1; word-break: break-all; }
+
+    #viewport { flex: 1; position: relative; min-width: 0; }
+    canvas { display: block; width: 100%; height: 100%; }
+
+    #readout {
+      position: absolute; top: 10px; right: 10px;
+      background: rgba(255,255,255,0.92); border: 1px solid #c0c0c8;
+      border-radius: 6px; padding: 8px 12px; font-size: 0.78rem; line-height: 1.45;
+      pointer-events: none; box-shadow: 0 1px 4px rgba(0,0,0,0.08);
+    }
+    #readout strong { font-weight: 600; }
+
+    #status-panel {
+      position: absolute; bottom: 10px; left: 10px; max-width: 520px;
+      background: rgba(20, 22, 28, 0.88); color: #e8eaef;
+      padding: 10px 12px; border-radius: 6px; font-size: 0.74rem; line-height: 1.5;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+      pointer-events: auto; max-height: 40vh; overflow: auto;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.18);
+      transition: max-width 0.2s ease, max-height 0.2s ease, padding 0.2s ease;
+      cursor: default;
+    }
+    #status-panel.collapsed {
+      max-width: none; max-height: none; overflow: hidden;
+      padding: 6px 10px; border-radius: 20px; cursor: pointer;
+    }
+    #status-panel.collapsed .step-content { display: none; }
+    #status-panel .badge-summary {
+      display: none; font-size: 0.72rem; white-space: nowrap; user-select: none;
+    }
+    #status-panel.collapsed .badge-summary { display: block; }
+    #status-panel.error { background: rgba(120, 20, 20, 0.92); color: #ffe8e8; }
+    #status-panel.warn { background: rgba(100, 70, 16, 0.94); color: #fff4dc; }
+    #status-panel .step { margin: 2px 0; }
+    #status-panel .step.done { color: #9fd89f; }
+    #status-panel .step.pending { color: #b0b4be; }
+    #status-panel .step.fail { color: #ffb4b4; font-weight: 600; }
+    #status-panel .step.warn-step { color: #ffd080; font-weight: 600; }
+    #status-panel .err-line { color: #ffb4b4; margin-top: 6px; white-space: pre-wrap; word-break: break-all; }
+
+    #prefix-legend {
+      padding: 8px 14px 10px; border-bottom: 1px solid #d8d8de;
+      font-size: 0.72rem; line-height: 1.45; color: #444;
+    }
+    #prefix-legend summary { cursor: pointer; font-weight: 600; color: #333; }
+    #prefix-legend dl { margin: 6px 0 0; display: grid; grid-template-columns: auto 1fr; gap: 2px 8px; }
+    #prefix-legend dt { font-family: ui-monospace, monospace; color: #555; }
+    #prefix-legend dd { margin: 0; }
+
+    .clip-val { min-width: 4.2rem; text-align: right; font-size: 0.72rem; color: #555; font-variant-numeric: tabular-nums; }
+  </style>
+  <script type="importmap">
+  {
+    "imports": {
+      "three": "/viewer/vendor/three@0.170.0/build/three.module.js",
+      "three/addons/": "/viewer/vendor/three@0.170.0/examples/jsm/"
+    }
+  }
+  </script>
+</head>
+<body>
+  <aside id="sidebar">
+    <header>
+      <h1>Assembly viewer</h1>
+      <p class="sub">CONCEPT / REFERENCE ONLY</p>
+    </header>
+    <div id="controls">
+      <label for="model-select">Concept revision</label>
+      <select id="model-select" disabled><option>Loading index…</option></select>
+
+      <label for="opacity">Global opacity <span id="opacity-val">100</span>%</label>
+      <input type="range" id="opacity" min="0" max="100" value="100">
+
+      <div class="row">
+        <button type="button" id="btn-outer-off">Outer panels off</button>
+        <button type="button" id="btn-wireframe">Wireframe</button>
+      </div>
+
+      <p style="margin:10px 0 4px;font-weight:600;">Section planes <span style="font-weight:400;color:#666;">(CAD mm, Z-up)</span></p>
+      <div class="clip-row">
+        <input type="checkbox" id="clip-x-en" title="Enable width (X) clip">
+        <label for="clip-x">X width</label>
+        <input type="range" id="clip-x" disabled>
+        <span class="clip-val" id="clip-x-val">—</span>
+      </div>
+      <div class="clip-row">
+        <input type="checkbox" id="clip-y-en" title="Enable depth (Y) clip">
+        <label for="clip-y">Y depth</label>
+        <input type="range" id="clip-y" disabled>
+        <span class="clip-val" id="clip-y-val">—</span>
+      </div>
+      <div class="clip-row">
+        <input type="checkbox" id="clip-z-en" title="Enable height (Z) clip">
+        <label for="clip-z">Z height</label>
+        <input type="range" id="clip-z" disabled>
+        <span class="clip-val" id="clip-z-val">—</span>
+      </div>
+      <button type="button" id="btn-clip-reset" style="width:100%;margin-top:6px;">Reset clipping</button>
+
+      <p style="margin:10px 0 4px;font-weight:600;">Camera</p>
+      <div class="row">
+        <button type="button" id="btn-fit-view">Fit view</button>
+        <button type="button" data-view="front">Front</button>
+        <button type="button" data-view="rear">Rear</button>
+        <button type="button" data-view="left">Left</button>
+        <button type="button" data-view="right">Right</button>
+        <button type="button" data-view="top">Top</button>
+        <button type="button" data-view="iso">Iso</button>
+      </div>
+    </div>
+    <details id="prefix-legend" open>
+      <summary>Part-ID legend</summary>
+      <dl id="prefix-legend-list"></dl>
+    </details>
+    <div id="tree-wrap"><p id="tree-loading">Waiting for model…</p></div>
+  </aside>
+
+  <main id="viewport">
+    <div id="readout"><strong>—</strong></div>
+    <div id="status-panel" aria-live="polite" title="Press i to toggle">
+      <div class="badge-summary" id="status-badge">✓ —</div>
+      <div class="step-content">
+        <div class="step pending" data-step="three">⏳ three.js module</div>
+        <div class="step pending" data-step="index">⏳ model index</div>
+        <div class="step pending" data-step="manifest">⏳ manifest</div>
+        <div class="step pending" data-step="glb-fetch">⏳ GLB fetch</div>
+        <div class="step pending" data-step="glb-parse">⏳ GLB parsed</div>
+        <div class="step pending" data-step="scene">⏳ mesh count / bbox</div>
+        <div class="step pending" data-step="consistency">⏳ manifest vs glTF check</div>
+        <div class="step pending" data-step="camera">⏳ camera fitted</div>
+      </div>
+    </div>
+  </main>
+
+  <script type="module">
+    const statusPanel = document.getElementById('status-panel');
+    const statusBadge = document.getElementById('status-badge');
+    const stepEls = Object.fromEntries(
+      [...statusPanel.querySelectorAll('[data-step]')].map((el) => [el.dataset.step, el]),
+    );
+    let errBlock = null;
+    let collapseTimer = null;
+    let consistencyWarning = null;
+    const STATUS_PREF_KEY = 'viewer-status-panel';
+
+    function getStatusPreference() {
+      return localStorage.getItem(STATUS_PREF_KEY) || 'auto';
+    }
+
+    function setStatusPreference(value) {
+      localStorage.setItem(STATUS_PREF_KEY, value);
+    }
+
+    function formatMmTriplet(sizeMm) {
+      return `${sizeMm[0].toFixed(1)} × ${sizeMm[1].toFixed(1)} × ${sizeMm[2].toFixed(1)} mm`;
+    }
+
+    function updateStatusBadge(m) {
+      if (!m) {
+        statusBadge.textContent = consistencyWarning ? '⚠ mismatch' : '✓ loaded';
+        return;
+      }
+      statusBadge.textContent = consistencyWarning
+        ? `⚠ ${formatMmTriplet(m.bbox_size_mm)}`
+        : `✓ ${formatMmTriplet(m.bbox_size_mm)}`;
+    }
+
+    function setStatusCollapsed(collapsed, fromUser = false) {
+      statusPanel.classList.toggle('collapsed', collapsed);
+      if (fromUser) setStatusPreference(collapsed ? 'collapsed' : 'expanded');
+      else if (collapsed) setStatusPreference('collapsed');
+    }
+
+    function allStepsSucceeded() {
+      return Object.values(stepEls).every((el) => el.classList.contains('done'));
+    }
+
+    function scheduleAutoCollapse() {
+      clearTimeout(collapseTimer);
+      if (statusPanel.classList.contains('error') || statusPanel.classList.contains('warn')) return;
+      if (getStatusPreference() === 'expanded') return;
+      collapseTimer = setTimeout(() => {
+        if (allStepsSucceeded() && !statusPanel.classList.contains('error') &&
+            !statusPanel.classList.contains('warn')) {
+          setStatusCollapsed(true);
+        }
+      }, 3000);
+    }
+
+    function cancelAutoCollapse() {
+      clearTimeout(collapseTimer);
+      collapseTimer = null;
+    }
+
+    statusPanel.addEventListener('click', () => {
+      if (statusPanel.classList.contains('collapsed')) {
+        setStatusCollapsed(false, true);
+        cancelAutoCollapse();
+      }
+    });
+
+    window.addEventListener('keydown', (ev) => {
+      if (ev.target.matches('input, select, textarea')) return;
+      if (ev.key === 'i' || ev.key === 'I') {
+        const collapsed = !statusPanel.classList.contains('collapsed');
+        setStatusCollapsed(collapsed, true);
+        if (!collapsed) cancelAutoCollapse();
+        else if (allStepsSucceeded() && !statusPanel.classList.contains('error') &&
+                 !statusPanel.classList.contains('warn')) scheduleAutoCollapse();
+      }
+    });
+
+    function markStep(step, state, text) {
+      const el = stepEls[step];
+      if (!el) return;
+      el.className = `step ${state}`;
+      const icon = state === 'done' ? '✓' : state === 'fail' ? '✗' : state === 'warn-step' ? '⚠' : '⏳';
+      el.textContent = `${icon} ${text}`;
+    }
+
+    function showFatalError(message, url = '') {
+      statusPanel.classList.add('error');
+      statusPanel.classList.remove('warn');
+      setStatusCollapsed(false);
+      cancelAutoCollapse();
+      if (!errBlock) {
+        errBlock = document.createElement('div');
+        errBlock.className = 'err-line';
+        statusPanel.querySelector('.step-content').appendChild(errBlock);
+      }
+      errBlock.textContent = url ? `${message}\nURL: ${url}` : message;
+    }
+
+    function showConsistencyWarning(message) {
+      consistencyWarning = message;
+      statusPanel.classList.add('warn');
+      setStatusCollapsed(false);
+      cancelAutoCollapse();
+      markStep('consistency', 'warn-step', message);
+      if (manifest) updateStatusBadge(manifest);
+    }
+
+    window.onerror = (msg, src, line, col, err) => {
+      const detail = err && err.stack ? err.stack : `${msg} (${src}:${line}:${col})`;
+      showFatalError(detail, src || '');
+      return false;
+    };
+
+    window.addEventListener('unhandledrejection', (ev) => {
+      const reason = ev.reason;
+      const message = reason instanceof Error ? (reason.stack || reason.message) : String(reason);
+      const url = reason && reason.url ? reason.url : '';
+      showFatalError(message, url);
+    });
+
+    let THREE;
+    let GLTFLoader;
+    let OrbitControls;
+
+    try {
+      THREE = await import('three');
+      ({ GLTFLoader } = await import('three/addons/loaders/GLTFLoader.js'));
+      ({ OrbitControls } = await import('three/addons/controls/OrbitControls.js'));
+      markStep('three', 'done', `three.js module loaded (r${THREE.REVISION})`);
+    } catch (err) {
+      markStep('three', 'fail', 'three.js module failed');
+      showFatalError(err.message || String(err), '/viewer/vendor/three@0.170.0/build/three.module.js');
+      throw err;
+    }
+
+    const MODELS_INDEX_URL = '/viewer/models.json';
+    const RELOAD_STATUS_URL = '/viewer/reload-status';
+    const WATCH_POLL_MS = 2000;
+
+    const BUCKET_ORDER = [
+      'FRAME', 'PANEL-OUT', 'PANEL-IN', 'TRAY', 'ORG', 'DIVIDER',
+      'EQUIP', 'ENV', 'SVC', 'HARDWARE',
+    ];
+
+    const HARDWARE_PREFIXES = [
+      'FOOT-', 'INTERLOCK-', 'SLIDE-', 'MAINS-', 'LIGHT-', 'CTRL-', 'CABLE-',
+      'AIRPATH-', 'EDGEGUARD-', 'REARSUPPORT-', 'LID-', 'COVER-', 'RETAINER-',
+    ];
+
+    const OUTER_SHELL_PREFIXES = ['PANEL-OUT-'];
+
+    const PREFIX_LEGEND = [
+      ['FRAME', 'Structural aluminium angle frame'],
+      ['PANEL-OUT', 'Outer sheet-metal enclosure panels'],
+      ['PANEL-IN', 'Inner sheet-metal panels / liners'],
+      ['TRAY', 'Plotter and equipment trays'],
+      ['ORG', 'Organizer compartments and bins'],
+      ['DIVIDER', 'Internal dividers and partitions'],
+      ['EQUIP', 'Equipment placeholders (plotters, etc.)'],
+      ['ENV', 'Environmental / shroud parts'],
+      ['SVC', 'Service-access hardware zones'],
+      ['HARDWARE', 'Feet, slides, cables, guards, covers'],
+    ];
+
+    const MM_PER_M = 1000;
+    const BBOX_TOLERANCE = 0.01;
+
+    /** build123d glTF export: CAD Z-up mm → glTF Y-up metres (X→X, Y→−Z, Z→Y). */
+    function gltfMetresToCadMm(gx, gy, gz) {
+      return [gx * MM_PER_M, -gz * MM_PER_M, gy * MM_PER_M];
+    }
+
+    function gltfBoxToCadMm(box) {
+      const corners = [
+        [box.min.x, box.min.y, box.min.z],
+        [box.min.x, box.min.y, box.max.z],
+        [box.min.x, box.max.y, box.min.z],
+        [box.min.x, box.max.y, box.max.z],
+        [box.max.x, box.min.y, box.min.z],
+        [box.max.x, box.min.y, box.max.z],
+        [box.max.x, box.max.y, box.min.z],
+        [box.max.x, box.max.y, box.max.z],
+      ];
+      const cadCorners = corners.map(([x, y, z]) => gltfMetresToCadMm(x, y, z));
+      const min = [Infinity, Infinity, Infinity];
+      const max = [-Infinity, -Infinity, -Infinity];
+      for (const [cx, cy, cz] of cadCorners) {
+        min[0] = Math.min(min[0], cx); min[1] = Math.min(min[1], cy); min[2] = Math.min(min[2], cz);
+        max[0] = Math.max(max[0], cx); max[1] = Math.max(max[1], cy); max[2] = Math.max(max[2], cz);
+      }
+      return {
+        min,
+        max,
+        size: [max[0] - min[0], max[1] - min[1], max[2] - min[2]],
+      };
+    }
+
+    function cadMmToGltfPlaneConstant(cadAxis, mm) {
+      if (cadAxis === 'x') return mm / MM_PER_M;
+      if (cadAxis === 'y') return -mm / MM_PER_M;
+      if (cadAxis === 'z') return mm / MM_PER_M;
+      return mm / MM_PER_M;
+    }
+
+    function relativeDimError(a, b) {
+      const denom = Math.max(Math.abs(a), Math.abs(b), 1e-6);
+      return Math.abs(a - b) / denom;
+    }
+
+    function checkManifestGltfConsistency(m, gltfBox) {
+      const derived = gltfBoxToCadMm(gltfBox);
+      const labels = ['width X', 'depth Y', 'height Z'];
+      const mismatches = [];
+      for (let i = 0; i < 3; i++) {
+        const manifestSize = m.bbox_size_mm[i];
+        const meshSize = derived.size[i];
+        if (relativeDimError(manifestSize, meshSize) > BBOX_TOLERANCE) {
+          mismatches.push(
+            `${labels[i]}: manifest ${manifestSize.toFixed(1)} mm vs mesh ${meshSize.toFixed(1)} mm`,
+          );
+        }
+        const manifestMin = m.bbox_min_mm[i];
+        const meshMin = derived.min[i];
+        if (relativeDimError(manifestMin, meshMin) > BBOX_TOLERANCE &&
+            Math.abs(manifestMin - meshMin) > 0.5) {
+          mismatches.push(
+            `${labels[i]} min: manifest ${manifestMin.toFixed(1)} vs mesh ${meshMin.toFixed(1)} mm`,
+          );
+        }
+        const manifestMax = m.bbox_max_mm[i];
+        const meshMax = derived.max[i];
+        if (relativeDimError(manifestMax, meshMax) > BBOX_TOLERANCE &&
+            Math.abs(manifestMax - meshMax) > 0.5) {
+          mismatches.push(
+            `${labels[i]} max: manifest ${manifestMax.toFixed(1)} vs mesh ${meshMax.toFixed(1)} mm`,
+          );
+        }
+      }
+      return mismatches.length ? mismatches.join('; ') : null;
+    }
+
+    function formatGltfSceneBox(box) {
+      const size = box.getSize(new THREE.Vector3());
+      const min = box.min;
+      const max = box.max;
+      const fmt = (v) => v.toFixed(3);
+      return `glTF scene, metres, Y-up: ${fmt(size.x)}×${fmt(size.y)}×${fmt(size.z)} m ` +
+        `[${fmt(min.x)},${fmt(min.y)},${fmt(min.z)}]–[${fmt(max.x)},${fmt(max.y)},${fmt(max.z)}]`;
+    }
+
+    function formatCadManifestBox(m) {
+      const [sx, sy, sz] = m.bbox_size_mm;
+      const [mnx, mny, mnz] = m.bbox_min_mm;
+      const [mxx, mxy, mxz] = m.bbox_max_mm;
+      return `CAD bbox (manifest, mm, Z-up): width X ${sx.toFixed(1)}, depth Y ${sy.toFixed(1)}, ` +
+        `height Z ${sz.toFixed(1)} — [${mnx.toFixed(1)},${mny.toFixed(1)},${mnz.toFixed(1)}]–` +
+        `[${mxx.toFixed(1)},${mxy.toFixed(1)},${mxz.toFixed(1)}]`;
+    }
+
+    function populatePrefixLegend() {
+      const list = document.getElementById('prefix-legend-list');
+      list.innerHTML = '';
+      for (const [prefix, label] of PREFIX_LEGEND) {
+        const dt = document.createElement('dt');
+        dt.textContent = prefix;
+        const dd = document.createElement('dd');
+        dd.textContent = label;
+        list.appendChild(dt);
+        list.appendChild(dd);
+      }
+    }
+    populatePrefixLegend();
+
+    const VIEW_DIRECTIONS = {
+      front: [0, -1, 0],
+      rear: [0, 1, 0],
+      left: [-1, 0, 0],
+      right: [1, 0, 0],
+      top: [0, 0, 1],
+      iso: [-1, -1, 1],
+    };
+
+    function normalize(v) {
+      const len = Math.hypot(v[0], v[1], v[2]);
+      return len > 0 ? v.map((c) => c / len) : [0, 0, 1];
+    }
+
+    function getBucket(partId) {
+      const upper = partId.toUpperCase();
+      for (const bucket of BUCKET_ORDER.slice(0, -1)) {
+        if (upper.startsWith(bucket + '-') || upper === bucket) return bucket;
+      }
+      for (const prefix of HARDWARE_PREFIXES) {
+        if (upper.startsWith(prefix)) return 'HARDWARE';
+      }
+      return 'HARDWARE';
+    }
+
+    function formatClipMm(value) {
+      return `${Number(value).toFixed(1)} mm`;
+    }
+
+    const viewport = document.getElementById('viewport');
+    const readoutEl = document.getElementById('readout');
+    const treeWrap = document.getElementById('tree-wrap');
+    const modelSelect = document.getElementById('model-select');
+
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setPixelRatio(window.devicePixelRatio);
+    renderer.setClearColor(0xe8e8ec);
+    renderer.localClippingEnabled = true;
+    viewport.appendChild(renderer.domElement);
+
+    const scene = new THREE.Scene();
+    scene.background = new THREE.Color(0xe8e8ec);
+
+    const camera = new THREE.PerspectiveCamera(45, 1, 1, 50000);
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableDamping = true;
+    controls.dampingFactor = 0.08;
+
+    scene.add(new THREE.HemisphereLight(0xffffff, 0x888899, 0.65));
+    const keyLight = new THREE.DirectionalLight(0xffffff, 0.85);
+    keyLight.position.set(400, -300, 500);
+    scene.add(keyLight);
+    const fillLight = new THREE.DirectionalLight(0xffffff, 0.35);
+    fillLight.position.set(-350, 200, 250);
+    scene.add(fillLight);
+
+    let manifest = null;
+    let modelRoot = null;
+    let availableModels = [];
+    let sceneBounds = new THREE.Box3();
+    const partEntries = new Map();
+    const meshMaterials = new Map();
+    let wireframeOn = false;
+    let outerPanelsHidden = false;
+    let lastReloadToken = null;
+    let watchTimer = null;
+
+    const clipPlanes = {
+      x: new THREE.Plane(new THREE.Vector3(-1, 0, 0), 0),
+      y: new THREE.Plane(new THREE.Vector3(0, -1, 0), 0),
+      z: new THREE.Plane(new THREE.Vector3(0, 0, -1), 0),
+    };
+    const clipEnabled = { x: false, y: false, z: false };
+
+    function captureViewState() {
+      return {
+        cameraPosition: camera.position.clone(),
+        controlsTarget: controls.target.clone(),
+        visibility: Object.fromEntries(
+          [...partEntries.entries()].map(([partId, entry]) => [partId, entry.visible]),
+        ),
+        clipEnabled: { ...clipEnabled },
+        clipValues: {
+          x: Number(document.getElementById('clip-x').value),
+          y: Number(document.getElementById('clip-y').value),
+          z: Number(document.getElementById('clip-z').value),
+        },
+        wireframeOn,
+        outerPanelsHidden,
+        opacity: Number(document.getElementById('opacity').value),
+      };
+    }
+
+    function applyViewState(saved) {
+      if (!saved) return;
+      camera.position.copy(saved.cameraPosition);
+      controls.target.copy(saved.controlsTarget);
+      camera.updateProjectionMatrix();
+      controls.update();
+
+      document.getElementById('opacity').value = saved.opacity;
+      document.getElementById('opacity-val').textContent = saved.opacity;
+      wireframeOn = saved.wireframeOn;
+      outerPanelsHidden = saved.outerPanelsHidden;
+      document.getElementById('btn-wireframe').classList.toggle('active', wireframeOn);
+      document.getElementById('btn-outer-off').classList.toggle('active', outerPanelsHidden);
+      document.getElementById('btn-outer-off').textContent =
+        outerPanelsHidden ? 'Outer panels on' : 'Outer panels off';
+
+      for (const axis of ['x', 'y', 'z']) {
+        clipEnabled[axis] = saved.clipEnabled[axis];
+        document.getElementById(`clip-${axis}-en`).checked = saved.clipEnabled[axis];
+        const slider = document.getElementById(`clip-${axis}`);
+        slider.value = saved.clipValues[axis];
+        document.getElementById(`clip-${axis}-val`).textContent = formatClipMm(saved.clipValues[axis]);
+        if (axis === 'x') clipPlanes.x.constant = cadMmToGltfPlaneConstant('x', saved.clipValues[axis]);
+        else if (axis === 'y') clipPlanes.z.constant = cadMmToGltfPlaneConstant('y', saved.clipValues[axis]);
+        else if (axis === 'z') clipPlanes.y.constant = cadMmToGltfPlaneConstant('z', saved.clipValues[axis]);
+      }
+      updateActiveClipPlanes();
+    }
+
+    function restoreVisibility(saved) {
+      if (!saved?.visibility) return;
+      for (const [partId, wasVisible] of Object.entries(saved.visibility)) {
+        const entry = partEntries.get(partId);
+        if (!entry) continue;
+        entry.visible = wasVisible;
+        entry.mesh.visible = outerPanelsHidden && partId.startsWith('PANEL-OUT-')
+          ? false
+          : wasVisible;
+        const cb = document.querySelector(`input[data-part="${partId}"]`);
+        if (cb) cb.checked = wasVisible;
+      }
+      for (const details of treeWrap.querySelectorAll('details')) {
+        const groupCb = details.querySelector('summary input[type="checkbox"]');
+        if (!groupCb) continue;
+        const partCbs = [...details.querySelectorAll('input[data-part]')];
+        groupCb.checked = partCbs.length > 0 && partCbs.every((cb) => cb.checked);
+      }
+    }
+
+    function reloadStatusToken(status) {
+      if (!status?.manifest_file) return null;
+      return [status.revision, status.manifest_mtime_ns, status.glb_mtime_ns].join(':');
+    }
+
+    async function pollReloadStatus() {
+      try {
+        const resp = await fetch(RELOAD_STATUS_URL, { cache: 'no-store' });
+        if (!resp.ok) return;
+        const status = await resp.json();
+        const token = reloadStatusToken(status);
+        if (!token || token === lastReloadToken) return;
+        const isInitial = lastReloadToken === null;
+        lastReloadToken = token;
+        if (isInitial) return;
+
+        const indexResp = await fetch(MODELS_INDEX_URL, { cache: 'no-store' });
+        if (!indexResp.ok) return;
+        const indexPayload = await indexResp.json();
+        availableModels = indexPayload.models || [];
+        const entry = availableModels.find((m) => m.manifest_file === status.manifest_file)
+          || availableModels[0];
+        if (!entry) return;
+
+        const saved = captureViewState();
+        modelSelect.value = entry.manifest_url;
+        await loadModelEntry(entry, { preserveView: true, savedView: saved });
+      } catch (err) {
+        console.warn('reload-status poll failed', err);
+      }
+    }
+
+    function startWatchPolling() {
+      if (watchTimer) return;
+      watchTimer = setInterval(pollReloadStatus, WATCH_POLL_MS);
+      pollReloadStatus();
+    }
+
+    function bboxCenter(m) {
+      return [
+        (m.bbox_min_mm[0] + m.bbox_max_mm[0]) / 2,
+        (m.bbox_min_mm[1] + m.bbox_max_mm[1]) / 2,
+        (m.bbox_min_mm[2] + m.bbox_max_mm[2]) / 2,
+      ];
+    }
+
+    function updateReadout(m) {
+      readoutEl.innerHTML =
+        `<strong>CAD: ${formatMmTriplet(m.bbox_size_mm)}</strong> ` +
+        `<span style="color:#555">(width X × depth Y × height Z)</span><br>` +
+        `${m.part_count} parts`;
+    }
+
+    function cloneMeshMaterial(mesh) {
+      if (!meshMaterials.has(mesh)) {
+        const cloned = mesh.material.clone();
+        mesh.material = cloned;
+        meshMaterials.set(mesh, cloned);
+      }
+      return meshMaterials.get(mesh);
+    }
+
+    function applyMaterialFlags() {
+      const opacity = Number(document.getElementById('opacity').value) / 100;
+      for (const [, mat] of meshMaterials) {
+        mat.transparent = opacity < 1;
+        mat.opacity = opacity;
+        mat.wireframe = wireframeOn;
+        mat.clipShadows = true;
+        mat.needsUpdate = true;
+      }
+      updateActiveClipPlanes();
+    }
+
+    function updateActiveClipPlanes() {
+      const active = [];
+      if (clipEnabled.x) active.push(clipPlanes.x);
+      if (clipEnabled.y) active.push(clipPlanes.z);
+      if (clipEnabled.z) active.push(clipPlanes.y);
+      for (const mat of meshMaterials.values()) {
+        mat.clippingPlanes = active;
+        mat.needsUpdate = true;
+      }
+    }
+
+    function registerMesh(mesh, partId) {
+      cloneMeshMaterial(mesh);
+      partEntries.set(partId, { mesh, partId, visible: true });
+    }
+
+    function collectMeshesByName(root, manifestParts) {
+      const byName = new Map();
+      root.traverse((obj) => {
+        if (obj.isMesh && obj.name) byName.set(obj.name, obj);
+      });
+      for (const part of manifestParts) {
+        const mesh = byName.get(part.part_id);
+        if (mesh) registerMesh(mesh, part.part_id);
+      }
+      const missing = manifestParts.filter((p) => !byName.has(p.part_id));
+      if (missing.length) {
+        console.warn('Meshes missing for part IDs:', missing.map((p) => p.part_id));
+      }
+    }
+
+    function countSceneMeshes(root) {
+      let count = 0;
+      root.traverse((obj) => { if (obj.isMesh) count += 1; });
+      return count;
+    }
+
+    function computeSceneBounds(root) {
+      const box = new THREE.Box3();
+      if (root) box.setFromObject(root);
+      return box;
+    }
+
+    function fitCameraToScene(direction = VIEW_DIRECTIONS.iso) {
+      if (!modelRoot || sceneBounds.isEmpty()) return;
+      const center = sceneBounds.getCenter(new THREE.Vector3());
+      const size = sceneBounds.getSize(new THREE.Vector3());
+      const maxDim = Math.max(size.x, size.y, size.z, 1);
+      const dir = normalize(direction);
+      const dist = maxDim * 1.8;
+      camera.position.set(
+        center.x + dir[0] * dist,
+        center.y + dir[1] * dist,
+        center.z + dir[2] * dist,
+      );
+      controls.target.copy(center);
+      camera.near = Math.max(maxDim * 0.005, 0.1);
+      camera.far = maxDim * 30;
+      camera.updateProjectionMatrix();
+      controls.update();
+      markStep('camera', 'done', 'camera fitted to scene bbox');
+    }
+
+    function buildVisibilityTree(m) {
+      const groups = Object.fromEntries(BUCKET_ORDER.map((b) => [b, []]));
+      for (const part of m.parts) {
+        groups[getBucket(part.part_id)].push(part);
+      }
+
+      treeWrap.innerHTML = '';
+      for (const bucket of BUCKET_ORDER) {
+        const parts = groups[bucket];
+        if (!parts.length) continue;
+
+        const details = document.createElement('details');
+        details.open = true;
+
+        const summary = document.createElement('summary');
+        const groupCb = document.createElement('input');
+        groupCb.type = 'checkbox';
+        groupCb.checked = true;
+        groupCb.dataset.bucket = bucket;
+        const groupLabel = document.createElement('span');
+        groupLabel.textContent = `${bucket} (${parts.length})`;
+        summary.appendChild(groupCb);
+        summary.appendChild(groupLabel);
+        details.appendChild(summary);
+
+        groupCb.addEventListener('change', () => {
+          for (const part of parts) {
+            const entry = partEntries.get(part.part_id);
+            if (!entry) continue;
+            entry.visible = groupCb.checked;
+            entry.mesh.visible = groupCb.checked;
+            const rowCb = details.querySelector(`input[data-part="${part.part_id}"]`);
+            if (rowCb) rowCb.checked = groupCb.checked;
+          }
+        });
+
+        for (const part of parts) {
+          const row = document.createElement('div');
+          row.className = 'part-row';
+          const cb = document.createElement('input');
+          cb.type = 'checkbox';
+          cb.checked = true;
+          cb.dataset.part = part.part_id;
+          const label = document.createElement('label');
+          label.textContent = part.part_id;
+          label.title = part.material;
+          row.appendChild(cb);
+          row.appendChild(label);
+          details.appendChild(row);
+
+          cb.addEventListener('change', () => {
+            const entry = partEntries.get(part.part_id);
+            if (!entry) return;
+            entry.visible = cb.checked;
+            entry.mesh.visible = cb.checked;
+            const allOn = parts.every((p) => {
+              const e = partEntries.get(p.part_id);
+              return e && e.visible;
+            });
+            groupCb.checked = allOn;
+          });
+        }
+        treeWrap.appendChild(details);
+      }
+    }
+
+    function setupClipping(m) {
+      const axes = ['x', 'y', 'z'];
+      for (let i = 0; i < 3; i++) {
+        const axis = axes[i];
+        const slider = document.getElementById(`clip-${axis}`);
+        const valEl = document.getElementById(`clip-${axis}-val`);
+        const en = document.getElementById(`clip-${axis}-en`);
+        const min = m.bbox_min_mm[i];
+        const max = m.bbox_max_mm[i];
+        slider.min = min;
+        slider.max = max;
+        slider.step = Math.max((max - min) / 200, 0.1);
+        slider.value = max;
+        slider.disabled = false;
+        valEl.textContent = formatClipMm(max);
+
+        const updatePlane = () => {
+          const mm = Number(slider.value);
+          valEl.textContent = formatClipMm(mm);
+          if (axis === 'x') clipPlanes.x.constant = cadMmToGltfPlaneConstant('x', mm);
+          else if (axis === 'y') clipPlanes.z.constant = cadMmToGltfPlaneConstant('y', mm);
+          else if (axis === 'z') clipPlanes.y.constant = cadMmToGltfPlaneConstant('z', mm);
+        };
+        updatePlane();
+
+        slider.addEventListener('input', updatePlane);
+        en.addEventListener('change', () => {
+          clipEnabled[axis] = en.checked;
+          updateActiveClipPlanes();
+        });
+      }
+    }
+
+    function frameCamera(direction, m) {
+      if (modelRoot && !sceneBounds.isEmpty()) {
+        fitCameraToScene(direction);
+        return;
+      }
+      const center = bboxCenter(m);
+      const dir = normalize(direction);
+      const maxDim = Math.max(...m.bbox_size_mm);
+      const dist = maxDim * 1.8;
+      camera.position.set(
+        center[0] + dir[0] * dist,
+        center[1] + dir[1] * dist,
+        center[2] + dir[2] * dist,
+      );
+      controls.target.set(center[0], center[1], center[2]);
+      camera.near = maxDim * 0.01;
+      camera.far = maxDim * 20;
+      camera.updateProjectionMatrix();
+      controls.update();
+    }
+
+    function resize() {
+      const w = viewport.clientWidth;
+      const h = viewport.clientHeight;
+      renderer.setSize(w, h, false);
+      camera.aspect = w / h;
+      camera.updateProjectionMatrix();
+    }
+
+    window.addEventListener('resize', resize);
+
+    document.getElementById('opacity').addEventListener('input', (e) => {
+      document.getElementById('opacity-val').textContent = e.target.value;
+      applyMaterialFlags();
+    });
+
+    document.getElementById('btn-wireframe').addEventListener('click', (e) => {
+      wireframeOn = !wireframeOn;
+      e.target.classList.toggle('active', wireframeOn);
+      applyMaterialFlags();
+    });
+
+    document.getElementById('btn-outer-off').addEventListener('click', (e) => {
+      outerPanelsHidden = !outerPanelsHidden;
+      e.target.classList.toggle('active', outerPanelsHidden);
+      e.target.textContent = outerPanelsHidden ? 'Outer panels on' : 'Outer panels off';
+      for (const [partId, entry] of partEntries) {
+        if (OUTER_SHELL_PREFIXES.some((p) => partId.startsWith(p))) {
+          entry.mesh.visible = outerPanelsHidden ? false : entry.visible;
+          const cb = document.querySelector(`input[data-part="${partId}"]`);
+          if (cb) cb.disabled = outerPanelsHidden;
+        }
+      }
+    });
+
+    document.getElementById('btn-clip-reset').addEventListener('click', () => {
+      if (!manifest) return;
+      for (const axis of ['x', 'y', 'z']) {
+        clipEnabled[axis] = false;
+        document.getElementById(`clip-${axis}-en`).checked = false;
+        const maxMm = manifest.bbox_max_mm['xyz'.indexOf(axis)];
+        const slider = document.getElementById(`clip-${axis}`);
+        slider.value = maxMm;
+        document.getElementById(`clip-${axis}-val`).textContent = formatClipMm(maxMm);
+        if (axis === 'x') clipPlanes.x.constant = cadMmToGltfPlaneConstant('x', maxMm);
+        else if (axis === 'y') clipPlanes.z.constant = cadMmToGltfPlaneConstant('y', maxMm);
+        else if (axis === 'z') clipPlanes.y.constant = cadMmToGltfPlaneConstant('z', maxMm);
+      }
+      updateActiveClipPlanes();
+    });
+
+    document.getElementById('btn-fit-view').addEventListener('click', () => {
+      fitCameraToScene(VIEW_DIRECTIONS.iso);
+    });
+
+    document.querySelectorAll('[data-view]').forEach((btn) => {
+      btn.addEventListener('click', () => {
+        if (!manifest) return;
+        frameCamera(VIEW_DIRECTIONS[btn.dataset.view], manifest);
+      });
+    });
+
+    async function fetchArrayBufferWithProgress(url, onProgress) {
+      const resp = await fetch(url);
+      if (!resp.ok) {
+        const err = new Error(`HTTP ${resp.status} fetching ${url}`);
+        err.url = url;
+        throw err;
+      }
+      const total = Number(resp.headers.get('Content-Length')) || 0;
+      if (!resp.body || !resp.body.getReader) {
+        const buf = await resp.arrayBuffer();
+        onProgress(buf.byteLength, total || buf.byteLength);
+        return buf;
+      }
+      const reader = resp.body.getReader();
+      const chunks = [];
+      let received = 0;
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        chunks.push(value);
+        received += value.byteLength;
+        onProgress(received, total);
+      }
+      const out = new Uint8Array(received);
+      let offset = 0;
+      for (const chunk of chunks) {
+        out.set(chunk, offset);
+        offset += chunk.byteLength;
+      }
+      return out.buffer;
+    }
+
+    function resetSceneState() {
+      partEntries.clear();
+      meshMaterials.clear();
+      if (modelRoot) {
+        scene.remove(modelRoot);
+        modelRoot.traverse((obj) => {
+          if (obj.isMesh) {
+            obj.geometry?.dispose();
+            if (Array.isArray(obj.material)) obj.material.forEach((m) => m.dispose());
+            else obj.material?.dispose();
+          }
+        });
+        modelRoot = null;
+      }
+      sceneBounds = new THREE.Box3();
+      wireframeOn = false;
+      outerPanelsHidden = false;
+      document.getElementById('btn-wireframe').classList.remove('active');
+      document.getElementById('btn-outer-off').classList.remove('active');
+      document.getElementById('btn-outer-off').textContent = 'Outer panels off';
+    }
+
+    async function loadModelEntry(entry, options = {}) {
+      const { preserveView = false, savedView = null } = options;
+      resetSceneState();
+      consistencyWarning = null;
+      statusPanel.classList.remove('error', 'warn');
+      setStatusCollapsed(false);
+      cancelAutoCollapse();
+      if (errBlock) {
+        errBlock.remove();
+        errBlock = null;
+      }
+      markStep('manifest', 'pending', 'manifest');
+      markStep('glb-fetch', 'pending', 'GLB fetch');
+      markStep('glb-parse', 'pending', 'GLB parsed');
+      markStep('scene', 'pending', 'mesh count / bbox');
+      markStep('consistency', 'pending', 'manifest vs glTF check');
+      markStep('camera', 'pending', 'camera fitted');
+
+      const manifestUrl = entry.manifest_url;
+      const glbUrl = entry.glb_url;
+
+      try {
+        const manifestResp = await fetch(manifestUrl);
+        if (!manifestResp.ok) {
+          const err = new Error(`Manifest HTTP ${manifestResp.status}`);
+          err.url = manifestUrl;
+          throw err;
+        }
+        manifest = await manifestResp.json();
+        markStep('manifest', 'done', `manifest fetched (${entry.manifest_file})`);
+        updateReadout(manifest);
+        setupClipping(manifest);
+
+        const arrayBuffer = await fetchArrayBufferWithProgress(glbUrl, (received, total) => {
+          const label = total > 0
+            ? `GLB fetch ${received.toLocaleString()} / ${total.toLocaleString()} bytes`
+            : `GLB fetch ${received.toLocaleString()} bytes`;
+          markStep('glb-fetch', 'pending', label);
+        });
+        markStep('glb-fetch', 'done', `GLB fetched (${arrayBuffer.byteLength.toLocaleString()} bytes)`);
+
+        const loader = new GLTFLoader();
+        const gltf = await loader.parseAsync(arrayBuffer, glbUrl);
+        markStep('glb-parse', 'done', 'GLB parsed');
+
+        modelRoot = gltf.scene;
+        scene.add(modelRoot);
+
+        collectMeshesByName(modelRoot, manifest.parts);
+        if (preserveView && savedView) {
+          buildVisibilityTree(manifest);
+          restoreVisibility(savedView);
+          applyMaterialFlags();
+          applyViewState(savedView);
+        } else {
+          buildVisibilityTree(manifest);
+          applyMaterialFlags();
+        }
+
+        sceneBounds = computeSceneBounds(modelRoot);
+        const meshCount = countSceneMeshes(modelRoot);
+        markStep(
+          'scene',
+          'done',
+          `${meshCount} meshes — ${formatCadManifestBox(manifest)}; ${formatGltfSceneBox(sceneBounds)}`,
+        );
+
+        const mismatch = checkManifestGltfConsistency(manifest, sceneBounds);
+        if (mismatch) {
+          showConsistencyWarning(`manifest vs glTF mismatch (>1%): ${mismatch}`);
+        } else {
+          markStep('consistency', 'done', 'manifest vs glTF bbox agree (within 1%)');
+        }
+
+        updateStatusBadge(manifest);
+        if (preserveView) {
+          markStep('camera', 'done', 'camera preserved (live reload)');
+        } else {
+          fitCameraToScene(VIEW_DIRECTIONS.iso);
+        }
+        resize();
+        scheduleAutoCollapse();
+      } catch (err) {
+        const step = err.url && String(err.url).endsWith('.glb') ? 'glb-fetch'
+          : err.url && String(err.url).includes('.manifest.') ? 'manifest' : 'glb-parse';
+        markStep(step, 'fail', err.message || String(err));
+        showFatalError(err.message || String(err), err.url || manifestUrl || glbUrl);
+        treeWrap.innerHTML = `<p style="color:#a00">${err.message}</p>`;
+        throw err;
+      }
+    }
+
+    async function populateModelIndex() {
+      markStep('index', 'pending', 'model index');
+      const resp = await fetch(MODELS_INDEX_URL);
+      if (!resp.ok) {
+        const err = new Error(`Model index HTTP ${resp.status}`);
+        err.url = MODELS_INDEX_URL;
+        markStep('index', 'fail', err.message);
+        showFatalError(err.message, MODELS_INDEX_URL);
+        throw err;
+      }
+      const payload = await resp.json();
+      availableModels = payload.models || [];
+      if (!availableModels.length) {
+        const err = new Error('No concept models found in output/concept/');
+        err.url = MODELS_INDEX_URL;
+        markStep('index', 'fail', err.message);
+        showFatalError(err.message, MODELS_INDEX_URL);
+        throw err;
+      }
+      markStep('index', 'done', `model index (${availableModels.length} revision(s))`);
+
+      modelSelect.innerHTML = '';
+      for (const entry of availableModels) {
+        const opt = document.createElement('option');
+        opt.value = entry.manifest_url;
+        const rev = entry.revision >= 0 ? `rev${entry.revision}` : entry.manifest_file;
+        opt.textContent = `${rev} — ${entry.glb_file}`;
+        modelSelect.appendChild(opt);
+      }
+      modelSelect.disabled = false;
+      modelSelect.addEventListener('change', async () => {
+        const selected = availableModels.find((m) => m.manifest_url === modelSelect.value);
+        if (selected) await loadModelEntry(selected);
+      });
+
+      return availableModels[0];
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    animate();
+    resize();
+
+    try {
+      const newest = await populateModelIndex();
+      await loadModelEntry(newest);
+      startWatchPolling();
+    } catch (err) {
+      console.error(err);
+    }
+  </script>
+</body>
+</html>
