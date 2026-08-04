@@ -23,14 +23,20 @@ After measuring, update `config/parameters.yaml`, regenerate the model, repeat c
 
 Manufacturer DFM authorization remains open and is not addressed by the TZ. Before Gate G5 the owner must authorize which vendors may receive the RFQ package and approve the selected prototype quotation, per ADR-003 and `docs/05_IMPLEMENTATION_PLAN.md`.
 
-## C. Tray deflection under design load (PLT-011 / TZ line 184)
+## C. Tray deflection under design load (PLT-011 / TZ line 184) — **RESOLVED** (D-035, 2026-08-04)
 
-Concept-stage corrected beam model (`output/validation/rev6/deflection_report.md`) yields **3.644 mm**
+**Status:** Two-rail single-span indicative model (`output/validation/rev6/deflection_report.md`) yielded **3.644 mm**
 mid-span deflection under the 10 kg design load with rail-to-rail span 570 mm (`plotter.physical_width`,
 Cameo 4 governing) and load distributed along 195 mm (`plotter.physical_depth`) with unsourced sandwich
-panel stiffness `materials.tray_panel_youngs_modulus_mpa` (3000 MPa, `to_measure`). This exceeds the
-1.5 mm TZ ceiling. Resolving the miss requires measured panel stiffness, tray structural redesign, or
-slide/support review — not silent parameter retuning. See assumption **A-012**.
+panel stiffness `materials.tray_panel_youngs_modulus_mpa` (3000 MPa, `to_measure`) — this **exceeded** the
+1.5 mm TZ ceiling. **Fix (D-035):** added a third centre slide rail plus a fixed frame rail at each tray
+level (`SLIDE-{LOWER,UPPER}-CENTER-001`, `FRAME-RAIL-TRAY-{LOWER,UPPER}-C-001`), bisecting the 570 mm span
+into two ≈285 mm half-spans. Conservative half-span model (P/2 on L/2, ignoring elastic continuity at the
+centre support) gives **≈0.228 mm** mid-span deflection — **ceiling met**, ~6.6× margin. Panel thickness
+(10–12 mm) and the E assumption are unchanged; E remains `to_measure` and fails the ceiling only if measured
+E falls below **≈456 MPa** (3000 × 0.228/1.5). See `output/validation/rev11/deflection_report.md`,
+`state/REQUIREMENTS_TRACEABILITY.csv` PLT-011 (`IN_PROGRESS` — indicative model only, not FEA), and
+assumption **A-012**.
 
 ## D. Side-slab front-corner rounding (TZ section 8 line 230 / D-025) — **CLOSED**
 
@@ -38,13 +44,13 @@ With fixed `case.width`=650 mm and `case.internal_width`=610 mm, `side_clear`=(6
 
 **Implemented (rev5):** R10 full bullnose on the **exterior front vertical** edges of both side slabs, **continued along the top-front horizontal edge** (`case.side_slab_bullnose_radius_mm`=10, achieved ≈9.9 mm after width/2−0.1 clamp). Recorded as **DEVIATED** in `state/REQUIREMENTS_TRACEABILITY.csv` row **PLT-018** (D-025).
 
-**Owner decision (2026-08-04):** accepts **option 1 — R10 bullnose at the current 650×610 envelope** (matches rev5 geometry; no dimensional change). **Declined option 2** (grow overall width to 690 mm). **Rejected option 3** (shrink clear width to ~570 mm): that envelope is narrower than the 580 mm protective plotter design width (`plotter.design_width`) and would leave only ~2 mm clearance per side where TZ line 89 requires 22 mm. Owner also declined a cosmetic/non-structural overhang workaround.
+**Owner decision (2026-08-04):** accepts **option 1 — R10 bullnose at the current 650×610 envelope** (matches rev5 geometry; no dimensional change). **Declined option 2** (grow overall width to 690 mm). **Rejected option 3** (shrink clear width to ~570 mm): that envelope is narrower than the 584 mm protective plotter design width (`plotter.design_width`, `config/parameters.yaml:39`) and would leave only ~2 mm clearance per side where TZ line 89 requires 22 mm. Owner also declined a cosmetic/non-structural overhang workaround.
 
 Curved side-profile massing beyond the bullnose and RGBW photometric glow remain deferred.
 
 ## E. Handle mount coordinates (PLT-007 / D-030, recomputed D-038)
 
-Provisional derived values `hardware.handle_mount_y_mm` (**100 mm**) and `hardware.handle_mount_z_mm` (**276.5 mm**) position the TZ:304 grip cutout (110×35 mm) in the front plotter-bay gap: Y band **[45, 155]**, Z band **[259.0, 294.0]** (`handle_cutout_footprint`: `mount_z ± handle_grip_depth_mm/2` = 276.5 ± 17.5, verified by `tests/test_geometry.py::test_handle_cutout_dimensions` and `test_handle_cutout_sightline_clear`). Handle Z is centred on the side panel, **not** at the indicative loaded-case centre of mass (CoM z≈**229.5 mm** per rev9 `mass_report.csv` → **+47 mm** offset above CoM per D-030, values recomputed after D-038 `case.height` +27 mm). Full case-width through-ray grid testing against all transport parts reports zero encroachment (rework F-1). **VERIFY ON REAL MACHINE** before production release.
+Provisional derived values `hardware.handle_mount_y_mm` (**100 mm**) and `hardware.handle_mount_z_mm` (**276.5 mm**) position the TZ:304 grip cutout (110×35 mm) in the front plotter-bay gap: Y band **[45, 155]**, Z band **[259.0, 294.0]** (`handle_cutout_footprint`: `mount_z ± handle_grip_depth_mm/2` = 276.5 ± 17.5, verified by `tests/test_geometry.py::test_handle_cutout_dimensions` and `test_handle_cutout_sightline_clear`). Handle Z is centred on the side panel, **not** at the indicative loaded-case centre of mass (CoM z≈**229.3 mm** per current `output/validation/rev11/mass_report.csv` — was 229.5 mm at rev9, negligible drift — → **+47.2 mm** offset above CoM per D-030, values recomputed after D-038 `case.height` +27 mm). Full case-width through-ray grid testing against all transport parts reports zero encroachment (rework F-1). **VERIFY ON REAL MACHINE** before production release.
 
 ## F. Rear vent render evidence (PLT-005 rework F-3)
 
@@ -113,6 +119,6 @@ Regression: `tests/test_kinematics.py::test_plotter1_clear_of_tier2_under_tray_h
 | Lower tray fully extended (250 mm), both plotters installed | **2.080** | **3.563** | 1.5 | Meets |
 | Upper tray fully extended (400 mm), both plotters installed | **1.300** | **1.596** | 1.5 | **Meets** |
 
-**Root cause (D-039):** the pre-rev10 model applied identical `total_mass` to both restore and overturn moments, so mass cancelled algebraically; only extension ratio mattered (400/250=1.6 explained the 1.300 vs 2.080 split). The corrected model credits only the extended tier's tray panel + plotter as moving mass and the real computed structural mass plus the other plotter as stationary mass. Both tiers pivot at the front foot line (Y=0), consistent with `apply_tray_extension`. No ballast was required.
+**Root cause (D-039):** the pre-rev10 model applied identical `total_mass` to both restore and overturn moments, so mass cancelled algebraically; only extension ratio mattered (400/250=1.6 explained the 1.300 vs 2.080 split). The corrected model credits only the extended tier's tray panel + plotter as moving mass and the real computed structural mass plus the other plotter as stationary mass. Both tiers pivot at the front foot line (Y=15.0 mm, `hardware.foot_diameter_mm`/2 foot inset — not Y=0), consistent with `output/validation/rev11/stability_report.md`. No ballast was required.
 
 **Status:** tracked as `PASSING` in `state/REQUIREMENTS_TRACEABILITY.csv` PLT-010 under the indicative model. Still **not authoritative for Gate G4** — Gate G4 needs qualified engineering review (FEA, dynamic transport loads, real measured masses), not an agent-computed static model.

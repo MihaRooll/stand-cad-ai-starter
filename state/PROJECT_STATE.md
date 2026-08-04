@@ -1,10 +1,10 @@
 # Project state
 
 - Project: Light desktop tower for two Silhouette plotters plus horizontal film storage, **650 × 550 × 544 mm** (derived height; see ADR-005 and `ИИ советы/Cursor_Opus5_TZ_Light_Plotter_Tower.md`)
-- Current phase: PLT-009 height-stack fix → **rev9** evidence pack (CONCEPT / REFERENCE_ONLY)
+- Current phase: D-040 render-evidence tie-break fix → **rev11** evidence pack (CONCEPT / REFERENCE_ONLY)
 - Current gate: G0 (human verdict unconfirmed)
-- Status: F-5 closed (D-038); height-stack formula corrected; pending adversarial review
-- Last updated: 2026-08-04 (PLT-009; upper_z +27 mm; case.height 544 mm; rev9)
+- Status: F-5 closed (D-038); PLT-010 stability closed (D-039, upper 1.596 / lower 3.563, both ≥1.5 floor); render Z-buffer tie-break fixed (D-040, adversarial-reviewer cycle 1 PASS) — cladding now correctly visible in evidence PNGs, zero change to mass/stability/deflection numbers
+- Last updated: 2026-08-04 (D-040; render tie-break fix; `CONCEPT_REVISION` 10→11; rev11)
 
 ## PLT-009 height-stack fix (2026-08-04, D-038)
 
@@ -37,13 +37,13 @@
 
 ## PLT-007 horizontal reconfig + Cameo 4 governing envelope (2026-08-04)
 
-- **Envelope:** 650 × 550 × 517 mm; **610 mm clear width** (20 mm side wall, **R10** bullnose — D-027 rejects 620/630 widening)
+- **Envelope (at rev7, pre-D-038):** 650 × 550 × 517 mm; **610 mm clear width** (20 mm side wall, **R10** bullnose — D-027 rejects 620/630 widening). **Superseded 2026-08-04 by D-038:** `case.height` grew to **544 mm** (+27 mm height-stack fix) — see **PLT-009 height-stack fix** section above; 610 mm clear width and R10 bullnose unaffected.
 - **Governing machine:** Silhouette Cameo 4 — 570 × 195 × 170 mm, 4.7 kg (`plotter_cameo4`); design envelope 584 × 219 × 178 mm; slot 2 mass 5.2 kg (Cameo 5)
 - **Film storage:** 4 horizontal shelves, 25 mm compartment height, 500 mm sheet edge across width
 - **Tier layout:** tiers aligned, setback removed (D-033); `lower_y`=`upper_y`=15; tier 1 has a documented 130 mm quick-access forward slide (`trays.lower_quick_access_extension_mm`) in addition to its 250 mm full-service extension; tier clear height ≥170 mm each
 - **Storage clearances (closed trays):** plotter 1 front **15 mm**; plotter 2 rear **340 mm** to case back (recomputed after D-033 alignment; was 210 mm at the old 130 mm setback)
 - **Operational clearance (structural — settled):** manufacturer pass-through **907 mm** (356+195+356) **exceeds** case depth 550 mm → **closed niche is storage/transport only** (D-028). Active cutting requires material through front **and** rear openings (330 mm slots at L1/L2 feed planes) and/or tray extension plus **external rear supports** (`services.rearsupport_*`). Tests: `test_pass_through_depth_exceeds_case_envelope`, `test_operating_state_front_rear_pass_through_open`.
-- **Delivered:** service-port cutout (provisional); handle Z=263 (side-panel centre); frame cladding; grey backgrounds; `CONCEPT_REVISION`=7; `service_port_closeup.png` evidence
+- **Delivered:** service-port cutout (provisional); handle Z=263 (side-panel centre) — **superseded 2026-08-04 by D-038: recomputed to 276.5 mm** on the taller 544 mm case, formula unchanged; frame cladding; grey backgrounds; `CONCEPT_REVISION`=7; `service_port_closeup.png` evidence
 - **Evidence target:** `output/validation/rev7/views/`; STEP/manifest `*_rev7.*`
 - **Viewer:** `uv run python scripts/serve_viewer.py --watch` → `http://127.0.0.1:8000/viewer/index.html` (see `viewer/README.md`)
 - **Tests:** 132 pytest passing; ruff/setup not re-run this cycle
@@ -54,7 +54,7 @@
 ## PLT-006 fidelity cycle 4 (2026-08-04)
 
 - **Phase:** fidelity cycle 4 → **rev5** evidence pack (CONCEPT / REFERENCE_ONLY)
-- **Delivered:** opal `PANEL-CLAD-FRONT-{BASE,ORG,TOP}-001` over centre front rails; R10 side-slab bullnose (exterior front vertical + top edge); mass report paths sync to `CONCEPT_REVISION`; `evidence_light_strip_only.png` / `evidence_retainer_only.png` identity renders; handle Z note cites CoM z≈217.3 mm (unchanged Y=100/Z=214)
+- **Delivered:** opal `PANEL-CLAD-FRONT-{BASE,ORG,TOP}-001` over centre front rails; R10 side-slab bullnose (exterior front vertical + top edge); mass report paths sync to `CONCEPT_REVISION`; `evidence_light_strip_only.png` / `evidence_retainer_only.png` identity renders; handle Z note cites CoM z≈217.3 mm (unchanged Y=100/Z=214) — **rev5-era figures; superseded by D-038 height-stack fix (handle Z now 276.5 mm) and current `output/validation/rev11/mass_report.csv` (CoM empty case z=236.4 mm; case + 2 plotters z=229.3 mm). D-040 (2026-08-04) also found this cladding's pre-rev11 PNG renders had a Z-buffer tie-break defect that hid it behind the rail it covers — the geometry above was always correct, only the render tool's visual evidence was wrong; see rev11 evidence.**
 - **Evidence:** 14 PNG + 5 SVG in `output/validation/rev5/views/`; STEP/STL/GLB/manifest `*_rev5.*`; `rev4/` untouched
 - **DEVIATED:** PLT-018 / TZ line 230 R20–R30 → R10 bullnose (D-025)
 - **Tests:** 130 pytest passing; ruff clean; `scripts/setup_windows.ps1` exit 0
@@ -76,7 +76,7 @@
 - **Delivered:** full-height side slabs (20 mm × 690 mm, 2D front-corner fillets, single solid each); open front (no `PANEL-OUT-FRONT-001`); open organizer top (no `TOP-STRUCTURE-001`); removed `PANEL-OUT-CORNER-*`; handle cutout repositioned (Y=`depth×0.25`, Z=`upper_z+physical_height/2` provisional); bottom vent through-cuts on `PANEL-IN-BOTTOM-001` under `AIRPATH-001`; organizer close-up render
 - **Removed parts:** `PANEL-OUT-FRONT-001`, `TOP-STRUCTURE-001`, `PANEL-OUT-CORNER-FL/FR/RL/RR-001` (4)
 - **Evidence:** 12 PNG + 5 SVG in `output/validation/rev3/views/` (incl. `organizer_closeup.png`, `base_plate_closeup.png`); STEP/STL/GLB/manifest `*_rev3.*`; `rev1/` and `rev2/` untouched
-- **Mass:** indicative structural **7.849 kg** (3 mm PMMA side-slab shells; single-face shell estimate); deflection 3.953 mm (unchanged; ceiling NOT met)
+- **Mass (rev3 figure):** indicative structural **7.849 kg** (3 mm PMMA side-slab shells; single-face shell estimate); deflection 3.953 mm (unchanged; ceiling NOT met) — **superseded: deflection fixed to ≈0.228 mm by D-035's three-rail centre support (ceiling now met); current rev11 structural mass 7.054 kg per `output/validation/rev11/mass_report.csv`**
 - **Tests:** 121 pytest passing; ruff clean; `scripts/setup_windows.ps1` exit 0
 - **Next:** adversarial review of rev3 PNGs; human G0 verdict unchanged
 
@@ -85,7 +85,7 @@
 - **Phase:** concept validation evidence pack (`output/validation/rev1/`, CONCEPT / REFERENCE_ONLY)
 - **Delivered:** quarter-cylinder corner shells (`PANEL-OUT-CORNER-FL/FR/RL/RR-001`); organizer top perimeter frame + front opening above retainer; divider finger cutouts; all-cell film bodies; cylindrical feet; rear vent slots; TOP-STRUCTURE sketch R25 footprint; corner junction skin continuity fix (cycle 3)
 - **Evidence:** 10 PNG + 5 SVG in `output/validation/rev1/views/`; STEP/STL/GLB/manifest `*_rev1.*` in `output/concept/`; viewer `index.html` → rev1 manifest
-- **Mass:** empty-case indicative 9.573 kg; regenerate via `scripts/generate_mass_report.py`
+- **Mass (rev1 figure):** empty-case indicative 9.573 kg; regenerate via `scripts/generate_mass_report.py` — **superseded: current rev11 structural total 7.054 kg (excl. `verify_on_real_machine` parts) / all-parts total 9.292 kg per `output/validation/rev11/mass_report.csv`**
 - **Tests:** 117 pytest passing; ruff clean; `scripts/setup_windows.ps1` exit 0
 - **Render path:** `uv run python scripts/render_validation_views.py` writes to `output/validation/rev1/views/` and `output/concept/*_rev1.*`
 - **Open:** vent slot dimensions provisional (`to_measure`); corner top-edge fillet best-effort; adversarial sign-off pending
@@ -166,9 +166,9 @@ Evidence collected is not a gate verdict: G0 remains an unconfirmed Human Gate.
 
 - `scripts/render_validation_views.py`'s PNG rasterizer had a Z-buffer tie-break defect: coplanar cladding-over-rail pairs (`PANEL-CLAD-FRONT-{BASE,ORG,TOP,TRAY-*}-001` vs their rails) always resolved to the structural rail winning, because the strict `z > depth` comparison let whichever part was inserted first (always the rail) win every coincident-depth pixel. This meant "frame concealed" render evidence since fidelity cycle 4 (rev5) never actually showed the cladding — the geometry was always correct, the tool's PNG output was not. Fixed with a material-priority epsilon tie-break (`MATERIAL_RENDER_PRIORITY`, `DEPTH_EPSILON_MM=1e-6`); regression test `tests/test_render_tiebreak.py` covers both insertion orders. Independently confirmed by adversarial review: `rev10`→`rev11` pixel histograms show an exact aluminium↔cladding swap (e.g. transport_iso.png ∓30064 px) on all four checked views, zero change to mass/stability/deflection numbers. `SLIDE-*` hardware remains visible (unchanged, known non-blocking follow-up — separate owner decision, not fixed in this cycle). See D-040.
 
-### Stability — indicative PLT-010 closed in rev10 (D-039)
+### Stability — indicative PLT-010 closed in rev10, reconfirmed rev11 (D-039/D-040)
 
-- Upper tray fully extended (400 mm) with both plotters installed: corrected tip-over factor **1.596** (meets TZ line 508 floor of **1.5**). Lower tray: **3.563**. Legacy mass-cancelling model had upper at **1.300** — a modelling flaw, not a geometry limitation. No ballast added. See `output/validation/rev10/stability_report.md`, `state/REQUIREMENTS_TRACEABILITY.csv` PLT-010 (`PASSING`), and `docs/10_USER_INPUT_REQUIRED.md` section J. Still **not authoritative for Gate G4** — needs qualified engineering review.
+- Upper tray fully extended (400 mm) with both plotters installed: corrected tip-over factor **1.596** (meets TZ line 508 floor of **1.5**). Lower tray: **3.563**. Legacy mass-cancelling model had upper at **1.300** — a modelling flaw, not a geometry limitation. No ballast added. See `output/validation/rev11/stability_report.md` (identical numeric content to rev10, differing only in the revision-tag title line, per D-040's independent re-check), `state/REQUIREMENTS_TRACEABILITY.csv` PLT-010 (`PASSING`), and `docs/10_USER_INPUT_REQUIRED.md` section J. Still **not authoritative for Gate G4** — needs qualified engineering review.
 
 ### Measurements and manufacturing
 
