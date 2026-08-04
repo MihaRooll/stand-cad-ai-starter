@@ -167,11 +167,11 @@ hardware:
   handle_grip_length_mm: {value: 110, provenance: verified, note: "TZ:304 — minimum grip length"}
   handle_grip_depth_mm: {value: 35, provenance: verified, note: "TZ:304 — minimum grip depth"}
   handle_mount_y_mm: {value: 100, provenance: derived, note: "Front grip centre Y=100 → band [45,155] mm; clears plotter2 Y≥145, frame posts Y≤40, and organizer Z≥396 (PLT-007)"}
-  handle_mount_z_mm: {value: 263, provenance: derived, note: "Side-panel centre Z=(foot_height_mm+case.height)/2=(9+517)/2=263 mm; owner 2026-08-04 override of TZ line 235 CoM placement"}
+  handle_mount_z_mm: {value: 263, provenance: derived, note: "Side-panel centre Z=(foot_height_mm+case.height)/2=(9+517)/2=263 mm; owner 2026-08-04 override of TZ line 235 CoM placement (D-030). Loaded-case indicative CoM z≈216.0 mm (case+2 plotters, mass-report model) → handle +47 mm above CoM; empty-case CoM z≈224.7 mm → +38 mm"}
   service_port_cutout_width_mm: {value: 16, provenance: to_measure, note: "PROVISIONAL panel-mount USB-A coupler body cutout width; connector type NOT decided — do not use for production DXF"}
   service_port_cutout_height_mm: {value: 8, provenance: to_measure, note: "PROVISIONAL panel-mount USB-A coupler body cutout height; VERIFY connector selection before production DXF"}
-  service_port_mount_y_mm: {value: 275, provenance: derived, note: "Mid-depth on right side slab: case.depth×0.5 = 275 mm (front-facing view)"}
-  service_port_mount_z_mm: {value: 120, provenance: derived, note: "Lower-mid panel band above feet; clears tier 1 envelope and handle cutout band [196.5,231.5] at Z=263"}
+  service_port_mount_y_mm: {value: 275, provenance: derived, note: "Y from case front (Y=0); mid-depth on exterior right side slab — reachable from operator front-right for USB cable (panels.py reads this for cutout centre)"}
+  service_port_mount_z_mm: {value: 120, provenance: derived, note: "Lower-mid right panel band above feet; clears plotter tier envelopes and handle cutout at Z=263"}
   foot_diameter_mm: {value: 30, provenance: verified, note: "TZ:224,300 — minimum foot diameter"}
   vent_slot_count: {value: 5, provenance: to_measure, note: "TZ line 290 — passive rear ventilation; slot count not specified in TZ"}
   vent_slot_width_mm: {value: 80, provenance: to_measure, note: "TZ line 290 — provisional rear vent slot width; measure on prototype grille"}

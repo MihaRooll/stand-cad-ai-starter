@@ -728,24 +728,55 @@ def test_film_bodies_no_adjacent_intersection(params, shelf_index):
 
 
 def test_film_bodies_span_sheet_depth_across_width(params):
-    """PLT-007 — 500 mm sheet edge spans organizer clear width."""
+    """PLT-007 — 500 mm nominal sheet edge along X from org left; margin to right wall."""
     datums = Datums.from_parameters(params)
     org_x = float(params.value("film_storage_horizontal.x"))
     sheet_span_x = float(params.value("film_storage_horizontal.sheet_depth_mm"))
+    clear_w = float(params.value("film_storage_horizontal.clear_width"))
     parts = build_film_body_parts(params, datums)
     first = parts[0]
     bounds = bounding_box_bounds(first.solid)
     assert bounds[0][0] == pytest.approx(org_x, abs=0.5)
     assert bounds[0][1] == pytest.approx(org_x + sheet_span_x, abs=0.5)
+    assert org_x + clear_w - (org_x + sheet_span_x) == pytest.approx(110.0)
 
 
 def test_handle_mount_z_side_panel_centred(params):
-    """PLT-007 — handle Z at side-panel centre, not CoM."""
+    """PLT-007 — handle Z at side-panel centre, not CoM (D-030: +47 mm above loaded CoM)."""
     foot_h = float(params.value("materials.foot_height_mm"))
     height = float(params.value("case.height"))
     expected = (foot_h + height) / 2
     assert float(params.value("hardware.handle_mount_z_mm")) == pytest.approx(expected)
     assert expected == pytest.approx(263.0)
+
+
+def test_vertical_organizer_rightmost_cell_boundary_arithmetic():
+    """D-031 — vertical cell 9 bounded by org floor at X=630, not missing divider."""
+    org_x = 20.0
+    clear_w = 610.0
+    cells = 10
+    divider_t = 2.0
+    cell_w = (clear_w - (cells - 1) * divider_t) / cells
+    assert cell_w == pytest.approx(59.2)
+    cell9_x_min = org_x + 9 * (cell_w + divider_t)
+    cell9_x_max = cell9_x_min + cell_w
+    assert cell9_x_max == pytest.approx(org_x + clear_w)
+    assert cell9_x_max == pytest.approx(630.0)
+
+
+def test_horizontal_organizer_compartments_bounded_by_walls(params, transport):
+    """D-031 — horizontal floor/shelves span to X=630 with explicit right wall."""
+    org_x = float(params.value("film_storage_horizontal.x"))
+    clear_w = float(params.value("film_storage_horizontal.clear_width"))
+    width = float(params.value("case.width"))
+    side_clear = params.side_slab_thickness_mm
+    right_inner_x = width - side_clear
+    floor_bounds = bounding_box_bounds(transport.parts["ORG-FLOOR-001"].solid)
+    assert floor_bounds[0][1] == pytest.approx(org_x + clear_w)
+    assert org_x + clear_w == pytest.approx(right_inner_x)
+    for part_id in ("ORG-INSERT-001", "SHELF-000", "SHELF-001", "SHELF-002"):
+        bounds = bounding_box_bounds(transport.parts[part_id].solid)
+        assert bounds[0][1] == pytest.approx(org_x + clear_w)
 
 
 def test_side_slab_bullnose_radius(params):
@@ -1006,14 +1037,15 @@ def test_operating_state_front_rear_pass_through_open(params):
 
 
 def test_service_port_cutout_on_right_panel(params, transport):
-    """PLT-007 — provisional USB service port through-cut on right side slab."""
+    """PLT-007 — provisional USB service port through-cut at documented Y/Z on right slab."""
     from stand_cad.geometry.primitives import solid_point_state
 
     panel = transport.parts["PANEL-OUT-RIGHT-001"].solid
     width = float(params.value("case.width"))
-    depth = float(params.value("case.depth"))
     side_clear = params.side_slab_thickness_mm
+    port_y = float(params.value("hardware.service_port_mount_y_mm"))
     port_z = float(params.value("hardware.service_port_mount_z_mm"))
     x_mid = width - side_clear / 2
-    y_rear = depth - float(params.value("materials.outer_panel_shadow_gap_mm")) - 0.5
-    assert solid_point_state(panel, x_mid, y_rear, port_z) == "OUT"
+    assert port_y == pytest.approx(275.0)
+    assert solid_point_state(panel, x_mid, port_y, port_z) == "OUT"
+    assert solid_point_state(panel, x_mid, port_y, port_z + 20) == "IN"

@@ -41,9 +41,9 @@ With fixed `case.width`=650 mm and `case.internal_width`=610 mm, `side_clear`=(6
 
 Curved side-profile massing beyond the bullnose and RGBW photometric glow remain deferred.
 
-## E. Handle mount coordinates (PLT-005)
+## E. Handle mount coordinates (PLT-007 / D-030)
 
-Provisional derived values `hardware.handle_mount_y_mm` (**100 mm**) and `hardware.handle_mount_z_mm` (**214 mm**) position the TZ:304 grip cutout (110×35 mm) in the front plotter-bay gap: Y band **[45, 155]**, Z band **[196.5, 231.5]**. Full case-width through-ray grid testing against all 81 transport parts reports zero encroachment (rework F-1). **VERIFY ON REAL MACHINE** before production release.
+Provisional derived values `hardware.handle_mount_y_mm` (**100 mm**) and `hardware.handle_mount_z_mm` (**263 mm**) position the TZ:304 grip cutout (110×35 mm) in the front plotter-bay gap: Y band **[45, 155]**, Z band **[245.5, 280.5]**. Handle Z is centred on the side panel, **not** at the indicative loaded-case centre of mass (CoM z≈216 mm → **+47 mm** offset above CoM per D-030). Full case-width through-ray grid testing against all transport parts reports zero encroachment (rework F-1). **VERIFY ON REAL MACHINE** before production release.
 
 ## F. Rear vent render evidence (PLT-005 rework F-3)
 

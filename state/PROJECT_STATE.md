@@ -14,9 +14,9 @@
 - **Tier layout:** setback 130 mm; `lower_y`=15, `upper_y`=145 (D-029); tier clear height ≥170 mm each
 - **Storage clearances (closed trays):** plotter 1 front **15 mm**; plotter 2 rear **210 mm** to case back
 - **Operational clearance (structural — settled):** manufacturer pass-through **907 mm** (356+195+356) **exceeds** case depth 550 mm → **closed niche is storage/transport only** (D-028). Active cutting requires material through front **and** rear openings (330 mm slots at L1/L2 feed planes) and/or tray extension plus **external rear supports** (`services.rearsupport_*`). Tests: `test_pass_through_depth_exceeds_case_envelope`, `test_operating_state_front_rear_pass_through_open`.
-- **Delivered:** service-port cutout (provisional); handle Z=263 (side-panel centre); frame cladding; grey backgrounds; `CONCEPT_REVISION`=6
+- **Delivered:** service-port cutout (provisional); handle Z=263 (side-panel centre); frame cladding; grey backgrounds; `CONCEPT_REVISION`=6; `service_port_closeup.png` evidence
 - **Evidence target:** `output/validation/rev6/views/`; STEP/manifest `*_rev6.*`
-- **Tests:** 124 pytest passing; ruff clean; `scripts/setup_windows.ps1` exit 0
+- **Tests:** 126 pytest passing; ruff clean; `scripts/setup_windows.ps1` exit 0
 - **Pre-change SHA:** `69b1261`
 - **Next:** adversarial-reviewer on rev6; verifier Full profile
 
