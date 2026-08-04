@@ -452,7 +452,7 @@ def test_transport_exterior_corner_clear_at_r24(params, transport, datums):
         ("rr", width, depth, -1.0, -1.0),
     )
     sweep_angles = tuple(float(angle) for angle in range(0, 91, 5))
-    flat_panel_prefixes = ("PANEL-IN-", "PANEL-OUT-")
+    flat_panel_prefixes = ("PANEL-IN-", "PANEL-OUT-", "PANEL-CLAD-FRONT-")
     for name, cx, cy, sx, sy in corner_specs:
         for angle_deg in sweep_angles:
             rad = math.radians(angle_deg)
@@ -760,14 +760,60 @@ def test_film_bodies_fit_clear_width(params):
     assert bounds[0][0] == pytest.approx(expected_x0, abs=0.5)
 
 
-def test_side_slab_corner_radius_ceiling(params):
-    """PLT-005 — side-slab corner fillet clamped below case.corner_radius on 20 mm profile."""
-    from stand_cad.geometry.panels import achieved_side_slab_corner_radius_mm
+def test_side_slab_bullnose_radius(params):
+    """PLT-006 — R10 full bullnose on exterior front vertical + top edges (Main ruling)."""
+    from stand_cad.geometry.panels import (
+        achieved_side_slab_front_bullnose_radius_mm,
+        achieved_side_slab_top_bullnose_radius_mm,
+        side_slab_bullnose_radius_mm,
+    )
 
-    achieved = achieved_side_slab_corner_radius_mm(params)
-    requested = float(params.value("case.corner_radius"))
-    assert achieved == pytest.approx(9.9, abs=0.15)
-    assert achieved < requested
+    configured = side_slab_bullnose_radius_mm(params)
+    front = achieved_side_slab_front_bullnose_radius_mm(params)
+    top = achieved_side_slab_top_bullnose_radius_mm(params)
+    width = float(params.value("case.width"))
+    internal = float(params.value("case.internal_width"))
+    side_clear = (width - internal) / 2
+    assert side_clear == pytest.approx(20.0)
+    assert configured == pytest.approx(10.0)
+    assert front == pytest.approx(9.9, abs=0.15)
+    assert top == pytest.approx(9.9, abs=0.15)
+
+
+def test_frame_front_rail_cladding(params, transport):
+    """PLT-006 AC-C1 — opal cladding covers front BASE/ORG/TOP rail spans in the opening."""
+    width = float(params.value("case.width"))
+    inset = float(params.value("case.corner_radius"))
+    profile = float(params.value("materials.frame_profile_size_mm"))
+    foot_h = float(params.value("materials.foot_height_mm"))
+    for prefix in ("BASE", "ORG", "TOP"):
+        part_id = f"PANEL-CLAD-FRONT-{prefix}-001"
+        assert part_id in transport.parts
+        record = transport.parts[part_id]
+        assert record.material == "cast_opal_pmma_3mm"
+        (x_min, x_max), (y_min, y_max), (z_min, z_max) = bounding_box_bounds(record.solid)
+        assert x_min == pytest.approx(inset, abs=0.5)
+        assert x_max == pytest.approx(width - inset, abs=0.5)
+        assert y_min == pytest.approx(0.0, abs=0.5)
+        assert y_max == pytest.approx(profile, abs=0.5)
+        assert z_min >= foot_h - 0.5
+        assert z_max - z_min == pytest.approx(profile, abs=0.5)
+
+
+def test_top_warm_member_is_light_strip(params, transport, datums):
+    """PLT-006 AC-C4 — warm top bar is LIGHT-STRIP-001, not RETAINER-001."""
+    light = transport.parts["LIGHT-STRIP-001"]
+    retainer = transport.parts["RETAINER-001"]
+    light_bb = bounding_box_bounds(light.solid)
+    retainer_bb = bounding_box_bounds(retainer.solid)
+    top_z = float(params.value("top_structure.z_min_mm"))
+    (_lx0, _lx1), (_ly_min, _ly1), (lz_min, _lz1) = light_bb
+    (_rx0, _rx1), (_ry_min, _ry1), (rz_min, _rz1) = retainer_bb
+    assert lz_min == pytest.approx(top_z, abs=1.0)
+    assert rz_min < datums.organizer_floor_top_z_mm + 50.0
+    assert light.material == "service_volume"
+    assert retainer.material == "transparent_petg_2mm"
+    assert _lz1 > rz_min + 200.0
 
 
 def test_rear_vent_slots_grid(params, transport, datums):

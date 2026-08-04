@@ -383,6 +383,24 @@ def build_rear_vent_closeup_assembly(params: Parameters) -> AssemblyState:
     return state
 
 
+def build_single_part_assembly(params: Parameters, part_id: str) -> AssemblyState:
+    """Isolate one registry part for identity / colour evidence renders."""
+    state = build_transport_assembly(params)
+    if part_id not in state.parts:
+        raise KeyError(f"part {part_id!r} not in transport assembly")
+    state.parts = {part_id: state.parts[part_id]}
+    state.name = f"single_{part_id.lower().replace('-', '_')}"
+    return state
+
+
+def build_light_strip_only_assembly(params: Parameters) -> AssemblyState:
+    return build_single_part_assembly(params, "LIGHT-STRIP-001")
+
+
+def build_retainer_only_assembly(params: Parameters) -> AssemblyState:
+    return build_single_part_assembly(params, "RETAINER-001")
+
+
 def default_render_targets() -> list[RenderTarget]:
     iso = ViewSpec(direction=(-1.0, -1.0, 1.0))
     organizer_view = ViewSpec(direction=ORGANIZER_VIEW_DIRECTION)
@@ -415,6 +433,16 @@ def default_render_targets() -> list[RenderTarget]:
             "rear_vent_closeup.png",
             build_rear_vent_closeup_assembly,
             ViewSpec(direction=(0.0, 1.0, 0.0)),
+        ),
+        RenderTarget(
+            "evidence_light_strip_only.png",
+            build_light_strip_only_assembly,
+            organizer_view,
+        ),
+        RenderTarget(
+            "evidence_retainer_only.png",
+            build_retainer_only_assembly,
+            organizer_view,
         ),
     ]
 

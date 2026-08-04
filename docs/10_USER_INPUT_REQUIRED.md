@@ -29,9 +29,15 @@ panel stiffness `materials.tray_panel_youngs_modulus_mpa` (3000 MPa, `to_measure
 1.5 mm TZ ceiling. Resolving the miss requires measured panel stiffness, tray structural redesign, or
 slide/support review — not silent parameter retuning. See assumption **A-012**.
 
-## D. Side-slab front-corner rounding (TZ section 8 / A-013)
+## D. Side-slab front-corner rounding (TZ section 8 line 230 / D-025) — **CLOSED**
 
-**Open (PLT-005 rev4):** outer side slabs are **solid** 20 mm × (690−foot_h) mm volumes with **2D front-corner fillets only**. Achieved radius is **≈9.9 mm** (`min(case.corner_radius, side_clear/2−0.1, depth/2−0.1)` with default TZ datums) — **not** the full R25 case corner. Matching the reference photo's large dominant radius requires widening `side_clear` (derived from fixed 650×610 envelope) — **out of scope** until TZ dimensions change or human accepts the divergence (D-019). Top-front 3D edge fillet remains best-effort via `_try_top_front_edge_fillet`. Curved side-profile massing and RGBW glow remain deferred.
+With fixed `case.width`=650 mm and `case.internal_width`=610 mm, `side_clear`=(650−610)/2=**20 mm exactly**. A full bullnose on a 20 mm-thick side slab cannot exceed **R10** (= `side_clear`/2) before the edge becomes a full round. TZ line 230 asks for **R20–R30**, which cannot hold simultaneously with the TZ's own 610 mm clear-width floor once 650 mm overall width is fixed — an **internal conflict inside the TZ**.
+
+**Implemented (rev5):** R10 full bullnose on the **exterior front vertical** edges of both side slabs, **continued along the top-front horizontal edge** (`case.side_slab_bullnose_radius_mm`=10, achieved ≈9.9 mm after width/2−0.1 clamp). Recorded as **DEVIATED** in `state/REQUIREMENTS_TRACEABILITY.csv` row **PLT-018** (D-025).
+
+**Owner decision (2026-08-04):** accepts **option 1 — R10 bullnose at the current 650×610 envelope** (matches rev5 geometry; no dimensional change). **Declined option 2** (grow overall width to 690 mm). **Rejected option 3** (shrink clear width to ~570 mm): that envelope is narrower than the 580 mm protective plotter design width (`plotter.design_width`) and would leave only ~2 mm clearance per side where TZ line 89 requires 22 mm. Owner also declined a cosmetic/non-structural overhang workaround.
+
+Curved side-profile massing beyond the bullnose and RGBW photometric glow remain deferred.
 
 ## E. Handle mount coordinates (PLT-005)
 

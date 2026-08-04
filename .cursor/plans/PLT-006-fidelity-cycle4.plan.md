@@ -14,6 +14,30 @@ this cycle's own delta only — do not re-describe PLT-005 work in the cycle-4 c
 ## 0. Orchestrator-established facts (established by direct computation on the live source —
 re-verify by render/test, do not re-derive from scratch)
 
+### Owner decision, 2026-08-04 (final — supersedes "Main's ruling" below as the authoritative record)
+
+Main presented the owner with the three options implied by the arithmetic. The owner's decision:
+
+- **Accepts R10 with the overall width held at 650 mm.**
+- **Explicitly rejected** shrinking the clear width to ~570 mm (the branch that would reach R20 at
+  650 mm overall): 570 mm is narrower than the 580 mm protective plotter envelope
+  (`plotter.design_width`) and would leave only ~2 mm per side clearance where TZ line 89 requires
+  22 mm.
+- **Declined** growing the overall width to 690 mm (to reach R20 while keeping 610 mm clear) and
+  declined a cosmetic overhang/non-structural visual radius trick.
+
+This is now a **recorded owner decision**, not a pending agent-side ruling awaiting input — write the
+records that way: `state/DECISION_LOG.md` gets a decision entry dated **2026-08-04** with the
+arithmetic (`(650-610)/2=20mm` per slab → max edge radius 10mm; R20 would require 40mm/slab, forcing
+either 690mm overall or ~570mm clear) **and** the reason the 570mm branch was rejected (580mm
+protective envelope vs TZ line 89's 22mm clearance requirement — 570mm leaves only ~2mm). The
+`state/REQUIREMENTS_TRACEABILITY.csv` row tracing to TZ line 230 stays **DEVIATED** (R10 is not
+R20-R30 — do not mark it satisfied), but its note now reads as **owner-accepted**, not
+pending-owner-input. If the implementer already wrote these two records framed as "agent ruling,
+pending owner" (per the original cycle-4 instructions, written before this decision arrived), amend
+the wording in place rather than duplicating a second entry — one decision-log row and one
+traceability note for this item, reflecting the final accepted state.
+
 ### Main's ruling (binding, supersedes the open-ended analysis below) — R10 bullnose, no principal-arbiter
 
 Main independently confirmed the arithmetic and ruled directly (do not escalate, do not wait for the

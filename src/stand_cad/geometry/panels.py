@@ -74,17 +74,42 @@ def _handle_mount_y(params: Parameters, datums: Datums) -> float:
     return _handle_mount_y_fallback(params, datums)
 
 
-def achieved_side_slab_corner_radius_mm(params: Parameters) -> float:
-    """Maximum geometrically valid front-corner fillet on the side-slab profile."""
-    side_clear = _side_clearance_mm(params)
-    corner_r = float(params.value("case.corner_radius"))
-    depth = float(params.value("case.depth"))
-    max_r = min(corner_r, side_clear / 2.0 - 0.1, depth / 2.0 - 0.1)
+def side_slab_bullnose_radius_mm(params: Parameters) -> float:
+    """Configured full bullnose radius on side-slab front vertical + top edges."""
+    return float(params.value("case.side_slab_bullnose_radius_mm"))
+
+
+def _achieved_bullnose_on_profile(
+    params: Parameters, *, profile_width_mm: float, profile_depth_mm: float
+) -> float:
+    """Clamp configured bullnose to what the slab cross-section can geometrically accept."""
+    bullnose = side_slab_bullnose_radius_mm(params)
+    max_r = min(bullnose, profile_width_mm / 2.0 - 0.1, profile_depth_mm / 2.0 - 0.1)
     return max(max_r, 0.5)
 
 
-def _try_top_front_edge_fillet(solid: Part, radius: float) -> Part:
-    """Attempt a small fillet on the slab top-front horizontal edge; skip on build123d failure."""
+def achieved_side_slab_front_bullnose_radius_mm(params: Parameters) -> float:
+    """Achieved radius on the front vertical exterior edge of a side slab."""
+    side_clear = _side_clearance_mm(params)
+    gap = float(params.value("materials.outer_panel_shadow_gap_mm"))
+    depth = float(params.value("case.depth")) - gap
+    return _achieved_bullnose_on_profile(
+        params, profile_width_mm=side_clear, profile_depth_mm=depth
+    )
+
+
+def achieved_side_slab_top_bullnose_radius_mm(params: Parameters) -> float:
+    """Achieved radius on the top-front horizontal exterior edge (same ceiling as front)."""
+    return achieved_side_slab_front_bullnose_radius_mm(params)
+
+
+def achieved_side_slab_corner_radius_mm(params: Parameters) -> float:
+    """Backward-compatible alias — PLT-006 uses front bullnose only."""
+    return achieved_side_slab_front_bullnose_radius_mm(params)
+
+
+def _apply_top_front_bullnose(solid: Part, radius: float) -> Part:
+    """Fillet the slab top-front horizontal edge with the same bullnose radius."""
     try:
         top_z = solid.bounding_box().max.Z
         min_y = solid.bounding_box().min.Y
@@ -97,7 +122,7 @@ def _try_top_front_edge_fillet(solid: Part, radius: float) -> Part:
         ]
         if not edges:
             return solid
-        return fillet(edges[:4], radius=min(radius, 3.0))
+        return fillet(edges[:4], radius=radius)
     except Exception:  # noqa: BLE001 — build123d fillet stability varies by kernel
         return solid
 
@@ -110,26 +135,31 @@ def _extrude_side_slab(
     y_max: float,
     z_min: float,
     z_max: float,
-    front_corner_radius: float,
+    side: str,
+    bullnose_radius: float,
     wall_mm: float,
 ) -> Part:
-    """Full-height solid side slab with front-corner fillet (single connected volume)."""
+    """Full-height solid side slab with exterior front-corner bullnose (single connected volume)."""
     del wall_mm  # retained for call-site compatibility; slab is solid not hollow-shell
     height = z_max - z_min
     width = x_max - x_min
     depth = y_max - y_min
-    max_r = min(front_corner_radius, width / 2.0 - 0.1, depth / 2.0 - 0.1)
+    max_r = min(bullnose_radius, width / 2.0 - 0.1, depth / 2.0 - 0.1)
     max_r = max(max_r, 0.5)
 
     with BuildPart() as outer_builder:
         with BuildSketch(Plane.XY) as sketch:
             Rectangle(width, depth, align=(Align.MIN, Align.MIN))
             front_vertices = [vertex for vertex in sketch.vertices() if abs(vertex.Y) < 0.01]
-            if len(front_vertices) >= 2:
-                fillet(front_vertices, radius=max_r)
+            if front_vertices:
+                if side == "left":
+                    exterior = min(front_vertices, key=lambda vertex: vertex.X)
+                else:
+                    exterior = max(front_vertices, key=lambda vertex: vertex.X)
+                fillet([exterior], radius=max_r)
         extrude(amount=height)
     solid = outer_builder.part.move(Location((x_min, y_min, z_min)))
-    return _try_top_front_edge_fillet(solid, min(max_r, 3.0))
+    return _apply_top_front_bullnose(solid, max_r)
 
 
 def _subtract_rounded_through_x(
@@ -306,7 +336,7 @@ def _build_side_slab_with_handle(
 ) -> PartRecord:
     gap = float(params.value("materials.outer_panel_shadow_gap_mm"))
     foot_h = float(params.value("materials.foot_height_mm"))
-    corner_r = float(params.value("case.corner_radius"))
+    bullnose_r = side_slab_bullnose_radius_mm(params)
     wall_mm = float(params.value("materials.outer_panel_thickness_mm"))
     grip_len = float(params.value("hardware.handle_grip_length_mm"))
     grip_depth = float(params.value("hardware.handle_grip_depth_mm"))
@@ -331,7 +361,8 @@ def _build_side_slab_with_handle(
         y_max=depth - gap,
         z_min=foot_h,
         z_max=height,
-        front_corner_radius=corner_r,
+        side=side,
+        bullnose_radius=bullnose_r,
         wall_mm=wall_mm,
     )
     solid = _subtract_rounded_through_x(

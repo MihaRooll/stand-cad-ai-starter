@@ -106,6 +106,8 @@ RAW_MATING_PAIRS = [
     ("CABLE-CH-001", "PANEL-IN-BOTTOM-001"),
     ("LIGHT-STRIP-001", "PANEL-OUT-REAR-001"),
     ("LIGHT-STRIP-001", "FRAME-RAIL-TOP-REAR-001"),
+    ("PANEL-CLAD-FRONT-POST-FL-001", "PANEL-IN-MID-001"),
+    ("PANEL-CLAD-FRONT-POST-FR-001", "PANEL-IN-MID-001"),
 ]
 
 
@@ -306,6 +308,12 @@ def is_mating(
         return True
     if _share_face_if_prefix(a, b, parts, threshold, "PANEL-OUT-", "FRAME-"):
         return True
+    # Cosmetic opal strips flush over front frame rails and side-slab inner faces (PLT-006).
+    if a.startswith("PANEL-CLAD-FRONT-") or b.startswith("PANEL-CLAD-FRONT-"):
+        other = b if a.startswith("PANEL-CLAD-FRONT-") else a
+        if other.startswith(("FRAME-", "PANEL-OUT-", "PANEL-IN-", "PANEL-CLAD-FRONT-")):
+            if aabb_share_face(solid_a, solid_b, threshold):
+                return True
 
     # Side slabs meet organizer stack at the internal side-clearance boundary (X=20 / X=630).
     for side_prefix in ("PANEL-OUT-LEFT", "PANEL-OUT-RIGHT"):

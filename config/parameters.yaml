@@ -24,7 +24,8 @@ case:
   depth: {value: 550, provenance: verified, note: "TZ section 4 — overall envelope"}
   height: {value: 690, provenance: verified, note: "TZ section 4 — overall envelope"}
   internal_width: {value: 610, provenance: verified, note: "TZ section 4 — plotter niche / organizer clear width"}
-  corner_radius: {value: 25, provenance: verified, note: "TZ section 8 line 230 — R20-R30 outer shell corner radius; consumed by PANEL-OUT-* corner trims"}
+  corner_radius: {value: 25, provenance: verified, note: "TZ section 8 line 230 — R20-R30 outer shell corner radius; consumed by PANEL-OUT-REAR-* corner trims only (side slabs use side_slab_bullnose_radius_mm)"}
+  side_slab_bullnose_radius_mm: {value: 10, provenance: derived, note: "side_clear/2 with side_clear=(case.width-case.internal_width)/2=(650-610)/2=20 mm exactly; Main PLT-006 ruling — max full bullnose on 20 mm side slab before TZ line 230 R20-R30 conflict (DEVIATED)"}
 
 # EXTENSION beyond the TZ section 12 base block; source: TZ section 15.
 tolerance:
@@ -168,7 +169,7 @@ hardware:
   handle_grip_length_mm: {value: 110, provenance: verified, note: "TZ:304 — minimum grip length"}
   handle_grip_depth_mm: {value: 35, provenance: verified, note: "TZ:304 — minimum grip depth"}
   handle_mount_y_mm: {value: 100, provenance: derived, note: "Front grip centre Y=100 → band [45,155] mm; clears plotter2 Y≥170, frame posts Y≤40, and organizer/divider Z≥350 (PLT-005 rework F-1 volume grid vs all 81 transport parts)"}
-  handle_mount_z_mm: {value: 214, provenance: derived, note: "Grip centre Z=214 → band [196.5,231.5] mm in plotter-bay gap above plotter1 Z≤154 at front Y; below organizer floor Z=350; full-width through-ray clear (PLT-005 rework F-1)"}
+  handle_mount_z_mm: {value: 214, provenance: derived, note: "Grip centre Z=214 mm (~3.6 mm below mass-report CoM z=217.6 mm case+2 plotters per output/validation/rev5/mass_report.csv); band [196.5,231.5] mm; TZ line 235 centre-of-mass placement — do not move for photo match (PLT-006 AC-C3 CLOSED)"}
   foot_diameter_mm: {value: 30, provenance: verified, note: "TZ:224,300 — minimum foot diameter"}
   vent_slot_count: {value: 5, provenance: to_measure, note: "TZ line 290 — passive rear ventilation; slot count not specified in TZ"}
   vent_slot_width_mm: {value: 80, provenance: to_measure, note: "TZ line 290 — provisional rear vent slot width; measure on prototype grille"}

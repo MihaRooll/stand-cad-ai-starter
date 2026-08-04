@@ -10,6 +10,13 @@ from stand_cad.geometry.registry import PartRecord
 from stand_cad.parameters import Parameters
 
 FRAME_MATERIAL = "aluminium_angle_15x15x1.5"
+FRAME_CLAD_MATERIAL = "cast_opal_pmma_3mm"
+
+
+def _side_clearance_mm(params: Parameters) -> float:
+    width = float(params.value("case.width"))
+    internal = float(params.value("case.internal_width"))
+    return (width - internal) / 2.0
 
 
 def _profile_size(params: Parameters) -> float:
@@ -180,5 +187,59 @@ def build_frame_rails(params: Parameters, datums: Datums) -> list[PartRecord]:
     return parts
 
 
+def build_frame_cladding(params: Parameters, datums: Datums) -> list[PartRecord]:
+    """Opal cosmetic strips over front-facing perimeter rails in the open front opening.
+
+    Conceals grey aluminium FRAME-RAIL-* segments visible in transport_iso / transport_front /
+    organizer_closeup evidence views without changing frame structure (PLT-006 AC-C1, TZ line 231).
+    """
+    profile = _profile_size(params)
+    inset = _corner_inset(params)
+    width = datums.case_envelope.x.max_mm
+    foot_h = float(params.value("materials.foot_height_mm"))
+    org_z = datums.organizer_floor_top_z_mm
+    top_z = datums.top_structure.z.min_mm
+
+    rail_sets: list[tuple[str, float]] = [
+        ("BASE", foot_h),
+        ("ORG", org_z - profile),
+        ("TOP", top_z - profile),
+    ]
+    parts: list[PartRecord] = []
+    for prefix, z_base in rail_sets:
+        part_id = f"PANEL-CLAD-FRONT-{prefix}-001"
+        z_top = z_base + profile
+        solid = box_from_bounds(
+            inset,
+            0.0,
+            z_base,
+            width - inset,
+            profile,
+            z_top,
+        )
+        parts.append(PartRecord(part_id=part_id, material=FRAME_CLAD_MATERIAL, solid=solid))
+
+    side_clear = _side_clearance_mm(params)
+    post_height = datums.top_structure.z.min_mm - foot_h
+    z_top = foot_h + post_height
+    post_clad_specs = (
+        ("FL", side_clear, inset + profile),
+        ("FR", width - inset - profile, width - side_clear),
+    )
+    for suffix, x0, x1 in post_clad_specs:
+        parts.append(
+            PartRecord(
+                part_id=f"PANEL-CLAD-FRONT-POST-{suffix}-001",
+                material=FRAME_CLAD_MATERIAL,
+                solid=box_from_bounds(x0, 0.0, foot_h, x1, profile, z_top),
+            )
+        )
+    return parts
+
+
 def build_frame_parts(params: Parameters, datums: Datums) -> list[PartRecord]:
-    return build_frame_posts(params, datums) + build_frame_rails(params, datums)
+    return (
+        build_frame_posts(params, datums)
+        + build_frame_rails(params, datums)
+        + build_frame_cladding(params, datums)
+    )

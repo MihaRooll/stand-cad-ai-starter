@@ -4,7 +4,16 @@
 - Current phase: Phase 0 — repository and toolchain baseline
 - Current gate: G0
 - Status: Native Windows toolchain verified; G0 exit-criteria evidence collected
-- Last updated: 2026-08-04 (PLT-005 rev4)
+- Last updated: 2026-08-04 (PLT-006 rev5 implement)
+
+## PLT-006 fidelity cycle 4 (2026-08-04)
+
+- **Phase:** fidelity cycle 4 → **rev5** evidence pack (CONCEPT / REFERENCE_ONLY)
+- **Delivered:** opal `PANEL-CLAD-FRONT-{BASE,ORG,TOP}-001` over centre front rails; R10 side-slab bullnose (exterior front vertical + top edge); mass report paths sync to `CONCEPT_REVISION`; `evidence_light_strip_only.png` / `evidence_retainer_only.png` identity renders; handle Z note cites CoM z≈217.3 mm (unchanged Y=100/Z=214)
+- **Evidence:** 14 PNG + 5 SVG in `output/validation/rev5/views/`; STEP/STL/GLB/manifest `*_rev5.*`; `rev4/` untouched
+- **DEVIATED:** PLT-018 / TZ line 230 R20–R30 → R10 bullnose (D-025)
+- **Tests:** 130 pytest passing; ruff clean; `scripts/setup_windows.ps1` exit 0
+- **Next:** adversarial review of rev5 PNGs; human G0 verdict unchanged
 
 ## PLT-005 fidelity cycle 3 + dev loop (2026-08-04)
 
