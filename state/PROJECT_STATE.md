@@ -16,6 +16,7 @@
 - **Operational clearance (structural — settled):** manufacturer pass-through **907 mm** (356+195+356) **exceeds** case depth 550 mm → **closed niche is storage/transport only** (D-028). Active cutting requires material through front **and** rear openings (330 mm slots at L1/L2 feed planes) and/or tray extension plus **external rear supports** (`services.rearsupport_*`). Tests: `test_pass_through_depth_exceeds_case_envelope`, `test_operating_state_front_rear_pass_through_open`.
 - **Delivered:** service-port cutout (provisional); handle Z=263 (side-panel centre); frame cladding; grey backgrounds; `CONCEPT_REVISION`=6; `service_port_closeup.png` evidence
 - **Evidence target:** `output/validation/rev6/views/`; STEP/manifest `*_rev6.*`
+- **Viewer:** `uv run python scripts/serve_viewer.py --watch` → `http://127.0.0.1:8000/viewer/index.html` (see `viewer/README.md`)
 - **Tests:** 126 pytest passing; ruff clean; `scripts/setup_windows.ps1` exit 0
 - **Pre-change SHA:** `69b1261`
 - **Next:** adversarial-reviewer on rev6; verifier Full profile
@@ -133,7 +134,7 @@ Evidence collected is not a gate verdict: G0 remains an unconfirmed Human Gate.
 
 ### Measurements and manufacturing
 
-- Eight physical measurements on real Cameo 5 units and purchased sheet materials — see `docs/10_USER_INPUT_REQUIRED.md` section A.
+- Eight physical measurements on real plotters (Cameo 4 governing + Cameo 5 slot 2) and purchased sheet materials — see `docs/10_USER_INPUT_REQUIRED.md` section A.
 - Manufacturer DFM authorization — see `docs/10_USER_INPUT_REQUIRED.md` section B and Gate G5 in `docs/05_IMPLEMENTATION_PLAN.md`.
 
 These blockers do not prevent parameter-layer work but block production geometry release and Gate G5/G6.

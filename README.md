@@ -1,8 +1,8 @@
-# AI-first CAD project for a mobile equipment stand
+# AI-first CAD project for a light desktop plotter tower
 
 Русская инструкция для владельца проекта: [`START_HERE_RU.md`](START_HERE_RU.md).
 
-This repository is a production-oriented starter for designing a real mobile stand or enclosure with an AI agent in Cursor. It is intentionally **not** a finished stand design: critical dimensions, loads, operating clearances, materials, and the target manufacturer's bend data are not yet known.
+This repository is a production-oriented starter for designing a light desktop tower for two Silhouette cutting plotters plus horizontal film storage, with an AI agent in Cursor. It is intentionally **not** a finished or released design: critical dimensions, loads, operating clearances, materials, and the target manufacturer's bend data are not yet known.
 
 The chosen workflow is:
 
@@ -12,6 +12,16 @@ The chosen workflow is:
 4. STEP is the main neutral handoff format; PDF drawings and BOM communicate design intent.
 5. Sheet-metal flat patterns and production DXF are released only after DFM review with the selected manufacturer.
 6. The first physical item is a prototype. Series production requires inspection, corrections, and a new approved revision.
+
+## Day-to-day loop
+
+After the first setup:
+
+1. Regenerate concept and validation artifacts: `uv run python scripts/regenerate.py`
+2. Serve the three.js viewer with live reload: `uv run python scripts/serve_viewer.py --watch`, then open `http://127.0.0.1:8000/viewer/index.html`
+3. When something misbehaves, run the environment doctor: `uv run python scripts/doctor.py`
+
+See [`viewer/README.md`](viewer/README.md) for viewer controls, manifest paths, and troubleshooting.
 
 ## Start here
 

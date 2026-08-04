@@ -1,6 +1,6 @@
 # Consolidated user input required
 
-The Light Plotter Tower technical specification (`ИИ советы/Cursor_Opus5_TZ_Light_Plotter_Tower.md`) answered most prior open questions: equipment selection (two Silhouette Cameo 5 plotters), operating scenario, appearance, layout, and overall dimensions. Only the items below remain unresolved.
+The Light Plotter Tower technical specification (`ИИ советы/Cursor_Opus5_TZ_Light_Plotter_Tower.md`) answered most prior open questions: equipment selection (Cameo 4 governing + Cameo 5 slot 2), operating scenario, appearance, layout, and overall dimensions. Only the items below remain unresolved.
 
 ## A. Physical measurements on real equipment (TZ section 16)
 
@@ -14,7 +14,7 @@ Before releasing production files, measure on two real plotters:
 4. Power and USB connector coordinates.
 5. OEM power adapter dimensions and minimum cable bend radius.
 6. Plotter foot positions and drill-free fixing points.
-7. Real thickness and stiffness of the films actually used — unblocks `film_storage.min_stack_width_mm`.
+7. Real thickness and stiffness of the films actually used — unblocks `film_storage_horizontal.min_stack_height_mm`.
 8. Actual thickness of all purchased sheet materials — unblocks `materials.actual_sheet_thickness_mm`.
 
 After measuring, update `config/parameters.yaml`, regenerate the model, repeat collision checks, and only then remove `VERIFY ON REAL MACHINE` markings from production drawings (TZ section 16 closing paragraph).
@@ -25,8 +25,9 @@ Manufacturer DFM authorization remains open and is not addressed by the TZ. Befo
 
 ## C. Tray deflection under design load (PLT-011 / TZ line 184)
 
-Concept-stage corrected beam model (`output/validation/rev3/deflection_report.md`) yields **3.953 mm**
-mid-span deflection under the 10 kg design load with rail-to-rail span 566 mm and unsourced sandwich
+Concept-stage corrected beam model (`output/validation/rev6/deflection_report.md`) yields **3.644 mm**
+mid-span deflection under the 10 kg design load with rail-to-rail span 570 mm (`plotter.physical_width`,
+Cameo 4 governing) and load distributed along 195 mm (`plotter.physical_depth`) with unsourced sandwich
 panel stiffness `materials.tray_panel_youngs_modulus_mpa` (3000 MPa, `to_measure`). This exceeds the
 1.5 mm TZ ceiling. Resolving the miss requires measured panel stiffness, tray structural redesign, or
 slide/support review — not silent parameter retuning. See assumption **A-012**.

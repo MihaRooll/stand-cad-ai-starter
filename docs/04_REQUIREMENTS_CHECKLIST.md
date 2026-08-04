@@ -28,7 +28,7 @@ Requirement IDs are stable. Add rows rather than renumbering existing items.
 
 - `MEC-001`: load path from every device to floor is explicit.
 - `MEC-002`: shelves/supports have rated loads and deflection acceptance.
-- `MEC-003`: casters have verified type, diameter, brake arrangement, mounting, and capacity with engineering margin.
+- `MEC-003`: casters have verified type, diameter, brake arrangement, mounting, and capacity with engineering margin. **Not applicable to current configuration (2026-08-04):** the rev6 design is a stationary desktop tower with feet (`materials.foot_height_*`, `hardware.foot_diameter_mm`), not a mobile floor stand with casters. Successor load-path concerns: `MEC-001` (device-to-floor load path), `MEC-004` (centre of mass / tipping), and `stability.tip_factor_min`.
 - `MEC-004`: worst-case centre of mass and tipping cases are evaluated in operating and transport modes.
 - `MEC-005`: dynamic transport cases and thresholds/ramps are considered.
 - `MEC-006`: doors, drawers, extensions, and presses cannot create uncontrolled tipping.

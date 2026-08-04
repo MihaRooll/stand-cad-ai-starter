@@ -75,7 +75,7 @@ Pass when all equipment and service zones fit in both modes, the workflow is via
 Work:
 
 - establish global coordinate system and named datums;
-- implement equipment components, frame/shell skeleton, shelf planes, panel interfaces, doors, caster interfaces, and restraint locations;
+- implement equipment components, frame/shell skeleton, tier trays with slide extension, horizontal film-shelf dividers, side panels, handle cutout, and restraint locations;
 - use stable part IDs and parameters;
 - add automated bounding-box, solid-count, placement, and clearance tests;
 - produce repeatable assembly STEP and snapshots.
@@ -95,9 +95,9 @@ Pass when a parameter change regenerates all explicit targets, every part remain
 
 Work:
 
-- detail frame/shell, shelves, panels, access, restraints, handles, casters, latches, ventilation, and cable management;
+- detail frame/shell, tier trays, horizontal film shelves, panels, service access (open front/organizer top, tray slide-out), restraints, handles, ventilation, and cable management;
 - estimate mass and centre of mass from verified inputs/materials;
-- evaluate load paths, shelf deflection, caster capacity, tipping cases, and dynamic transport loads with an appropriately qualified method;
+- evaluate load paths, shelf/tray deflection, foot/vibration-mount load distribution, tipping cases, and dynamic transport loads with an appropriately qualified method;
 - evaluate heat separation/airflow and define a prototype thermal test;
 - obtain qualified electrical review for power distribution and earthing;
 - eliminate sharp-edge, pinch, shear, hot-contact, and service-access hazards;

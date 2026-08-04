@@ -1,10 +1,10 @@
 # Prototype manufacturing RFQ template
 
-Subject: DFM and quotation request — mobile equipment stand prototype — `<PROJECT>/<REV>`
+Subject: DFM and quotation request — light desktop plotter tower prototype — `<PROJECT>/<REV>`
 
 ## Project summary
 
-We need one functional prototype of a mobile equipment stand/enclosure for event operation and transport. The attached package is marked `PRELIMINARY_NOT_FOR_PRODUCTION` and is submitted for DFM and quotation only.
+We need one functional prototype of a light desktop tower for two Silhouette cutting plotters plus horizontal film storage, for event operation and transport. The attached package is marked `PRELIMINARY_NOT_FOR_PRODUCTION` and is submitted for DFM and quotation only.
 
 Expected processes may include cutting, bending, profile/tube fabrication, welding or mechanical fastening, inserts, grinding, powder coating, and final assembly. Please recommend changes based on your actual equipment and standard tooling.
 
@@ -26,7 +26,7 @@ Expected processes may include cutting, bending, profile/tube fabrication, weldi
 4. Do you generate flat patterns from formed STEP, or require customer DXF?
 5. Who owns and approves bend deduction/K-factor/table values?
 6. Which tolerances can you hold economically, and where must the drawing change?
-7. Are all inserts, hinges, latches, handles, casters, welds, and fasteners feasible and accessible?
+7. Are all inserts, hinges, handles, welds, and fasteners feasible and accessible?
 8. What welding distortion/cosmetic risks exist?
 9. What powder-coat preparation, masking, colour/texture, and minimum batch constraints apply?
 10. Which supplied details are ambiguous or impossible to inspect?

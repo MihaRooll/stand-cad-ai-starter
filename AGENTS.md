@@ -4,7 +4,7 @@ This file is binding for every agent working in this repository.
 
 ## Mission
 
-Develop a parametric, inspectable, prototype-ready mobile equipment stand/enclosure and the evidence needed for a manufacturer DFM review. Progress the project autonomously while preserving a hard boundary between design intent and production release.
+Develop a parametric, inspectable, prototype-ready light desktop tower for two Silhouette cutting plotters and the evidence needed for a manufacturer DFM review. Progress the project autonomously while preserving a hard boundary between design intent and production release.
 
 ## Principal roles
 

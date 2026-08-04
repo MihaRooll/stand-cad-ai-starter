@@ -28,7 +28,7 @@ No lower level substitutes for a higher one.
 - expected part and solid count;
 - equipment body contained within support envelope;
 - no unintended equipment/structure collision;
-- required service/door/removal paths clear;
+- required tray/shelf service access and organizer open-top/front removal paths clear;
 - required ventilation and cable zones clear;
 - transport restraints do not collide in either state;
 - no zero-thickness/non-manifold/invalid result;
@@ -40,7 +40,7 @@ Criteria must be quantified by the design engineer before release:
 
 - shelf/support stress and deflection;
 - fastener, insert, weld, latch, hinge, and handle capacity;
-- caster static/dynamic capacity and mounting load distribution;
+- foot/vibration-mount static load distribution (`hardware.foot_diameter_mm`, `materials.foot_height_*`);
 - static tipping in worst operating configuration;
 - dynamic transport cases, ramps, thresholds, and braking;
 - safe deployment/stow sequence;

@@ -2,9 +2,9 @@
 
 ## Goal
 
-Create a parametric, reviewable design for a real mobile stand or enclosure that houses selected on-site printing equipment and can progress to a one-off prototype at a Moscow/Moscow-region manufacturer.
+Create a parametric, reviewable design for a light desktop tower that houses two Silhouette cutting plotters plus horizontal film storage and can progress to a one-off prototype at a Moscow/Moscow-region manufacturer.
 
-Candidate equipment known from project context includes:
+**Superseded 2026-08-04 — pre-TZ candidate inventory (historical):** before the Light Plotter Tower TZ was adopted (decision **D-011**; authoritative equipment list in `ИИ советы/Cursor_Opus5_TZ_Light_Plotter_Tower.md`), the project explored a generic mobile-floor-stand scope. That earlier candidate inventory included:
 
 - Bulros T-330 or T-300 heat press;
 - Epson L11050 or L1800 printer;
@@ -12,7 +12,7 @@ Candidate equipment known from project context includes:
 - Silhouette Cameo plotter;
 - laptop, iPad, power distribution, consumables, tools, and cabling.
 
-This is a candidate inventory, not confirmation that all devices belong in one stand.
+That list is retained as history explaining why the later fixed equipment set exists. The current configuration is two Silhouette plotters only (Cameo 4 governing + Cameo 5 slot 2); no heat press, photo printer, laptop, or iPad are enclosed (`PLT-013`).
 
 ## In scope
 

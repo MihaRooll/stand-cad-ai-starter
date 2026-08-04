@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "stand-cad"
 version = "0.1.0"
-description = "AI-first parametric CAD workflow for a mobile equipment stand"
+description = "AI-first parametric CAD workflow for a light desktop plotter tower"
 requires-python = ">=3.12,<3.13"
 dependencies = [
   "build123d==0.11.1",
