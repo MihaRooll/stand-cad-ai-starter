@@ -7,19 +7,40 @@
 | Field | Value |
 |---|---|
 | Branch | `main` |
-| HEAD | pending FIX-DOC-005 commit — D-088 docs/12 §F/§M sync |
+| HEAD | pending FIX-COLL-005 land — D-089 Path A + HANDOFF sync; Full green |
 | Upstream | `origin/main` synced (ordinary push OK) |
-| Next in flight | Next software audit; residual MATING_PAIRS P2; owner blockers: §F handle, §M lid headroom, §N retention, §A measurements |
-| Prior base | `65d6fe3` (D-041) |
+| Next in flight | Next software audit; residual MATING_PAIRS P2; owner blockers: §F/§M/§N/§A |
 | Live `CONCEPT_REVISION` | **15** (`src/stand_cad/geometry/export.py`) |
-| Envelope | **650 × 420 × 529 mm** |
+| Envelope | **650 × 420 × 540 mm** (D-089 full +11 mm stack; was 529 pre-D-089) |
 | Owner-confirmed product | D-075 posts restored; D-076 upper fixed (`upper_extension=0`), lower 250 mm + door/tray choreography |
 | Gates | **No G0–G8 passed** — all CONCEPT / REFERENCE_ONLY / PRELIMINARY |
 | Mode | Autonomously fixing highest-impact **software/honesty** defects until owner says **СТОП** |
-| Verify at land | Quick **green** — ~400 passed, 1 xfailed; ruff clean (FIX-DOC-005); docs/tests/state only |
+| Verify at land | Full **green** — `setup_windows.ps1` exit 0 (404 passed, 1 xfailed); ruff clean (FIX-COLL-005) |
 | Commit policy | Mega-land authorized 2026-08-08. Keep excluding `ИИ советы/`, secrets, `.pytest_cache/`. `output/` gitignored. |
 
 ## Last closed defect
+
+### FIX-COLL-005-tray-slide-stack — Path A + door-base notch (D-089) — **closed cycle 2**
+
+| | |
+|---|---|
+| Problem | Cycle 1 `DOOR_BASE_RAIL_MAX_BEARING_MM3=26000` silent-greened ~25650 mm³ open-door burial; TRAY↔SLIDE ~96525 mm³ pre-Path A |
+| Fix | Path A slide on `tray_bounds[2]`; `TRAY_SLIDE_MAX_BEARING_MM3=500`; `_base_front_clearance_notch_x_z` + defensive bottom pocket; **26k removed**; full +11 mm stack (`lower_z` 41, `upper_z` 249, `case.height` 540, `handle_mount_z` 263) |
+| Measured | Live TRAY↔SLIDE **0 mm³**; open-door ∩ BASE/BOTTOM **0 mm³**; open-door ↔ bottom **1.5 mm** air gap; loaded CoM Y **≈181.31 mm** → `handle_mount_y_mm` **181.3** (cycle 3) |
+| Key paths | `trays.py`; `frame.py`; `panels.py`; `doors.py`; `collision.py`; `config/parameters.yaml`; `tests/`; `docs/14` §9/§11 |
+| Verify | Adversarial cycle 2 **accept**; cycle 3 Quick **green**; F-1 sole-current doc sync (§F **OPEN**) |
+| Explicitly NOT done | G-pass; §F/§M/§N/§A closure |
+| HANDOFF | Current zones synced to 540 / Y=181.3 / Z=263 / intrusion ≈1,502,833.5 (FIX-DOC-006) |
+
+### FIX-COLL-005-tray-slide-stack — Path A Z-stack (D-089) — cycle 1 (superseded by cycle 2)
+
+| | |
+|---|---|
+| Problem | TRAY↔SLIDE live ~96525 mm³ burial; `is_mating` uncapped on `MATING_PAIRS` |
+| Fix | Path A slide under tray; `TRAY_SLIDE_MAX_BEARING_MM3=500`; interim 26k door allowlist (**removed in cycle 2**) |
+| Measured | Live TRAY↔SLIDE **0 mm³** transport + service_p1 (was ~96525 L/R) |
+| Key paths | `trays.py`; `doors.py`; `collision.py`; `config/parameters.yaml`; `tests/`; `docs/14` §11 |
+| Superseded | Cycle 2 — full +11 mm stack + door-base notch geometry; no deferral |
 
 ### FIX-DOC-005-rfq-fm-advertising — docs/12 §F/§M owner-blocker sync (D-088)
 
@@ -42,7 +63,7 @@
 | Root cause | `pair_key in MATING_PAIRS: return True` with no volume ceiling on seating subset |
 | Fix | Add `is_equip_seating_bearing()` for eight EQUIP-PLOTTER* ↔ TRAY-* / SLIDE-* pairs (`EQUIP_SEATING_MAX_BEARING_MM3=500.0`; live max **0 mm³**) |
 | Measured | Live transport seating inter_vol **0 mm³** across four spot-checked pairs; synthetic burial > ceiling rejected |
-| Residual P2 | TRAY↔SLIDE (~96525 mm³), VIB↔EQUIP, SOFT↔TRAY, INTERLOCK, shelf/org, media, mains, … on `MATING_PAIRS` remain uncapped |
+| Residual P2 | VIB↔EQUIP, SOFT↔TRAY, INTERLOCK, shelf/org, media, mains, … on `MATING_PAIRS` remain uncapped |
 | Key paths | `collision.py`; `tests/test_geometry.py` (EQUIP↔TRAY/SLIDE burial + live transport spot-check); `docs/14` §11 |
 | Verify | Adversarial accept; Quick 399 passed + ruff 0; Full `setup_windows.ps1` exit 0 |
 | Explicitly NOT done | Gate pass; global MATING_PAIRS ceiling; uncapped P2 classes |
@@ -187,3 +208,5 @@
 | 2026-08-08 | FIX-COLL-003 closed (D-086); kinematic-group blanket deleted; SLIDE↔VIBMOUNT ceiling 500; Full green. |
 | 2026-08-08 | FIX-COLL-004 closed (D-087); EQUIP seating MATING_PAIRS volume gate 500; residual uncapped P2 noted; Full green. |
 | 2026-08-08 | FIX-DOC-005 closed (D-088); docs/12 §F/§M owner blockers → sole-current intrusion/headroom; stale 1.39×10⁶ / 210600 lid/shuttle pin. |
+| 2026-08-08 | FIX-COLL-005 closed (D-089); Path A tray↔slide Z-stack; live 96525→0; ceiling 500; envelope 540; handle Y=181.3; Full green. |
+| 2026-08-08 | FIX-DOC-006 HANDOFF current zones → D-089 (540 / 181.3 / 263 / intrusion 1,502,833.5). |

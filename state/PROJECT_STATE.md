@@ -2,9 +2,11 @@
 
 > **Living status:** `state/AUTONOMOUS_STATUS.md` — last closed defect, backlog, anti-false-conclusion notes. Prefer it over mid-file historical narrative for “what next.”
 >
+> **FIX-COLL-005 / D-089 (2026-08-08, cycle 2):** Path A slide below tray; `TRAY_SLIDE_MAX_BEARING_MM3=500.0`; live max **0 mm³**. Open-door BASE-FRONT/BOTTOM clearance notches (removed 26k allowlist). Full +11 mm stack → **540 mm** envelope. **No** G0–G8 pass.
+>
 > **FIX-DOC-005 / D-088 (2026-08-08):** `docs/12_PRODUCTION_RFQ_TEMPLATE.md` §F/§M owner-blocker rows synced to sole-current — tier-2 intrusion ≈1,515,402 mm³ at Y=180.6; §M transport headroom 27/50 mm vs 80 mm (not 210,600 mm³ lid/shuttle). Regression pin in `tests/test_concept_revision_docs.py`. §F/§M/§N/§A remain OPEN. **No** G0–G8 pass.
 >
-> **FIX-COLL-004 / D-087 (2026-08-08):** Volume-gate eight EQUIP-PLOTTER* ↔ TRAY-* / SLIDE-* seating pairs on `MATING_PAIRS` via `EQUIP_SEATING_MAX_BEARING_MM3=500.0` (live max **0 mm³**). TRAY↔SLIDE and other `MATING_PAIRS` uncapped — residual P2. **No** G0–G8 pass.
+> **FIX-COLL-004 / D-087 (2026-08-08):** Volume-gate eight EQUIP-PLOTTER* ↔ TRAY-* / SLIDE-* seating pairs on `MATING_PAIRS` via `EQUIP_SEATING_MAX_BEARING_MM3=500.0` (live max **0 mm³**). Other `MATING_PAIRS` uncapped — residual P2. **No** G0–G8 pass.
 >
 > **FIX-COLL-003 / D-086 (2026-08-08):** Deleted blanket kinematic-group `is_mating` exemption; residual eight SLIDE↔VIBMOUNT plane-touch pairs gated by `SLIDE_VIBMOUNT_MAX_BEARING_MM3=500.0` (live max **0 mm³**). EQUIP↔SOFTSTOP not on `MATING_PAIRS`; live clr=0.5 mm. **No** G0–G8 pass.
 >
@@ -24,12 +26,12 @@
 >
 > **FIX-WAVE-002 / D-057 closed (2026-08-06):** All 8 unexpected D-056 pytest regressions are closed. Adversarial-reviewer cycle 2 on the collision-exemption predicate (**Y-gate** `collision.py:316-328`, solid-fill **≈428×10³ mm³** oracle) → **APPROVED**. Full profile (2026-08-06): `uv run ruff check .` clean; `uv run pytest -q --tb=line` → **365 passed, 1 failed** (sole permitted failure: `test_lid_envelope_no_intersection_in_service_states`, **210 600 mm³** lid/shuttle overlap); `powershell -ExecutionPolicy Bypass -File .\scripts\setup_windows.ps1` exit **0**. Rev12 evidence current via `scripts/regenerate.py`. Optional non-blocking nit: F-3 rail `max_bearing` full-panel Z scope. Full suite wall time **~8 min** (performance item, non-blocking).
 
-- Project: Light desktop tower for two Silhouette plotters plus horizontal film storage, **650 × 420 × 529 mm** (derived height; D-058; see ADR-005 and TZ)
+- Project: Light desktop tower for two Silhouette plotters plus horizontal film storage, **650 × 420 × 540 mm** (D-089 full +11 mm stack; was 529 mm D-058; see ADR-005 and TZ)
 - **Operating mode: D-060 EXIT — FAST ITERATION MODE (D-043) closed 2026-08-06.** Owner visual 3D approval recorded in D-060; PROD-001 weld-free RFQ campaign active. No G0–G8 gate passed.
 - Current phase: **rev15** FIX-WAVE-004 (D-075…D-076); prior FIX-WAVE-003 reconcile (D-066…D-074)
 - Current gate: G0 (human verdict unconfirmed) — **no G0–G8 gate passed**
-- Status: **`CONCEPT_REVISION`=15** evidence under `output/validation/rev15/`. **`hardware.handle_mount_y_mm`=180.6 mm** (D-084; supersedes D-074 **179.8 mm**). Corner posts **restored** (D-075); interlock / six service volumes / BASE·ORG·POST cladding remain removed (D-067…D-071). Door/tray choreography updated (D-076, **owner-confirmed**); `trays.upper_extension`=0. Envelope **650 × 420 × 529 mm** unchanged.
-- Last updated: 2026-08-07 (FIX-WAVE-004 cycle 2.5 docs reconcile)
+- Status: **`CONCEPT_REVISION`=15** evidence under `output/validation/rev15/`. **`hardware.handle_mount_y_mm`=181.3 mm** (D-089; was 180.6 at D-084). **`hardware.handle_mount_z_mm`=263 mm** (D-089; was 252). Corner posts **restored** (D-075); interlock / six service volumes / BASE·ORG·POST cladding remain removed (D-067…D-071). Door/tray choreography updated (D-076, **owner-confirmed**); `trays.upper_extension`=0. Envelope **650 × 420 × 540 mm** (D-089).
+- Last updated: 2026-08-08 (FIX-COLL-005 / D-089 cycle 2)
 - **Tests:** `uv run pytest -q` green on implementer machine (~370+ cases, 1 skip for missing rev evidence until regenerate); Full profile pending verifier
 - **Tooling/process (D-041, 2026-08-05):** `pytest-xdist` + `-n auto`; `Quick`/`Full` profile guidance; operational-orchestrator turn-ending directive; `docs/14_CAD_MODELING_CONVENTIONS.md`
 - **Handoff:** paste `HANDOFF_PROMPT.md` into a new chat to continue; do not use stale mid-file “Older status” narratives from prior drafts
@@ -96,7 +98,7 @@
 
 ## PLT-007 horizontal reconfig + Cameo 4 governing envelope (2026-08-04; **partially superseded D-045/D-046/D-048, 2026-08-05**)
 
-- **Envelope (current):** **650 × 420 × 529 mm** (D-045 depth shrink from 550 mm; D-058 height **544→529 mm**); **610 mm clear width** (20 mm side wall, **R10** bullnose — D-027 rejects 620/630 widening). Historical D-038 height **544 mm** superseded by D-058.
+- **Envelope (current):** **650 × 420 × 540 mm** (D-089 +11 mm over D-058 **529 mm**; D-045 depth shrink from 550 mm); **610 mm clear width** (20 mm side wall, **R10** bullnose — D-027 rejects 620/630 widening). Historical D-058 height **529 mm** superseded by D-089 **540 mm**.
 - **Governing machine:** Silhouette Cameo 4 — 570 × 195 × 170 mm, 4.7 kg (`plotter_cameo4`); design envelope 584 × 219 × 178 mm; slot 2 mass 5.2 kg (Cameo 5)
 - **Film storage:** 4 horizontal shelves, 25 mm compartment height, 500 mm sheet edge across width
 - **Tier layout:** tiers aligned, setback removed (D-033); `lower_y`=`upper_y`=15; tier 1 has 130 mm quick-access forward slide (`trays.lower_quick_access_extension_mm`) plus **250 mm** full-service extension on both tiers (D-049; **supersedes** D-048 interim 200 mm and TZ 400 mm upper); tier clear height ≥170 mm each
@@ -227,7 +229,7 @@ Evidence collected is not a gate verdict: G0 remains an unconfirmed Human Gate.
 
 ### Handle concept — tier-2 finger intrusion (D-074/D-084; `docs/10_USER_INPUT_REQUIRED.md` §E / §F)
 
-- Balance-point through-cutout at Y=**180.6** / Z=**252** (D-084; was 179.8 at D-074) intersects tier-2 plotter bay by **≈1,515,402 mm³** (`test_handle_tier2_finger_intrusion_at_balance_point`). Owner deferred choosing: (1) external bolt-on handle, (2) blind side pocket, (3) low aft cutout behind plotters. Blocks production-ready side-panel release.
+- Balance-point through-cutout at Y=**181.3** / Z=**263** (D-089; was 180.6/252 at D-084) intersects tier-2 plotter bay by **≈1,502,833.5 mm³** (`test_handle_tier2_finger_intrusion_at_balance_point`). Owner deferred choosing: (1) external bolt-on handle, (2) blind side pocket, (3) low aft cutout behind plotters. Blocks production-ready side-panel release.
 
 ### Open-lid headroom (PLT-008; `docs/10_USER_INPUT_REQUIRED.md` §M)
 

@@ -131,8 +131,8 @@ def test_default_shelf_divider_count_matches_expected():
 
 def test_computed_case_height_matches_yaml():
     params = load_parameters(PARAMETERS_PATH)
-    assert params.computed_case_height_mm == pytest.approx(529.0)
-    assert float(params.value("case.height")) == pytest.approx(529.0)
+    assert params.computed_case_height_mm == pytest.approx(540.0)
+    assert float(params.value("case.height")) == pytest.approx(540.0)
 
 
 def test_computed_upper_z_mm_matches_yaml():

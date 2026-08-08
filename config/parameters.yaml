@@ -21,7 +21,7 @@ units: mm
 case:
   width: {value: 650, provenance: verified, note: "TZ section 4 — overall envelope; owner 2026-08-04 confirmed not flexible"}
   depth: {value: 420, provenance: verified, note: "TZ section 4 original target 550 mm; owner 2026-08-05 override reduces to 420 mm (within owner's stated 350-450 mm range) — see D-045. Owner 2026-08-06 confirmed keep 420 mm — pull-out drawer mechanism stays, this is not a fixed-shelf design."}
-  height: {value: 529, provenance: derived, note: "film_storage_horizontal.z + shelf_stack_height_mm + top_structure.height_mm = 423 + 106 + 0; formula in Parameters.computed_case_height_mm. Owner 2026-08-06: was 544 (top_structure.height_mm=15) — that 15 mm band above the top rail line was unfilled by any part (no lid/cover was ever modeled there), so it read as a bare unsupported skin lip / awkward corner-post nub in every top-down view; owner asked to remove it for event-display aesthetics. Reducing to 0 makes posts, rails, and outer panels all terminate flush at the same Z with no code change needed elsewhere (frame.py's corner-post cap logic already no-ops when the band height is 0). Independent of D-038's +27 mm (517→544 was upper_z/tray-hardware clearance, untouched here)."}
+  height: {value: 540, provenance: derived, note: "film_storage_horizontal.z + shelf_stack_height_mm + top_structure.height_mm = 434 + 106 + 0 (D-089 +11 mm Path A stack; was 529)."}
   internal_width: {value: 610, provenance: verified, note: "TZ section 4 — 650−2×20 mm side slabs; Main PLT-007 ruling 2026-08-04 rejects widening to 620/630 (R10 at 20 mm wall beats R7.5/R5 at narrower walls)"}
   depth_tolerance_mm: {value: 5, provenance: verified, note: "Owner 2026-08-04 allowance for case.depth deviation from 550 mm target; used by PARAM-006"}
   corner_radius: {value: 25, provenance: verified, note: "TZ section 8 line 230 — R20-R30 outer shell corner radius; consumed by PANEL-OUT-REAR-* corner trims only (side slabs use side_slab_bullnose_radius_mm)"}
@@ -42,9 +42,9 @@ plotter:
   tier_clearance_min_mm: {value: 170, provenance: verified, note: "Owner 2026-08-04 — minimum clear height per plotter tier; equals Cameo 4 physical height"}
   x: {value: 40, provenance: derived, note: "side_clear + (internal_width − physical_width)/2 = 20 + (610−570)/2 = 40 mm"}
   lower_y: {value: 15, provenance: derived, note: "PLT-007 — reduced from TZ 20 mm for front storage clearance 15 mm. D-029 arithmetic: TZ rear-face overhang (front_overhang_min 40 mm) needs extension ≥ lower_y+physical_depth+40 = 250 mm; owner D-049 restores full-service extension to 250 mm on both tiers — at 250 mm plotter rear Y=−40 mm (exact TZ margin), front Y=−235 mm"}
-  lower_z: {value: 30, provenance: verified, note: "TZ section 5 — lower tray / plotter 1 datum Z"}
+  lower_z: {value: 41, provenance: derived, note: "TZ section 5 lower tray datum; D-089 +11 mm Path A height-stack retune (tray_panel_thickness_mm) with BASE-FRONT open-door notch — was 30 mm pre-D-089."}
   upper_y: {value: 15, provenance: derived, note: "lower_y + upper_setback = 15 + 0 (D-033, owner 2026-08-04); supersedes TZ section 5 Y=170, interim 150@lower_y=20, and 145@setback130 (D-029)"}
-  upper_z: {value: 238, provenance: derived, note: "lower_z + tier_clearance_min_mm + slide_rail_height_mm + frame_profile_size_mm + tray_panel_thickness_mm = 30 + 170 + 12 + 15 + 11"}
+  upper_z: {value: 249, provenance: derived, note: "lower_z + tier_clearance_min_mm + slide_rail_height_mm + frame_profile_size_mm + tray_panel_thickness_mm = 41 + 170 + 12 + 15 + 11 (D-089 full stack)"}
   upper_setback: {value: 0, provenance: verified, note: "Owner 2026-08-04 (D-033) — tier 2 aligned flush with tier 1 front face; setback removed. Supersedes 130 mm (D-029) and TZ 150 mm. Must equal upper_y - lower_y. Access to tier 2 solved by trays.lower_quick_access_extension_mm on tier 1 instead of a Y offset."}
   feed_plane_z_from_base: {value: "TO_MEASURE", provenance: to_measure, note: "TZ section 7 and section 16 item 1 — must not be guessed"}
   feed_plane_z_provisional_mm: {value: 40, provenance: to_measure, note: "Provisional mid-low front-feed slot height above tray finished top; VERIFY ON REAL MACHINE before production DXF"}
@@ -83,7 +83,7 @@ trays:
 film_storage_horizontal:
   x: {value: 20, provenance: verified, note: "TZ section 5 origin — left edge of 610 mm clear bay (side_clear=20 mm)"}
   y: {value: 20, provenance: verified, note: "TZ section 5 origin"}
-  z: {value: 423, provenance: derived, note: "upper_z + tier_clearance_min_mm + frame_profile_size_mm = 238 + 170 + 15"}
+  z: {value: 434, provenance: derived, note: "upper_z + tier_clearance_min_mm + frame_profile_size_mm = 249 + 170 + 15 (D-089 +11 mm)"}
   clear_width: {value: 610, provenance: verified, note: "Equals case.internal_width; 500 mm sheet edge spans X across clear bay"}
   clear_depth: {value: 330, provenance: verified, note: "330 mm sheet depth in Y (flat orientation); owner 2026-08-04 horizontal layout"}
   shelf_count: {value: 4, provenance: verified, note: "Owner 2026-08-04 — four horizontal shelves"}
@@ -169,8 +169,8 @@ hardware:
   handle_grip_length_mm: {value: 110, provenance: verified, note: "TZ:304 — minimum grip length"}
   handle_grip_depth_mm: {value: 35, provenance: verified, note: "TZ:304 — minimum grip depth"}
   handle_cutout_edge_radius_mm: {value: 2.5, provenance: verified, note: "TZ:472 minimum safe cut-edge radius is R1; 2.5 mm chosen for the hand-contact handle cutout edge break (ergonomic margin above the R1 floor)"}
-  handle_mount_y_mm: {value: 180.6, provenance: derived, note: "Indicative loaded-case CoM Y — must track live recomputation within tolerance.part_assembly_feature_mm (test_handle_mount_y_at_loaded_com). D-084 retune after FIX-COLL-002 Path A mid-panel mass shift (was 179.8 mm at D-074). D-051 balance-point carry intent unchanged."}
-  handle_mount_z_mm: {value: 252, provenance: derived, note: "Lowest sightline-feasible Z=plotter.upper_z+trays.slide_rail_height_mm+2=238+12+2=252 mm → grip band [234.5,269.5] mm; owner 2026-08-05 lowers grip toward service-port/cable Z=120 band (D-050). Z=218–220 mm clears tier-1/tier-2 plotter finger envelopes but fails test_handle_cutout_sightline_clear (PANEL-IN-MID-001 / upper-tray cladding). Loaded-case indicative CoM z≈227.5 mm → handle +24.5 mm above CoM. Supersedes side-panel centre Z=276.5 mm (D-030, TZ line 235)."}
+  handle_mount_y_mm: {value: 181.3, provenance: derived, note: "Indicative loaded-case CoM Y — must track live recomputation within tolerance.part_assembly_feature_mm (test_handle_mount_y_at_loaded_com). D-089 cycle 3 retune after +11 mm stack (was 180.6 mm at D-084; 179.8 mm at D-074). D-051 balance-point carry intent unchanged."}
+  handle_mount_z_mm: {value: 263, provenance: derived, note: "plotter.upper_z+trays.slide_rail_height_mm+2=249+12+2=263 mm (D-089 +11 mm stack; was 252 at upper_z=238)."}
   service_port_cutout_width_mm: {value: 16, provenance: to_measure, note: "PROVISIONAL panel-mount USB-A coupler body cutout width; connector type NOT decided — do not use for production DXF"}
   service_port_cutout_height_mm: {value: 8, provenance: to_measure, note: "PROVISIONAL panel-mount USB-A coupler body cutout height; VERIFY connector selection before production DXF"}
   service_port_mount_y_mm: {value: 275, provenance: derived, note: "Y from case front (Y=0); rear of balance-point handle grip band with ≥12 mm margin to 16×8 mm cutout. D-055 retune: grip at CoM Y=187.6 mm → band [132.6,242.6] mm; port centre 275 → aft margin ≈24.4 mm (supersedes D-051 margin ≈46.3 mm at Y=165.7). Z unchanged at 120 — stays paired with cable entry."}
@@ -286,8 +286,8 @@ joints:
 
 top_structure:
   height_mm: {value: 0, provenance: verified, note: "Owner 2026-08-06: was 15 mm (TZ section 5 legacy value from the old 690 mm envelope), zeroed because no part ever filled that band — see case.height note. If a future lid/top-cover design needs headroom here, reintroduce a non-zero value tied to that part, not a bare allowance."}
-  z_min_mm: {value: 529, provenance: derived, note: "film_storage_horizontal.z + shelf_stack_height_mm = 423 + 106"}
-  z_max_mm: {value: 529, provenance: derived, note: "z_min_mm + height_mm = case.height"}
+  z_min_mm: {value: 540, provenance: derived, note: "film_storage_horizontal.z + shelf_stack_height_mm = 434 + 106 (D-089 +11 mm)"}
+  z_max_mm: {value: 540, provenance: derived, note: "z_min_mm + height_mm = case.height"}
 
 interlock:
   shuttle_travel_mm: {value: 98, provenance: derived, note: "This leaf is not read by geometry — Parameters.interlock_shuttle_travel_mm recomputes it live from plotter.lower_z/upper_z/trays.slide_rail_height_mm/etc; the stored value here is kept in sync manually for human readability only and has no functional effect."}

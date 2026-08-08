@@ -141,9 +141,14 @@ SLIDE_VIBMOUNT_MAX_BEARING_MM3 = 500.0
 
 # Equipment plotter ↔ tray/slide seating skin bearing (mm³) — plane-touch only.
 # Live max 0 mm³ across eight EQUIP-PLOTTER* ↔ TRAY-* / SLIDE-* seating pairs
-# (2026-08-08 transport). Other MATING_PAIRS (TRAY↔SLIDE, VIB↔EQUIP, …) stay
-# uncapped this cycle — see D-087 residual P2.
+# (2026-08-08 transport). Other MATING_PAIRS (VIB↔EQUIP, SOFT↔TRAY, …) stay
+# uncapped — see D-087 residual P2; TRAY↔SLIDE gated separately (D-089).
 EQUIP_SEATING_MAX_BEARING_MM3 = 500.0
+
+# Tray platform ↔ slide rail skin bearing (mm³) — plane-touch only after Path A
+# Z-stack (slide fully below tray). Live max 0 mm³ across six TRAY-* ↔ SLIDE-*
+# pairs (2026-08-08 transport); pre-fix burial ~96525 mm³ rejected.
+TRAY_SLIDE_MAX_BEARING_MM3 = 500.0
 
 OPEN_FRONT_PENETRATING_PATTERNS: frozenset[tuple[str, str]] = frozenset(
     {
@@ -706,6 +711,35 @@ def is_equip_seating_bearing(
     return inter_vol <= EQUIP_SEATING_MAX_BEARING_MM3 + threshold
 
 
+def is_tray_slide_pair(a: str, b: str) -> bool:
+    """True when a,b is a tier-correct tray platform ↔ slide rail pair."""
+    tier_pairs = (
+        ("TRAY-LOWER-001", "SLIDE-LOWER-"),
+        ("TRAY-UPPER-001", "SLIDE-UPPER-"),
+    )
+    for tray_id, slide_prefix in tier_pairs:
+        if (a == tray_id and _id_matches(b, slide_prefix)) or (
+            b == tray_id and _id_matches(a, slide_prefix)
+        ):
+            return True
+    return False
+
+
+def is_tray_slide_bearing(
+    a: str,
+    b: str,
+    parts: dict[str, PartRecord],
+    threshold: float,
+) -> bool:
+    """Tray platform ↔ slide rail skin bearing — plane-touch only."""
+    if not is_tray_slide_pair(a, b):
+        return False
+    if minimum_clearance(parts[a].solid, parts[b].solid) >= threshold:
+        return False
+    inter_vol = intersection_volume(parts[a].solid, parts[b].solid)
+    return inter_vol <= TRAY_SLIDE_MAX_BEARING_MM3 + threshold
+
+
 def is_mating(
     a: str,
     b: str,
@@ -720,6 +754,10 @@ def is_mating(
             if parts is None or threshold is None:
                 return False
             return is_equip_seating_bearing(a, b, parts, threshold)
+        if is_tray_slide_pair(a, b):
+            if parts is None or threshold is None:
+                return False
+            return is_tray_slide_bearing(a, b, parts, threshold)
         return True
     if parts is None or threshold is None:
         return False

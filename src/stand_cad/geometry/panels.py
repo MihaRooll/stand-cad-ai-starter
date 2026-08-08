@@ -503,6 +503,25 @@ def build_inner_panels(params: Parameters, datums: Datums) -> list[PartRecord]:
     ]
 
 
+def _open_door_bottom_panel_notch_bounds(
+    params: Parameters, datums: Datums
+) -> tuple[float, float, float, float, float, float]:
+    """Front compartment floor pocket for settled horizontal lower door (D-089)."""
+    from stand_cad.geometry.doors import open_door_settled_horizontal_z_band_mm
+
+    lower = datums.plotter1_physical
+    asm_tol = float(params.value("tolerance.part_assembly_feature_mm"))
+    door_z0, door_z1 = open_door_settled_horizontal_z_band_mm(params, level="lower")
+    return (
+        lower.x.min_mm,
+        0.0,
+        door_z0 - asm_tol,
+        lower.x.max_mm,
+        lower.y.min_mm,
+        door_z1 + asm_tol,
+    )
+
+
 def _build_inner_bottom_panel(params: Parameters, datums: Datums) -> PartRecord:
     thickness = float(params.value("materials.inner_panel_thickness_mm"))
     foot_h = float(params.value("materials.foot_height_mm"))
@@ -512,6 +531,8 @@ def _build_inner_bottom_panel(params: Parameters, datums: Datums) -> PartRecord:
 
     bottom_z = foot_h + thickness
     bottom_solid = box_from_bounds(gap, gap, foot_h, width - gap, depth - gap, bottom_z)
+    door_notch = box_from_bounds(*_open_door_bottom_panel_notch_bounds(params, datums))
+    bottom_solid = bottom_solid - door_notch
     ap_d = float(params.value("services.airpath_depth_mm"))
     airpath_cx = width / 2.0
     airpath_cy = depth - gap - ap_d / 2.0

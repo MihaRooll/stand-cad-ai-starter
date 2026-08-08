@@ -1032,7 +1032,7 @@ def test_handle_tier2_finger_intrusion_at_balance_point(params, transport):
         plotter_x_span_mm=pw,
     )
     assert intrusion > 0.0
-    assert intrusion == pytest.approx(1_515_402.0, rel=1e-4)
+    assert intrusion == pytest.approx(1_502_833.5, rel=1e-4)
     geom_y = params.computed_geometric_depth_centre_y_mm
     geom_intrusion = handle_finger_intrusion_volume_mm3(
         handle_mount_y_mm=geom_y,
@@ -1094,7 +1094,7 @@ def test_handle_mount_z_lowest_sightline_feasible(params):
     expected = params.computed_handle_mount_z_mm
     assert expected == pytest.approx(upper_z + slide_h + 2.0)
     assert float(params.value("hardware.handle_mount_z_mm")) == pytest.approx(expected)
-    assert expected == pytest.approx(252.0)
+    assert expected == pytest.approx(263.0)
     assert expected < params.side_panel_centre_z_mm
 
 
@@ -1485,7 +1485,7 @@ def test_side_slab_cavity_joint_rejects_solid_fill_burial(params, transport):
     max_bearing = _max_legitimate_skin_bearing_volume_mm3(
         params, panel_bounds, frame_id
     )
-    assert inter_vol == pytest.approx(413_759.0, rel=0.01)
+    assert inter_vol == pytest.approx(422_559.0, rel=0.01)
     assert inter_vol > max_bearing + threshold
     assert not is_side_slab_frame_cavity_joint(
         frame_id, panel_id, parts, params, threshold
@@ -1599,7 +1599,7 @@ def test_service_port_cutout_on_right_panel(params, transport):
     assert port_y == pytest.approx(275.0)
     port_aft_margin = port_y - port_w / 2 - (handle_y + grip_len / 2)
     assert port_aft_margin >= 12.0
-    assert port_aft_margin == pytest.approx(31.4, abs=0.5)
+    assert port_aft_margin == pytest.approx(30.7, abs=0.5)
     # Outer 3 mm skin: port centre is open; solid skin remains above the cutout.
     assert solid_point_state(panel, x_exterior, port_y, port_z) == "OUT"
     assert solid_point_state(panel, x_exterior, port_y, port_z + 20) == "IN"
@@ -1629,14 +1629,14 @@ def test_validation_evidence_not_older_than_parameters():
     )
 
 
-def test_case_height_529_after_d058(params, transport):
-    """D-058 — case.height 529 mm; assembly bbox Z includes stacking caps above roof."""
+def test_case_height_540_after_d089(params, transport):
+    """D-058/D-089 — case.height 540 mm after Path A +11 mm stack."""
     tol = float(params.value("tolerance.assembly_mm"))
     cap_t = float(params.value("stacking.cap_thickness_mm"))
-    assert float(params.value("case.height")) == pytest.approx(529.0)
+    assert float(params.value("case.height")) == pytest.approx(540.0)
     assert float(params.value("top_structure.height_mm")) == pytest.approx(0.0)
     size = bounding_box_size(transport.compound())
-    assert size[2] == pytest.approx(529.0 + cap_t, abs=tol)
+    assert size[2] == pytest.approx(540.0 + cap_t, abs=tol)
 
 
 def test_light_strip_below_roofline_d059(params, transport):
@@ -1867,6 +1867,81 @@ def test_door_mate_open_door_rejects_tray_burial(params, service_p1):
     inter_vol = intersection_volume(buried_open.solid, slide.solid)
     assert inter_vol > threshold
     assert not is_door_mate(door_id, slide_id, parts, threshold)
+
+
+def test_open_door_clears_base_front_rail_notch(params, service_p1):
+    """FIX-COLL-005 — open door clears BASE-FRONT via notch (not allowlist)."""
+    from stand_cad.geometry.collision import (
+        _door_is_open_horizontal,
+        check_collision_pairs,
+        is_door_mate,
+    )
+
+    threshold = float(params.value("tolerance.part_assembly_feature_mm"))
+    door_id = "DOOR-LOWER-001"
+    rail_id = "FRAME-RAIL-BASE-FRONT-001"
+    door = service_p1.parts[door_id]
+    rail = service_p1.parts[rail_id]
+    assert _door_is_open_horizontal(door.solid, threshold=threshold)
+    inter_vol = intersection_volume(door.solid, rail.solid)
+    assert inter_vol <= threshold
+    assert inter_vol < 26_000.0
+    assert is_door_mate(door_id, rail_id, service_p1.parts, threshold)
+    violations = check_collision_pairs(service_p1.parts, params, "service_p1")
+    assert not any(door_id in msg and rail_id in msg for msg in violations)
+
+
+def test_open_door_mate_rejects_base_front_volumetric_burial(params, service_p1):
+    """FIX-COLL-005 — synthetic open-door burial into BASE-FRONT must not pass is_door_mate."""
+    from stand_cad.geometry.collision import (
+        DOOR_FRONT_PLANE_MAX_BEARING_MM3,
+        _door_is_open_horizontal,
+        is_door_mate,
+    )
+    from stand_cad.geometry.registry import PartRecord
+
+    threshold = float(params.value("tolerance.part_assembly_feature_mm"))
+    door_id = "DOOR-LOWER-001"
+    rail_id = "FRAME-RAIL-BASE-FRONT-001"
+    open_door = service_p1.parts[door_id]
+    assert _door_is_open_horizontal(open_door.solid, threshold=threshold)
+    rail_bounds = bounding_box_bounds(service_p1.parts[rail_id].solid)
+    buried_open = PartRecord(
+        part_id=door_id,
+        material=open_door.material,
+        solid=box_from_bounds(
+            rail_bounds[0][0],
+            rail_bounds[1][0],
+            rail_bounds[2][0],
+            rail_bounds[0][1],
+            rail_bounds[1][1] + 40.0,
+            rail_bounds[2][1] + 8.0,
+        ),
+    )
+    parts = dict(service_p1.parts)
+    parts[door_id] = buried_open
+    inter_vol = intersection_volume(buried_open.solid, service_p1.parts[rail_id].solid)
+    assert inter_vol > DOOR_FRONT_PLANE_MAX_BEARING_MM3 + threshold
+    assert inter_vol > 20_000.0
+    assert not is_door_mate(door_id, rail_id, parts, threshold)
+
+
+def test_open_door_clears_bottom_panel_notch(params, service_p1):
+    """FIX-COLL-005 D-089 — settled open door clears PANEL-IN-BOTTOM front pocket."""
+    from stand_cad.geometry.collision import _door_is_open_horizontal, check_collision_pairs
+
+    threshold = float(params.value("tolerance.part_assembly_feature_mm"))
+    door_id = "DOOR-LOWER-001"
+    panel_id = "PANEL-IN-BOTTOM-001"
+    door = service_p1.parts[door_id]
+    panel = service_p1.parts[panel_id]
+    assert _door_is_open_horizontal(door.solid, threshold=threshold)
+    inter_vol = intersection_volume(door.solid, panel.solid)
+    assert inter_vol <= threshold
+    assert inter_vol < 26_000.0
+    assert minimum_clearance(door.solid, panel.solid) >= threshold
+    violations = check_collision_pairs(service_p1.parts, params, "service_p1")
+    assert not any(door_id in msg and panel_id in msg for msg in violations)
 
 
 def test_door_mate_open_door_rejects_mid_panel_burial(params, service_p1):
@@ -2103,14 +2178,13 @@ def test_slide_vibmount_bearing_rejects_volumetric_burial(params, transport):
     assert inter_vol > 20_000.0
     assert not is_slide_vibmount_bearing(slide_id, vib_id, parts, threshold)
     assert not is_mating(slide_id, vib_id, parts, threshold=threshold, params=params)
-    # Live plane-touch stays exempt.
-    live_inter = intersection_volume(
+    # D-089 Path A — slide below tray; vib mount on tray top; live pairs separated.
+    live_clr = minimum_clearance(
         transport.parts[slide_id].solid,
         transport.parts[vib_id].solid,
     )
-    assert live_inter <= SLIDE_VIBMOUNT_MAX_BEARING_MM3 + threshold
-    assert is_slide_vibmount_bearing(slide_id, vib_id, transport.parts, threshold)
-    assert is_mating(slide_id, vib_id, transport.parts, threshold=threshold, params=params)
+    assert live_clr >= threshold
+    assert not is_slide_vibmount_bearing(slide_id, vib_id, transport.parts, threshold)
 
 
 def test_equip_seating_bearing_rejects_tray_volumetric_burial(params, transport):
@@ -2194,24 +2268,105 @@ def test_equip_seating_bearing_rejects_slide_volumetric_burial(params, transport
     assert inter_vol > 20_000.0
     assert not is_equip_seating_bearing(equip_id, slide_id, parts, threshold)
     assert not is_mating(equip_id, slide_id, parts, threshold=threshold, params=params)
-    live_inter = intersection_volume(
+    # D-089 Path A — plotter seats on tray; slide below tray; live pair separated.
+    live_clr = minimum_clearance(
         transport.parts[equip_id].solid,
         transport.parts[slide_id].solid,
     )
-    assert live_inter <= EQUIP_SEATING_MAX_BEARING_MM3 + threshold
-    assert is_equip_seating_bearing(equip_id, slide_id, transport.parts, threshold)
-    assert is_mating(equip_id, slide_id, transport.parts, threshold=threshold, params=params)
+    assert live_clr >= threshold
+    assert not is_equip_seating_bearing(equip_id, slide_id, transport.parts, threshold)
 
 
-def test_tray_slide_mating_pair_stays_uncapped(params, transport):
-    """FIX-COLL-004 AC-4 — TRAY↔SLIDE MATING_PAIRS not volume-gated this cycle."""
-    from stand_cad.geometry.collision import MATING_PAIRS, is_mating, pair_key
+def test_tray_slide_bearing_rejects_volumetric_burial(params, transport):
+    """FIX-COLL-005 — TRAY↔SLIDE bearing ceiling rejects deep burial."""
+    from stand_cad.geometry.collision import (
+        MATING_PAIRS,
+        TRAY_SLIDE_MAX_BEARING_MM3,
+        is_mating,
+        is_tray_slide_bearing,
+        pair_key,
+    )
+    from stand_cad.geometry.registry import PartRecord
 
     threshold = float(params.value("tolerance.part_assembly_feature_mm"))
     tray_id = "TRAY-LOWER-001"
     slide_id = "SLIDE-LOWER-LEFT-001"
     assert pair_key(tray_id, slide_id) in MATING_PAIRS
-    assert is_mating(tray_id, slide_id, threshold=threshold, params=params)
+    tray = transport.parts[tray_id]
+    tray_bounds = bounding_box_bounds(tray.solid)
+    buried_slide = PartRecord(
+        part_id=slide_id,
+        material=transport.parts[slide_id].material,
+        solid=box_from_bounds(
+            tray_bounds[0][0],
+            tray_bounds[1][0],
+            tray_bounds[2][0],
+            tray_bounds[0][1],
+            tray_bounds[1][1],
+            tray_bounds[2][1],
+        ),
+    )
+    parts = dict(transport.parts)
+    parts[slide_id] = buried_slide
+    inter_vol = intersection_volume(tray.solid, buried_slide.solid)
+    assert inter_vol > TRAY_SLIDE_MAX_BEARING_MM3 + threshold
+    assert inter_vol > 20_000.0
+    assert not is_tray_slide_bearing(tray_id, slide_id, parts, threshold)
+    assert not is_mating(tray_id, slide_id, parts, threshold=threshold, params=params)
+    live_inter = intersection_volume(
+        transport.parts[tray_id].solid,
+        transport.parts[slide_id].solid,
+    )
+    assert live_inter <= TRAY_SLIDE_MAX_BEARING_MM3 + threshold
+    assert is_tray_slide_bearing(tray_id, slide_id, transport.parts, threshold)
+    assert is_mating(
+        tray_id, slide_id, transport.parts, threshold=threshold, params=params
+    )
+
+
+def test_live_tray_slide_bearing_under_ceiling(params, transport, service_p1):
+    """FIX-COLL-005 — live TRAY↔SLIDE pairs stay mated under ceiling (transport + service)."""
+    from stand_cad.geometry.collision import (
+        TRAY_SLIDE_MAX_BEARING_MM3,
+        check_collision_pairs,
+        is_mating,
+        is_tray_slide_bearing,
+        is_tray_slide_pair,
+    )
+
+    threshold = float(params.value("tolerance.part_assembly_feature_mm"))
+    tray_slide_pairs = (
+        ("TRAY-LOWER-001", "SLIDE-LOWER-LEFT-001"),
+        ("TRAY-LOWER-001", "SLIDE-LOWER-RIGHT-001"),
+        ("TRAY-LOWER-001", "SLIDE-LOWER-CENTER-001"),
+        ("TRAY-UPPER-001", "SLIDE-UPPER-LEFT-001"),
+        ("TRAY-UPPER-001", "SLIDE-UPPER-RIGHT-001"),
+        ("TRAY-UPPER-001", "SLIDE-UPPER-CENTER-001"),
+    )
+    for assembly in (transport, service_p1):
+        for tray_id, slide_id in tray_slide_pairs:
+            assert is_tray_slide_pair(tray_id, slide_id)
+            inter_vol = intersection_volume(
+                assembly.parts[tray_id].solid,
+                assembly.parts[slide_id].solid,
+            )
+            assert inter_vol <= TRAY_SLIDE_MAX_BEARING_MM3 + threshold
+            assert inter_vol < 96525.0, (
+                f"{tray_id}<->{slide_id} inter_vol={inter_vol} mm³ still at pre-fix burial level"
+            )
+            assert is_tray_slide_bearing(tray_id, slide_id, assembly.parts, threshold)
+            assert is_mating(
+                tray_id,
+                slide_id,
+                assembly.parts,
+                threshold=threshold,
+                params=params,
+            )
+        violations = check_collision_pairs(assembly.parts, params, "transport")
+        for tray_id, slide_id in tray_slide_pairs:
+            assert not any(
+                tray_id in msg and slide_id in msg for msg in violations
+            ), f"False positive: {tray_id}<->{slide_id}"
 
 
 def test_live_transport_seating_pairs_no_false_collision(params, transport):
@@ -2226,9 +2381,7 @@ def test_live_transport_seating_pairs_no_false_collision(params, transport):
     threshold = float(params.value("tolerance.part_assembly_feature_mm"))
     seating_pairs = (
         ("EQUIP-PLOTTER1-001", "TRAY-LOWER-001"),
-        ("EQUIP-PLOTTER1-001", "SLIDE-LOWER-LEFT-001"),
         ("EQUIP-PLOTTER2-001", "TRAY-UPPER-001"),
-        ("EQUIP-PLOTTER2-001", "SLIDE-UPPER-LEFT-001"),
     )
     for equip_id, target_id in seating_pairs:
         inter_vol = intersection_volume(

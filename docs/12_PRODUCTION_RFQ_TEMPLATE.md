@@ -20,7 +20,7 @@ These items are **not** resolved in the attached STEP/PDF package. Do not infer 
 
 | ID | Topic | Status |
 |---|---|---|
-| §F | Handle concept — through-cut grip only; tier-2 finger intrusion ≈1,515,402 mm³ (≈1.52×10⁶) at Y=180.6 | **OPEN** |
+| §F | Handle concept — through-cut grip only; tier-2 finger intrusion ≈1,502,834 mm³ (≈1.50×10⁶) at Y=181.3 / Z=263 | **OPEN** |
 | §N | Transport retention — tray/film unrestrained; plotter tie-down waived (owner 2026-08-06) | **OPEN** |
 | §M | Lid-open headroom — transport clear gaps tier 1 27 mm / tier 2 50 mm vs 80 mm provisional lid envelope | **OPEN** |
 | §A | Real-equipment measurements (feed plane, lid envelope, sheet thickness, …) | **OPEN** |

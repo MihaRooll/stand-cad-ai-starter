@@ -42,6 +42,26 @@ def _film_storage_front_clearance_notch_x_z(
     return x0, z0, x1, z1
 
 
+def _base_front_clearance_notch_x_z(
+    params: Parameters, datums: Datums
+) -> tuple[float, float, float, float]:
+    """X/Z zone tray 1 slides/travel and settled open lower door clear through BASE-FRONT.
+
+    Extends the tray1 notch floor to the settled horizontal door band (D-089 cycle 2)
+    so open-door geometry is not silent-greened by volume allowlists.
+    """
+    from stand_cad.geometry.doors import open_door_settled_horizontal_z_band_mm
+
+    lower = datums.plotter1_physical
+    slide_h = float(params.value("trays.slide_rail_height_mm"))
+    asm_tol = float(params.value("tolerance.part_assembly_feature_mm"))
+    tray_z1 = lower.z.min_mm
+    tray_z0 = tray_z1 - params.tray_panel_thickness_mm - slide_h
+    door_z0, _door_z1 = open_door_settled_horizontal_z_band_mm(params, level="lower")
+    z0 = min(tray_z0, door_z0 - asm_tol)
+    return lower.x.min_mm, z0, lower.x.max_mm, tray_z1
+
+
 def _tray1_clearance_notch_x_z(
     params: Parameters, datums: Datums
 ) -> tuple[float, float, float, float]:
@@ -52,11 +72,7 @@ def _tray1_clearance_notch_x_z(
     position between closed and trays.lower_extension, including the new
     trays.lower_quick_access_extension_mm rest position (D-033).
     """
-    lower = datums.plotter1_physical
-    slide_h = float(params.value("trays.slide_rail_height_mm"))
-    z1 = lower.z.min_mm
-    z0 = z1 - params.tray_panel_thickness_mm - slide_h
-    return lower.x.min_mm, z0, lower.x.max_mm, z1
+    return _base_front_clearance_notch_x_z(params, datums)
 
 
 def _corner_inset(params: Parameters) -> float:

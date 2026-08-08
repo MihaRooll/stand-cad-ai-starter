@@ -124,10 +124,10 @@ def test_rfq_owner_blocker_table_pins_live_blockers() -> None:
 
     f_row = next(line for line in blockers.splitlines() if "| §F |" in line)
     assert "1.39" not in f_row, "docs/12 §F still advertises stale ~1.39×10⁶ intrusion"
-    assert "1,515,402" in f_row or "1.52" in f_row, (
-        "docs/12 §F missing current intrusion ≈1,515,402 / 1.52×10⁶"
+    assert "1,502,833" in f_row or "1,502,834" in f_row or "1.50" in f_row, (
+        "docs/12 §F missing current intrusion ≈1,502,833 / 1.50×10⁶"
     )
-    assert "180.6" in f_row, "docs/12 §F missing balance-point Y=180.6"
+    assert "181.3" in f_row, "docs/12 §F missing balance-point Y=181.3"
 
     m_row = next(line for line in blockers.splitlines() if "| §M |" in line)
     assert "27 mm" in m_row, "docs/12 §M missing tier-1 27 mm headroom"

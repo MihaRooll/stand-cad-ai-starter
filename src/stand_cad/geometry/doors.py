@@ -81,6 +81,7 @@ def _open_door_settle_dz_mm(params: Parameters, *, level: str, z_bottom: float) 
     below ``slide_bottom_z - tolerance.assembly_mm``.
     """
     slide_h = float(params.value("trays.slide_rail_height_mm"))
+    tray_t = params.tray_panel_thickness_mm
     asm_tol = float(params.value("tolerance.assembly_mm"))
     thickness = float(params.value("materials.outer_panel_thickness_mm"))
     if level == "lower":
@@ -89,10 +90,29 @@ def _open_door_settle_dz_mm(params: Parameters, *, level: str, z_bottom: float) 
         datum_z = float(params.value("plotter.upper_z"))
     else:
         raise ValueError(f"unknown door level: {level}")
-    slide_bottom_z = datum_z - slide_h
+    slide_bottom_z = datum_z - tray_t - slide_h
     target_top_z = slide_bottom_z - asm_tol
     # After 90° rotation about bottom hinge, door top is at z_bottom (unsettled).
     return target_top_z - thickness - (z_bottom - thickness)
+
+
+def open_door_settled_horizontal_z_band_mm(
+    params: Parameters, *, level: str
+) -> tuple[float, float]:
+    """Z span [min, max] of a horizontal door slab after Path A settle (D-076/D-089)."""
+    slide_h = float(params.value("trays.slide_rail_height_mm"))
+    tray_t = params.tray_panel_thickness_mm
+    asm_tol = float(params.value("tolerance.assembly_mm"))
+    thickness = float(params.value("materials.outer_panel_thickness_mm"))
+    if level == "lower":
+        datum_z = float(params.value("plotter.lower_z"))
+    elif level == "upper":
+        datum_z = float(params.value("plotter.upper_z"))
+    else:
+        raise ValueError(f"unknown door level: {level}")
+    slide_bottom_z = datum_z - tray_t - slide_h
+    target_top_z = slide_bottom_z - asm_tol
+    return target_top_z - thickness, target_top_z
 
 
 def _door_solid(
@@ -170,7 +190,11 @@ def _strut_attachment_points(
         post_x = 0.0
     else:
         post_x = width
-    return (post_x, door_y_back, door_z), (post_x, y_front, door_z)
+    foot_h = float(params.value("materials.foot_height_mm"))
+    asm_tol = float(params.value("tolerance.part_assembly_feature_mm"))
+    foot_clear_z = foot_h + _STRUT_DIAMETER_MM / 2 + asm_tol + 0.25
+    post_z = max(door_z, foot_clear_z)
+    return (post_x, door_y_back, door_z), (post_x, y_front, post_z)
 
 
 def build_door_level_parts(

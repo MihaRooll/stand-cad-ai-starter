@@ -38,7 +38,7 @@ def _slide_bounds(
 ) -> tuple[float, float, float, float, float, float]:
     rail_w = float(params.value("trays.slide_rail_width_mm"))
     rail_h = float(params.value("trays.slide_rail_height_mm"))
-    x0, y0, _z0, x1, y1, z_tray_bottom = tray_bounds
+    x0, y0, z_tray_bottom, x1, y1, _z_tray_top = tray_bounds
     if side == "left":
         sx0 = x0
         sx1 = x0 + rail_w
@@ -131,7 +131,7 @@ def _tray_frame_rail_bounds(
 ) -> tuple[float, float, float, float, float, float]:
     profile = float(params.value("materials.frame_profile_size_mm"))
     rail_h = float(params.value("trays.slide_rail_height_mm"))
-    x0, y0, _z0, x1, y1, z_tray_bottom = tray_bounds
+    x0, y0, z_tray_bottom, x1, y1, _z_tray_top = tray_bounds
     z_base = z_tray_bottom - rail_h - profile
     z_top = z_base + profile
     if side == "left":

@@ -14,12 +14,12 @@ You are the principal orchestrator (Main) for this repository. Continue autonomo
 4. Confirm evidence pack exists: `output/validation/rev15/` (drawings + views + dxf) and `output/concept/light_plotter_tower_ASSEMBLY_CONCEPT_REFERENCE_ONLY_rev15.{step,glb,stl,manifest.json}`. `CONCEPT_REVISION = 15` in `src/stand_cad/geometry/export.py`. If STEP is missing, run `uv run python scripts/generate_model.py` before trusting CSV evidence paths.
 5. Your first user-facing reply: observed HEAD, pytest/ruff result (note intentional lid xfail), active phase, open blockers, and the single next work packet you will execute.
 
-## Product truth (post D-075…D-081 / rev15 — do not regress to pre-D-058 numbers)
+## Product truth (post D-075…D-089 / rev15 — do not regress to pre-D-058 numbers)
 
 | Item | Value |
 |---|---|
 | Product | Light **desktop** tower for two Silhouette plotters + horizontal film storage (not the old mobile floor stand) |
-| Envelope | **650 × 420 × 529 mm** (`case.depth` 420 mm per D-045; `case.height` 529 mm per D-058; historical D-038 544 mm superseded) |
+| Envelope | **650 × 420 × 540 mm** (`case.depth` 420 mm per D-045; `case.height` 540 mm per D-089 +11 mm stack; was 529 at D-058; historical D-038 544 mm superseded) |
 | Clear width | 610 mm; side wall 20 mm; **R10** bullnose (owner-accepted DEVIATED from TZ R20–R30) |
 | Governing machine | **Cameo 4**: 570 × 195 × 170 mm, 4.7 kg (slot 1) |
 | Slot 2 | Cameo 5: 566 × 176 × 124 mm, ~5.2 kg |
@@ -32,8 +32,8 @@ You are the principal orchestrator (Main) for this repository. Continue autonomo
 | Closed case | Storage/transport only (907 mm cut travel > **420 mm** depth) — D-028 |
 | Rear media exit | **450 × 10 mm** through **both** rear panels at L1/L2 (D-046); `MEDIA-SUPPORT-L{1,2}-001` glide surfaces — no `REARSUPPORT-*` |
 | Top front frame | **`FRAME-RAIL-TOP-FRONT-001` removed** (D-044); ring closed TOP-LEFT/TOP-RIGHT/TOP-REAR only |
-| Stacking | **STACK-CAP-{FL,FR,RL,RR}-001** + **JT-STACK-CAP-POST** (D-064); assembly Z **≈537 mm** (+8 mm caps); owner waives stacked tip-over |
-| Handle | Y=**180.6 mm** (loaded-case balance-point CoM, D-074/D-084 — supersedes D-074 **179.8 mm** and D-063 **185.9 mm**), Z=**252 mm**. Grip band **Y ≈ [125.6, 235.6] mm**. **OPEN blocker:** tier-2 finger intrusion **≈1,515,402 mm³** — through-cutout not production-usable (`docs/10_USER_INPUT_REQUIRED.md` §E/§F) |
+| Stacking | **STACK-CAP-{FL,FR,RL,RR}-001** + **JT-STACK-CAP-POST** (D-064); assembly Z **≈548 mm** (+8 mm caps on 540 mm case; was ≈537 at 529 mm); owner waives stacked tip-over |
+| Handle | Y=**181.3 mm** (loaded-case balance-point CoM, D-089 — was **180.6 mm** at D-084; supersedes D-074 **179.8 mm** and D-063 **185.9 mm**), Z=**263 mm** (D-089 +11 mm stack; was 252 at D-084). Grip band **Y ≈ [126.3, 236.3] mm**. **OPEN blocker:** tier-2 finger intrusion **≈1,502,833.5 mm³** — through-cutout not production-usable (`docs/10_USER_INPUT_REQUIRED.md` §E/§F) |
 | Cable | Ø30 mm grommeted pass-through on **right side panel** Y=**320** / Z=**120**, next to USB port Y=**275** / Z=**120** (D-047/D-051); full annular grommet lining fixed D-054; certified mains inlet deferred — D-036 |
 | Joining | Weld-free **adhesive-free** bolt/screw catalogue (D-061/D-065); `docs/15_ASSEMBLY_INSTRUCTIONS.md`; §P shelf attachment **CLOSED** (3×M4/cleat) |
 | Service acceptance | At 250 mm extension (D-049): TZ `front_overhang_min_mm`=40 **met** (rear face Y=−40 mm); PARAM-016 front-face clearance also satisfied |
@@ -56,7 +56,7 @@ Plan filenames under `.cursor/plans/` reuse `PLT-00N` tokens that **collide** wi
 
 - Tray deflection ceiling — **decision D-035** / **plan** `PLT-008-tray-deflection-fix` / requirement **PLT-011** (still `IN_PROGRESS` indicative, not FEA) — centre rail; old 3.644 mm is historical only.
 - Tier setback — D-032/D-033 — removed; do not restore 130/150 mm setback. Requirement **PLT-003** is `DEVIATED` (0 mm setback).
-- Height-stack / F-5 collision — **decision D-038** / **plan** `PLT-009-height-stack-fix` / requirement **PLT-022** — `upper_z` 238; D-038 case height 544 mm (historical); **D-058 current 529 mm**. (CSV **PLT-008** = lid clearance; CSV **PLT-009** = interlock — both still `IN_PROGRESS`, unrelated to this fix.)
+- Height-stack / F-5 collision — **decision D-038** / **plan** `PLT-009-height-stack-fix` / requirement **PLT-022** — `upper_z` 238 (D-038 historical); D-038 case height 544 mm (historical); **D-058 was 529 mm**; **D-089 current 540 mm** (`lower_z` **41**, `upper_z` **249**). (CSV **PLT-008** = lid clearance; CSV **PLT-009** = interlock — both still `IN_PROGRESS`, unrelated to this fix.)
 - Split-mass tip-over model bug — **D-039** — mass-cancelling pre-rev10 model fixed; historical rev9/rev10 factors archived only.
 - Frame cladding “invisible” — **D-040** — **render Z-buffer tie-break** bug in `scripts/render_validation_views.py`, not missing geometry. Register new cladding materials in `MATERIAL_RENDER_PRIORITY`.
 - Top-front cross member — **D-044** — `FRAME-RAIL-TOP-FRONT-001` + `PANEL-CLAD-FRONT-TOP-001` removed; do not restore.
@@ -64,7 +64,7 @@ Plan filenames under `.cursor/plans/` reuse `PLT-00N` tokens that **collide** wi
 - Rear media path solids — **D-046** — `SVC-INSERT-*` / `EDGEGUARD-*` / `REARSUPPORT-*` removed; **450 × 10 mm** dual-panel through-cuts + `MEDIA-SUPPORT-L{1,2}-001`.
 - Cable pass-through rear mount — **D-047** — relocated to right side panel Y=320 / Z=120 (was rear X=325).
 - Tray full-service travel 200 mm interim — **D-048** — **superseded by D-049** (250 mm both tiers; TZ rear-face overhang restored).
-- Handle placement iterations — **D-051** supersedes D-050 (Y) and D-030/D-038 (Z=276.5) / D-022 (Y=100): at D-063 delivery Y=**185.9 mm**; **D-074 Y=179.8 mm**; **D-084 current Y=180.6 mm**, Z=**252 mm**.
+- Handle placement iterations — **D-051** supersedes D-050 (Y) and D-030/D-038 (Z=276.5) / D-022 (Y=100): at D-063 delivery Y=**185.9 mm**; **D-074 Y=179.8 mm**; **D-084 was Y=180.6 mm**, Z=**252 mm**; **D-089 current Y=181.3 mm**, Z=**263 mm**.
 - PRELIMINARY drawing package — **D-052/D-062** — at D-062 delivery `CONCEPT_REVISION` was **13** (rev13 PDF + REFERENCE_ONLY DXF + `tests/test_drawings.py`; historical).
 - Evidence integrity / REL-027 count — **D-053/D-061/D-065** — **55** `to_measure` leaves; manifest readback; doctor rev13 checks (historical baseline).
 - Weld-free **adhesive-free** joining catalogue — **D-061/D-065** — `joints.*`, `docs/15_ASSEMBLY_INSTRUCTIONS.md`, RFQ template; §P **CLOSED**; MEC-009 `IN_PROGRESS`.
@@ -85,7 +85,7 @@ Plan filenames under `.cursor/plans/` reuse `PLT-00N` tokens that **collide** wi
 
 ## Open / next product work (priority order)
 
-1. **Handle concept (§F)** — choose and model external bolt-on handle, blind side pocket, or low aft cutout; balance-point through-cutout (Y=**180.6 mm**, D-084) intersects tier-2 bay by **≈1,515,402 mm³** (`test_handle_tier2_finger_intrusion_at_balance_point`; `docs/10_USER_INPUT_REQUIRED.md` §E/§F).
+1. **Handle concept (§F)** — choose and model external bolt-on handle, blind side pocket, or low aft cutout; balance-point through-cutout (Y=**181.3 mm**, D-089) intersects tier-2 bay by **≈1,502,833.5 mm³** (`test_handle_tier2_finger_intrusion_at_balance_point`; `docs/10_USER_INPUT_REQUIRED.md` §E/§F).
 2. **Open-lid headroom (§M)** — provisional 80 mm envelope insufficient (**27 mm** / **50 mm** headroom with trays closed). **`tests/test_kinematics.py::test_lid_envelope_no_intersection_in_service_states` xfail/canary** — transport headroom shortfall only; interlock hardware **absent** (D-067); do **not** weaken the assertion to green pytest; remedy requires owner decision on lid envelope, headroom, or operating procedure (§M).
 3. **Transport retention (§N)** — specify tray closed-position latches and removable film retainer; owner **waived plotter tie-down** for event display; unrestrained **up to 10 kg** film (R-012).
 4. **Mass (PLT-012 PASSING)** — structural **9.590 kg**; indicative fasteners **162** (158 registry + 4 FOOT M4); all-parts **13.383 kg**; STACK-CAP **≈0.118 kg**.
@@ -141,7 +141,7 @@ Agent shell may be WSL-backed. If you see `chdir(/mnt/c/...) failed 5`, try `wsl
 
 ## Immediate mission
 
-Continue from **rev15** truth (FIX-WAVE-004 D-075…D-076 complete; doc-sync D-079/D-082): package is **ready for manufacturer DFM quotation** as CONCEPT/REFERENCE_ONLY only — **not production-ready** until owner closes §F/§N/§M/§A (`docs/10_USER_INPUT_REQUIRED.md`). PRELIMINARY package at `output/validation/rev15/`. Living backlog and last closed defect: **`state/AUTONOMOUS_STATUS.md`**. Pending: Full profile at campaign close, G0–G8 Human Gates. Work autonomously; ask the owner only when an answer changes fit, load, stability, heat, electrical safety, transport safety, procurement, or production outcome.
+Continue from **rev15** truth (FIX-WAVE-004 D-075…D-076 complete; geometry D-089 +11 mm stack; doc-sync D-079/D-082/D-089): package is **ready for manufacturer DFM quotation** as CONCEPT/REFERENCE_ONLY only — **not production-ready** until owner closes §F/§N/§M/§A (`docs/10_USER_INPUT_REQUIRED.md`). PRELIMINARY package at `output/validation/rev15/`. Living backlog and last closed defect: **`state/AUTONOMOUS_STATUS.md`**. Pending: Full profile at campaign close, G0–G8 Human Gates. Work autonomously; ask the owner only when an answer changes fit, load, stability, heat, electrical safety, transport safety, procurement, or production outcome.
 
 ---
 
