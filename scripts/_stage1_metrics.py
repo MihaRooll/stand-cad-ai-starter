@@ -94,19 +94,25 @@ def main() -> None:
     print(f"  tier-2 lid headroom (plotter top -> ORG-FLOOR underside): {tier2_gap:.1f} mm")
 
     service_p2 = build_service_plotter_2_assembly(params)
-    lid = service_p2.parts["LID-ENVELOPE-P2-001"]
-    shuttle = service_p2.parts["INTERLOCK-SHUTTLE-001"]
-    shuttle_vol = intersection_volume(lid.solid, shuttle.solid)
     print("\n=== Lid/shuttle (service_plotter_2, tier-2 lid) ===")
-    print(f"  LID-ENVELOPE-P2-001 vs INTERLOCK-SHUTTLE-001: {shuttle_vol:.1f} mm^3")
+    shuttle_p2 = service_p2.parts.get("INTERLOCK-SHUTTLE-001")
+    if shuttle_p2 is not None:
+        lid = service_p2.parts["LID-ENVELOPE-P2-001"]
+        shuttle_vol = intersection_volume(lid.solid, shuttle_p2.solid)
+        print(f"  LID-ENVELOPE-P2-001 vs INTERLOCK-SHUTTLE-001: {shuttle_vol:.1f} mm^3")
+    else:
+        print("  LID-ENVELOPE-P2-001 vs INTERLOCK-SHUTTLE-001: N/A (absent / D-067)")
 
     service_p1 = __import__(
         "stand_cad.geometry.assembly", fromlist=["build_service_plotter_1_assembly"]
     ).build_service_plotter_1_assembly(params)
-    lid1 = service_p1.parts["LID-ENVELOPE-P1-001"]
-    shuttle1 = service_p1.parts["INTERLOCK-SHUTTLE-001"]
-    p1_vol = intersection_volume(lid1.solid, shuttle1.solid)
-    print(f"  LID-ENVELOPE-P1-001 vs INTERLOCK-SHUTTLE-001: {p1_vol:.1f} mm^3")
+    shuttle_p1 = service_p1.parts.get("INTERLOCK-SHUTTLE-001")
+    if shuttle_p1 is not None:
+        lid1 = service_p1.parts["LID-ENVELOPE-P1-001"]
+        p1_vol = intersection_volume(lid1.solid, shuttle_p1.solid)
+        print(f"  LID-ENVELOPE-P1-001 vs INTERLOCK-SHUTTLE-001: {p1_vol:.1f} mm^3")
+    else:
+        print("  LID-ENVELOPE-P1-001 vs INTERLOCK-SHUTTLE-001: N/A (absent / D-067)")
 
     print("\n=== Per-material shell mass (cast_opal / white_composite / sandwich) ===")
     for mat in ("cast_opal_pmma_3mm", "white_composite_3_4mm", "sandwich_panel_10_12mm"):

@@ -21,6 +21,17 @@
 
 ## Last closed defect
 
+### FIX-TOOL-001-stage1-interlock-guard — `_stage1_metrics.py` KeyError (D-067)
+
+| | |
+|---|---|
+| Problem | `scripts/_stage1_metrics.py` crashed on `parts["INTERLOCK-SHUTTLE-001"]` after D-067 removed interlock hardware |
+| Root cause | Lid/shuttle intersection metrics assumed interlock always emitted |
+| Fix | `.get()` guard; print `N/A (absent / D-067)` for P1/P2 lid vs shuttle when absent; volume print unchanged when present |
+| Key paths | `scripts/_stage1_metrics.py` |
+| Verify | `uv run python scripts/_stage1_metrics.py` + `uv run ruff check scripts/_stage1_metrics.py` — exit 0 |
+| Explicitly NOT done | Interlock geometry restore; gate pass |
+
 ### FIX-COLL-001-open-front-ceiling — intersection-volume ceiling (D-080)
 
 | | |
@@ -51,10 +62,9 @@
 ## Open defect backlog (impact order)
 
 1. **Door PANEL-IN-MID / SOFTSTOP unconditional True** — `is_door_mate` returns True without volume ceiling; no clearance `< thr` contacts measured in transport / service_p1 / tray1_qa. T2+; do not invent cap without evidence.
-2. **`scripts/_stage1_metrics.py` KeyError** on removed `INTERLOCK-SHUTTLE-001` (if still unguarded after tip metrics edit).
-3. **Traceability CSV / ASSUMPTIONS** evidence paths still pointing at rev13 for several PLT/SWE rows.
-4. **HANDOFF product-truth** still cites rev13 in Product truth header — refresh in a follow-up packet (test excludes historical closed lists).
-5. Owner blockers unchanged: §F handle, §M lid headroom, §N retention, §A measurements.
+2. **Traceability CSV / ASSUMPTIONS** evidence paths still pointing at rev13 for several PLT/SWE rows.
+3. **HANDOFF product-truth** still cites rev13 in Product truth header — refresh in a follow-up packet (test excludes historical closed lists).
+4. Owner blockers unchanged: §F handle, §M lid headroom, §N retention, §A measurements.
 
 ## Where we are / next action
 
@@ -89,3 +99,4 @@
 | 2026-08-08 | Created. FIX-TIP-001 done in WT; mega-commit authorized; backlog listed. |
 | 2026-08-08 | FIX-MASS-001 closed (D-078); backlog #2 removed; header honesty test added. |
 | 2026-08-08 | FIX-COLL-001 closed (D-080); open-front volume ceiling 750 mm³; backlog #1 narrowed to door PANEL-IN-MID/SOFTSTOP P2. |
+| 2026-08-08 | FIX-TOOL-001 closed (D-081); `_stage1_metrics.py` interlock N/A guard; backlog #2 removed. |
