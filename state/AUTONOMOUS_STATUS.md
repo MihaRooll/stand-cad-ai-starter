@@ -7,9 +7,9 @@
 | Field | Value |
 |---|---|
 | Branch | `main` |
-| HEAD | `c0410de` — FIX-MASS-001; mega-land `b4da1d7`; status `d816e5a` |
+| HEAD | `5eb2375`+ working tree — FIX-DOC-001-rfq-rev15 in progress |
 | Upstream | `origin/main` synced (ordinary push OK) |
-| Next in flight | Collision allowlist burial (P0) + docs/12 rev15 advertising (P1) confirmation |
+| Next in flight | Collision allowlist burial (P0) |
 | Prior base | `65d6fe3` (D-041) |
 | Live `CONCEPT_REVISION` | **15** (`src/stand_cad/geometry/export.py`) |
 | Envelope | **650 × 420 × 529 mm** |
@@ -21,32 +21,33 @@
 
 ## Last closed defect
 
-### FIX-MASS-001 — mass-report header honesty (D-078)
+### FIX-DOC-001-rfq-rev15 — RFQ/README advertising sync (D-079)
 
 | | |
 |---|---|
-| Problem | `generate_mass_report.py` header claimed `MAINS-INLET-001` / `INTERLOCK-*` / `EDGEGUARD-*` "physically present" after D-046/D-067/D-071 removed them from transport |
-| Root cause | Static header text not updated when parts were removed from `build_transport_assembly()` |
-| Fix | `_present_other_excluded_category_labels()` builds header from live `transport.parts`; only `SLIDE-*`, `VIBMOUNT-*`, `etc.` listed |
-| Key paths | `scripts/generate_mass_report.py`, `tests/test_geometry.py::test_mass_report_header_honest_excluded_categories`, `output/validation/rev15/mass_report.csv` + RFQ copy |
-| Verify | `uv run pytest -k mass_report` + ruff on touched py — exit 0 |
-| Explicitly NOT done | Gate G4 / PLT-012 PASSING; mass-formula / geometry changes |
+| Problem | `docs/12` and README **Current status** still advertised rev13 paths/numbers while live `CONCEPT_REVISION`=15 |
+| Root cause | Documentation not refreshed after FIX-WAVE-004 / rev15 evidence generation |
+| Fix | Subject + Attached package + indicative mass/tip table → rev15 evidence; MAINS-INLET honesty (D-071); regression test `tests/test_concept_revision_docs.py` |
+| Key paths | `docs/12_PRODUCTION_RFQ_TEMPLATE.md`, `README.md`, `tests/test_concept_revision_docs.py` |
+| Verify | `uv run pytest tests/test_concept_revision_docs.py -q` + Quick profile — exit 0 |
+| Cycle 2 | F-1: fastener total **162** (drop dead D-069 base-clad M3); F-2: STACK-CAP **~0.118 kg** from rev15 CSV; F-3: REL-027 **55**; F-4: §N plotter tie-down waived |
+| Explicitly NOT done | Gate pass; §F/§M/§N/§A closure; full HANDOFF rewrite |
 
-**Anti-false-conclusion:** Do **not** treat indicative mass totals as G4 sign-off. Do **not** re-add removed categories to transport without owner decision.
+**Anti-false-conclusion:** Do **not** treat indicative mass/tip figures as G4 sign-off. Do **not** re-open removed service-volume solids without owner decision.
 
 ## Open defect backlog (impact order)
 
 1. **Collision allowlist burial** — `is_open_front_kinematic_contact` / `is_door_mate` can skip deep interpenetration (`collision.py`). T2+; weak oracle. Confirm before fix.
-2. **Stale rev13 advertising** — `docs/12` (P0 RFQ paths), README current-status, HANDOFF product-truth still say rev13 while live is 15. Refresh numbers from rev15 evidence; keep §F/§M/§N/§A OPEN. Test must not false-fail on historical `Already closed` lines.
-3. **`scripts/_stage1_metrics.py` KeyError** on removed `INTERLOCK-SHUTTLE-001` (if still unguarded after tip metrics edit).
-4. **Traceability CSV / ASSUMPTIONS** evidence paths still pointing at rev13 for several PLT/SWE rows.
+2. **`scripts/_stage1_metrics.py` KeyError** on removed `INTERLOCK-SHUTTLE-001` (if still unguarded after tip metrics edit).
+3. **Traceability CSV / ASSUMPTIONS** evidence paths still pointing at rev13 for several PLT/SWE rows.
+4. **HANDOFF product-truth** still cites rev13 in Product truth header — refresh in a follow-up packet (test excludes historical closed lists).
 5. Owner blockers unchanged: §F handle, §M lid headroom, §N retention, §A measurements.
 
 ## Where we are / next action
 
 1. Land verified working tree (mega-commit + ordinary push) per owner approval.
-2. Refresh `HANDOFF_PROMPT.md` product-truth pointers to rev15 / D-077 / D-078.
-3. Pick backlog **#1** (highest remaining impact), run confirmation (reproduce → counter → root → test → safety), then T2 plan/implement/adversarial/verify; commit only that cycle's paths when isolatable.
+2. Pick backlog **#1** (highest remaining impact), run confirmation (reproduce → counter → root → test → safety), then T2 plan/implement/adversarial/verify; commit only that cycle's paths when isolatable.
+3. Refresh `HANDOFF_PROMPT.md` product-truth pointers to rev15 / D-077 / D-078 / D-079 in a follow-up packet.
 4. Prefer Quick mid-cycle; Full before stage-final commits.
 
 ## Protection rules (do not skip)
@@ -74,3 +75,4 @@
 |---|---|
 | 2026-08-08 | Created. FIX-TIP-001 done in WT; mega-commit authorized; backlog listed. |
 | 2026-08-08 | FIX-MASS-001 closed (D-078); backlog #2 removed; header honesty test added. |
+| 2026-08-08 | FIX-DOC-001-rfq-rev15 closed (D-079); docs/12 + README advertise rev15; `test_concept_revision_docs.py` added. |

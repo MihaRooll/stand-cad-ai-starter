@@ -4,7 +4,7 @@
 
 This repository is a production-oriented starter for designing a light desktop tower for two Silhouette cutting plotters plus horizontal film storage, with an AI agent in Cursor. It is intentionally **not** a finished or released design: critical dimensions, loads, operating clearances, materials, and the target manufacturer's bend data are not yet known.
 
-**Current status (rev13, 2026-08-06):** envelope **650 × 420 × 529 mm**; `CONCEPT_REVISION=13`; weld-free **and adhesive-free** mechanical joining (D-061/D-065); **STACK-CAP-*** stacking interface (D-064); §P shelf attachment **CLOSED**. Open owner blockers: §F handle, §M lid headroom, §N tray/film retention (plotter tie-down waived), §A measurements. All exports **CONCEPT / REFERENCE_ONLY / PRELIMINARY** — no G0–G8 passed. See [`HANDOFF_PROMPT.md`](HANDOFF_PROMPT.md) for full product truth.
+**Current status (rev15, 2026-08-08):** envelope **650 × 420 × 529 mm**; `CONCEPT_REVISION=15`; weld-free **and adhesive-free** mechanical joining (D-061/D-065); **STACK-CAP-*** stacking interface (D-064); upper tray fixed / lower door-tray choreography (D-076). Open owner blockers: §F handle, §M lid headroom, §N tray/film retention (plotter tie-down waived), §A measurements. All exports **CONCEPT / REFERENCE_ONLY / PRELIMINARY** — no G0–G8 passed. See [`HANDOFF_PROMPT.md`](HANDOFF_PROMPT.md) for full product truth.
 
 The chosen workflow is:
 

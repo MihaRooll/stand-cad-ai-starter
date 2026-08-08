@@ -2,6 +2,8 @@
 
 > **Living status:** `state/AUTONOMOUS_STATUS.md` — last closed defect, backlog, anti-false-conclusion notes. Prefer it over mid-file historical narrative for “what next.”
 >
+> **FIX-DOC-001-rfq-rev15 / D-079 (2026-08-08):** `docs/12_PRODUCTION_RFQ_TEMPLATE.md` + README **Current status** advertise **CONCEPT rev15** / `CONCEPT_REVISION=15` with rev15 artifact paths and indicative mass/tip figures from `output/validation/rev15/`. MAINS-INLET honesty aligned to D-071 (not modeled). §F/§M/§N/§A **OPEN**; **no** G0–G8 pass.
+>
 > **FIX-MASS-001 / D-078 (2026-08-08):** Mass-report header lists excluded categories from live transport only; no longer claims removed `MAINS-INLET` / `INTERLOCK` / `EDGEGUARD` are physically present. PLT-012 / G4 **not** passed.
 >
 > **FIX-TIP-001 / D-077 (2026-08-08):** Upper tip-factor at `upper_extension=0` is **N/A** (`applicable=False`); report no longer prints `inf (minimum 1.5)`. Lower@250 indicative factor remains finite (~3.785). PLT-010 / G4 **not** passed.

@@ -1,6 +1,6 @@
 # Prototype manufacturing RFQ template
 
-Subject: DFM and quotation request — light desktop plotter tower prototype — `light_plotter_tower` / **CONCEPT rev13** (`REFERENCE_ONLY`)
+Subject: DFM and quotation request — light desktop plotter tower prototype — `light_plotter_tower` / **CONCEPT rev15** (`REFERENCE_ONLY`)
 
 ## Project summary
 
@@ -21,7 +21,7 @@ These items are **not** resolved in the attached STEP/PDF package. Do not infer 
 | ID | Topic | Status |
 |---|---|---|
 | §F | Handle concept — through-cut grip only; tier-2 finger intrusion ~1.39×10⁶ mm³ | **OPEN** |
-| §N | Transport retention — trays, plotters, film unrestrained | **OPEN** |
+| §N | Transport retention — tray/film unrestrained; plotter tie-down waived (owner 2026-08-06) | **OPEN** |
 | §M | Lid-open headroom — 210,600 mm³ lid/shuttle overlap at tier-1 service extension | **OPEN** |
 | §A | Real-equipment measurements (feed plane, lid envelope, sheet thickness, …) | **OPEN** |
 
@@ -49,38 +49,38 @@ These items are **not** resolved in the attached STEP/PDF package. Do not infer 
 
 2. **Flat patterns and bend data — factory-owned until DFM says otherwise.** Per ADR-003: preliminary DXF stays **`REFERENCE_ONLY`**; formed STEP and controlled PDF precede production DXF.
 
-3. **`MAINS-INLET-001` — deferred placeholder only** (D-036). Do not procure as a specification.
+3. **`MAINS-INLET-001` — deferred certified inlet path** (D-036); **not modeled** in the current CONCEPT package (D-071 removed the display solid). Do not procure as a specification. Prototype electrical entry is **`SVC-CABLE-PASSTHROUGH-001`** only (owner-routed extension cord).
 
 4. **Weld-free frame — mandatory.** Do not quote welded 15×15×1.5 mm angle joints; propose bolted brackets/gussets instead.
 
-## Attached package (CONCEPT rev13)
+## Attached package (CONCEPT rev15)
 
 | Artifact | Path / note |
 |---|---|
-| Formed assembly STEP | `output/concept/light_plotter_tower_ASSEMBLY_CONCEPT_REFERENCE_ONLY_rev13.step` |
-| PRELIMINARY PDF drawings | `output/validation/rev13/drawings/…_rev13.pdf` — sheets GA/OP/SEC/BOM/**JOIN-001**/OPEN/DET |
-| REFERENCE_ONLY DXF (flat panels) | `output/validation/rev13/dxf/*_REFERENCE_ONLY_rev13.dxf` |
+| Formed assembly STEP | `output/concept/light_plotter_tower_ASSEMBLY_CONCEPT_REFERENCE_ONLY_rev15.step` |
+| PRELIMINARY PDF drawings | `output/validation/rev15/drawings/light_plotter_tower_DRAWINGS_PRELIMINARY_CONCEPT_NOT_FOR_PRODUCTION_rev15.pdf` — sheets GA/OP/SEC/BOM/**JOIN-001**/OPEN/DET |
+| REFERENCE_ONLY DXF (flat panels) | `output/validation/rev15/dxf/*_REFERENCE_ONLY_rev15.dxf` |
 | Assembly instructions | `docs/15_ASSEMBLY_INSTRUCTIONS.md` |
-| Indicative mass report | `output/validation/rev13/mass_report.csv` |
-| Stability / deflection | `output/validation/rev13/stability_report.md`, `deflection_report.md` |
+| Indicative mass report | `output/validation/rev15/mass_report.csv` |
+| Stability / deflection | `output/validation/rev15/stability_report.md`, `deflection_report.md` |
 | BOM + joint schedule | PDF **BOM-001**, **JOIN-001** |
 
 ## Indicative mass figures (NOT Gate G4 — regenerate for latest)
 
 Figures below are **indicative** from `scripts/generate_mass_report.py` at regenerate time; cavity-wall side-slab policy per D-055 (see OPEN-001).
 
-| Metric | Typical rev13 order of magnitude |
+| Metric | Typical rev15 order of magnitude |
 |---|---|
-| Empty structural (excl. verify_on_real_machine parts) | **8.806 kg** |
-| All-parts (+ plotters in model) | **12.860 kg** |
-| Bought-in fasteners (indicative, excl. structural total) | **≈0.174 kg** registry (**158** screws: **137 M4 + 21 M3** from `joints.*`) **+ 4 FOOT M4 + 5 base-cladding M3** (docs/15, not in `joints.*`) → **167** total indicative |
+| Empty structural (excl. verify_on_real_machine parts) | **9.590 kg** |
+| All-parts (+ plotters in model) | **13.383 kg** |
+| Bought-in fasteners (indicative, excl. structural total) | **≈0.174 kg** registry (**158** screws: **137 M4 + 21 M3** from `joints.*`) **+ 4 FOOT M4** supplementary (`hardware.py::supplementary_fastener_instances`; `base_clad_m3=0` since D-069 removed BASE cladding) → **162** total indicative |
 | Corner brackets (indicative, not all modeled as solids) | **0.145 kg** (34 nodes: 22 JT-FRAME-CORNER + 12 JT-TRAY-RAIL-FRAME) |
-| Stacking caps (D-064, four **STACK-CAP-***) | **~0.10 kg** indicative (4× 40×40×8 mm plate less Ø30.75×2.5 mm recess; `part_mass_kg`) |
+| Stacking caps (D-064, four **STACK-CAP-***) | **~0.118 kg** indicative (4× **0.0294 kg** per `mass_report.csv` / `part_mass_kg`; 40×40×8 mm plate less Ø30.75×2.5 mm recess) |
 | Stacking cap fasteners | included in registry **158** (**JT-STACK-CAP-POST**, 4 corners × qty 2) |
-| Tip factor lower tier @ 250 mm ext / 420 mm depth | **3.756** (incl. D-061 joining roll-up) |
-| Tip factor upper tier | **3.348** |
+| Tip factor lower tier @ 250 mm ext / 420 mm depth | **3.785** (split-mass model D-039; incl. D-061 joining roll-up) |
+| Tip factor upper tier | **N/A — not applicable** (D-076 zero travel / no overhang tip case; D-077 policy) |
 | Tray deflection (3-rail indicative model @ 10 kg) | ~0.23 mm vs 1.5 mm ceiling |
-| REL-027 `to_measure` leaf count | **55** (see `state/REQUIREMENTS_TRACEABILITY.csv` PLT-017) |
+| REL-027 `to_measure` leaf count | **55** (see `state/REQUIREMENTS_TRACEABILITY.csv` PLT-017; live validator oracle in `tests/test_parameters.py`) |
 
 ## Release boundary
 
