@@ -2,6 +2,8 @@
 
 > **Living status:** `state/AUTONOMOUS_STATUS.md` — last closed defect, backlog, anti-false-conclusion notes. Prefer it over mid-file historical narrative for “what next.”
 >
+> **FIX-DOC-002 / D-082 (2026-08-08):** `HANDOFF_PROMPT.md` product-truth / startup / Immediate mission refreshed to rev15 + D-075…D-081 live numbers; test pins current zones only. **No** G0–G8 pass.
+>
 > **FIX-COLL-001-open-front-ceiling / D-080 (2026-08-08):** `OPEN_FRONT_MAX_BEARING_MM3=750.0` gates `is_open_front_kinematic_contact` and four front clad/rail penetrating patterns (live max **540 mm³**). P2: door `PANEL-IN-MID` / `SOFTSTOP` unconditional True backlog remains. **No** G0–G8 pass.
 >
 > **FIX-MASS-001 / D-078 (2026-08-08):** Mass-report header lists excluded categories from live transport only; no longer claims removed `MAINS-INLET` / `INTERLOCK` / `EDGEGUARD` are physically present. PLT-012 / G4 **not** passed.
@@ -16,7 +18,7 @@
 - **Operating mode: D-060 EXIT — FAST ITERATION MODE (D-043) closed 2026-08-06.** Owner visual 3D approval recorded in D-060; PROD-001 weld-free RFQ campaign active. No G0–G8 gate passed.
 - Current phase: **rev15** FIX-WAVE-004 (D-075…D-076); prior FIX-WAVE-003 reconcile (D-066…D-074)
 - Current gate: G0 (human verdict unconfirmed) — **no G0–G8 gate passed**
-- Status: **`CONCEPT_REVISION`=15** evidence under `output/validation/rev15/`. **`hardware.handle_mount_y_mm`=179.8 mm** (D-074). Corner posts **restored** (D-075); interlock / six service volumes / BASE·ORG·POST cladding remain removed (D-067…D-071). Door/tray choreography updated (D-076); `trays.upper_extension`=0 (Main best-guess, A-D076). Envelope **650 × 420 × 529 mm** unchanged.
+- Status: **`CONCEPT_REVISION`=15** evidence under `output/validation/rev15/`. **`hardware.handle_mount_y_mm`=179.8 mm** (D-074). Corner posts **restored** (D-075); interlock / six service volumes / BASE·ORG·POST cladding remain removed (D-067…D-071). Door/tray choreography updated (D-076, **owner-confirmed**); `trays.upper_extension`=0. Envelope **650 × 420 × 529 mm** unchanged.
 - Last updated: 2026-08-07 (FIX-WAVE-004 cycle 2.5 docs reconcile)
 - **Tests:** `uv run pytest -q` green on implementer machine (~370+ cases, 1 skip for missing rev evidence until regenerate); Full profile pending verifier
 - **Tooling/process (D-041, 2026-08-05):** `pytest-xdist` + `-n auto`; `Quick`/`Full` profile guidance; operational-orchestrator turn-ending directive; `docs/14_CAD_MODELING_CONVENTIONS.md`
@@ -213,21 +215,21 @@ Evidence collected is not a gate verdict: G0 remains an unconfirmed Human Gate.
 
 - D-043 exit condition (owner visual 3D approval) **recorded satisfied in D-060 (2026-08-06)**. FAST ITERATION MODE is closed; PROD-001 weld-free RFQ campaign is the active operating frame. Historical D-043 policy/practice mismatch (pre-D-060) is moot — do not cite FAST ITERATION as still active.
 
-### Handle concept — tier-2 finger intrusion (D-051; `docs/10_USER_INPUT_REQUIRED.md` §E / §F)
+### Handle concept — tier-2 finger intrusion (D-074; `docs/10_USER_INPUT_REQUIRED.md` §E / §F)
 
-- Balance-point through-cutout at Y=**165.7** / Z=**252** intersects tier-2 plotter bay by **≈1,782,932 mm³**. Owner deferred choosing: (1) external bolt-on handle, (2) blind side pocket, (3) low aft cutout behind plotters. Blocks production-ready side-panel release.
+- Balance-point through-cutout at Y=**179.8** / Z=**252** (D-074) intersects tier-2 plotter bay by **≈1,529,766 mm³** (`test_handle_tier2_finger_intrusion_at_balance_point`). Owner deferred choosing: (1) external bolt-on handle, (2) blind side pocket, (3) low aft cutout behind plotters. Blocks production-ready side-panel release.
 
 ### Open-lid headroom (PLT-008; `docs/10_USER_INPUT_REQUIRED.md` §M)
 
-- Provisional 80 mm lid envelope: **27 mm** headroom tier 1 / **4 mm** tier 2 with trays closed — lid cannot fully open. At full tier-1 service extension, `LID-ENVELOPE-P1-001` intersects `INTERLOCK-SHUTTLE-001` by **≈210,600 mm³**. `tests/test_kinematics.py::test_lid_envelope_no_intersection_in_service_states` **fails intentionally** — do not weaken; remedy is owner decision on lid envelope/headroom/interlock layout.
+- Provisional 80 mm lid envelope: **27 mm** headroom tier 1 / **50 mm** tier 2 with trays closed (transport canary) — lid cannot fully open. **Interlock hardware absent** (D-067); dual-extend inhibit is **procedure only**, not structurally proven. `tests/test_kinematics.py::test_lid_envelope_no_intersection_in_service_states` **xfail/canary** — do not weaken; remedy is owner decision on lid envelope, headroom, or operating procedure (§M).
 
 ### Transport retention (`docs/10_USER_INPUT_REQUIRED.md` §N; R-012)
 
-- No tray closed-position latches, plotter tie-downs, or film front retainer modeled. Soft stops travel with trays; interlock is dual-extension inhibit only (neutral in transport). Unrestrained mass: plotters **4.7 + 5.2 kg** plus up to **10 kg** film.
+- No tray closed-position latches, plotter tie-downs, or film front retainer modeled. Soft stops travel with trays. **Interlock hardware absent** (D-067); dual-extend inhibit is **procedure only** — not a modeled retention device. Owner **waived plotter tie-down** for event display; unrestrained mass: up to **10 kg** film (R-012).
 
 ### Tip-over — PLT-010 honesty (`IN_PROGRESS`; `docs/10_USER_INPUT_REQUIRED.md` §K / §L)
 
-- **FIX-TIP-001 / D-077 (2026-08-08):** Upper tier at `trays.upper_extension`=0 (D-076) — tip check **N/A**, not `inf >= 1.5` pass. Applicability gate: `extension > 0` **and** `overturn_moment > 0`; report/metrics distinguish zero-travel vs extended-but-non-applicable wording (cycle 3). Lower@250 mm finite indicative factor still asserted in pytest (rev15 `stability_report.md`). Independent adversarial finding unchanged: 20 N lateral lean → **1.434**; both trays extended → **0.924** — both below TZ 1.5 floor. **Not authoritative for Gate G4.** CSV row PLT-010 status **`IN_PROGRESS`**.
+- **FIX-TIP-001 / D-077 (2026-08-08):** Upper tier at `trays.upper_extension`=0 (D-076) — tip check **N/A**, not `inf >= 1.5` pass. Applicability gate: `extension > 0` **and** `overturn_moment > 0`; report/metrics distinguish zero-travel vs extended-but-non-applicable wording (cycle 3). Lower@250 mm finite indicative factor still asserted in pytest (rev15 `stability_report.md`). Independent adversarial finding unchanged: 20 N lateral lean → **1.434** (<1.5); dual-tray **0.924** historical (pre-D-076 both-tier extend). **Not authoritative for Gate G4.** CSV row PLT-010 status **`IN_PROGRESS`**.
 
 ### Mass accounting (PLT-012 — `IN_PROGRESS`; indicative only)
 

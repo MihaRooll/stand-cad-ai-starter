@@ -7,7 +7,7 @@
 | Field | Value |
 |---|---|
 | Branch | `main` |
-| HEAD | `5eb2375`+ working tree — FIX-DOC-001-rfq-rev15 in progress |
+| HEAD | `5eb2375`+ working tree — FIX-DOC-002-handoff-rev15 closed in WT |
 | Upstream | `origin/main` synced (ordinary push OK) |
 | Next in flight | Door PANEL-IN-MID / SOFTSTOP unconditional True (P2 honesty backlog) |
 | Prior base | `65d6fe3` (D-041) |
@@ -20,6 +20,17 @@
 | Commit policy | Mega-land authorized 2026-08-08. Keep excluding `ИИ советы/`, secrets, `.pytest_cache/`. `output/` gitignored. |
 
 ## Last closed defect
+
+### FIX-DOC-002-handoff-rev15 — HANDOFF product-truth sync (D-082)
+
+| | |
+|---|---|
+| Problem | `HANDOFF_PROMPT.md` startup checklist, Product truth table, and Immediate mission still cited rev13 paths/numbers while live `CONCEPT_REVISION`=15 |
+| Root cause | Documentation not refreshed after FIX-WAVE-004 / rev15 evidence and D-075…D-081 fix waves |
+| Fix | Rewrite current zones to rev15 + D-075…D-081 truths; rephrase historical closed-list `CONCEPT_REVISION` lines; test scans current zones only. **Cycle 2:** drop stale 210600 lid/shuttle; tier-2 headroom 50 mm; §F intrusion ≈1,529,766 mm³; Open list in test scan. **Cycle 3:** PROJECT_STATE `## Current blockers` aligned (F-7 handle/headroom/transport/tip honesty) |
+| Key paths | `HANDOFF_PROMPT.md`, `tests/test_concept_revision_docs.py` |
+| Verify | Adversarial cycle-3 **approve**; Quick exit 0 — `uv run pytest tests/test_concept_revision_docs.py`, full `uv run pytest`, `uv run ruff check .` |
+| Explicitly NOT done | Gate pass; §F/§M/§N/§A closure; geometry/config changes |
 
 ### FIX-TOOL-001-stage1-interlock-guard — `_stage1_metrics.py` KeyError (D-067)
 
@@ -63,15 +74,13 @@
 
 1. **Door PANEL-IN-MID / SOFTSTOP unconditional True** — `is_door_mate` returns True without volume ceiling; no clearance `< thr` contacts measured in transport / service_p1 / tray1_qa. T2+; do not invent cap without evidence.
 2. **Traceability CSV / ASSUMPTIONS** evidence paths still pointing at rev13 for several PLT/SWE rows.
-3. **HANDOFF product-truth** still cites rev13 in Product truth header — refresh in a follow-up packet (test excludes historical closed lists).
-4. Owner blockers unchanged: §F handle, §M lid headroom, §N retention, §A measurements.
+3. Owner blockers unchanged: §F handle, §M lid headroom, §N retention, §A measurements.
 
 ## Where we are / next action
 
 1. Land verified working tree (mega-commit + ordinary push) per owner approval.
 2. Pick backlog **#1** (highest remaining impact), run confirmation (reproduce → counter → root → test → safety), then T2 plan/implement/adversarial/verify; commit only that cycle's paths when isolatable.
-3. Refresh `HANDOFF_PROMPT.md` product-truth pointers to rev15 / D-077 / D-078 / D-079 in a follow-up packet.
-4. Prefer Quick mid-cycle; Full before stage-final commits.
+3. Prefer Quick mid-cycle; Full before stage-final commits.
 
 ## Protection rules (do not skip)
 
@@ -100,3 +109,5 @@
 | 2026-08-08 | FIX-MASS-001 closed (D-078); backlog #2 removed; header honesty test added. |
 | 2026-08-08 | FIX-COLL-001 closed (D-080); open-front volume ceiling 750 mm³; backlog #1 narrowed to door PANEL-IN-MID/SOFTSTOP P2. |
 | 2026-08-08 | FIX-TOOL-001 closed (D-081); `_stage1_metrics.py` interlock N/A guard; backlog #2 removed. |
+| 2026-08-08 | FIX-DOC-002 closed (D-082); HANDOFF current zones → rev15; backlog #3 (HANDOFF product-truth) removed. |
+| 2026-08-08 | FIX-DOC-002 cycle 3: PROJECT_STATE Current blockers honesty (F-7/F-8/F-9). |

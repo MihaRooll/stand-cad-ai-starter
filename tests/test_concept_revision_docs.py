@@ -19,6 +19,22 @@ _CONCEPT_REV_LITERAL = re.compile(r"CONCEPT\s+rev(?P<rev>\d+)", re.IGNORECASE)
 _CONCEPT_REVISION_EQ = re.compile(r"CONCEPT_REVISION\s*=\s*(?P<rev>\d+)")
 
 
+def _handoff_current_zones(text: str) -> str:
+    """Startup, Product truth, Open list, and Immediate mission — excludes Already closed."""
+    before_closed, _, after_closed = text.partition("## Already closed")
+    _, _, after_open_hdr = after_closed.partition("## Open / next product work")
+    open_body, _, after_open = after_open_hdr.partition("\n## Operating model")
+    _, _, after_mission_hdr = after_open.partition("## Immediate mission")
+    mission_body = after_mission_hdr.split("\n---\n", 1)[0]
+    return (
+        before_closed
+        + "## Open / next product work\n"
+        + open_body
+        + "## Immediate mission"
+        + mission_body
+    )
+
+
 def _stale_revision_hits(text: str) -> list[str]:
     """Return human-readable hits where a parsed revision != live CONCEPT_REVISION."""
     hits: list[str] = []
@@ -50,11 +66,36 @@ def test_advertising_docs_pin_to_live_concept_revision() -> None:
             ), f"{path.relative_to(REPO_ROOT)} missing CONCEPT rev{CONCEPT_REVISION}"
 
 
-def test_handoff_historical_closed_list_not_scanned_whole_file() -> None:
-    """HANDOFF may retain historical CONCEPT_REVISION=13 in closed-defect lists."""
+def test_handoff_current_zones_pin_live_concept_revision() -> None:
+    """HANDOFF startup / Product truth / Open / Immediate mission must advertise live revision."""
     handoff = REPO_ROOT / "HANDOFF_PROMPT.md"
-    assert handoff.is_file()
-    # Whole-file scan is intentionally out of scope for advertising pins (AC-4).
-    # This test documents the exclusion so a future whole-file scan is not added by mistake.
-    product_truth = handoff.read_text(encoding="utf-8").split("## Immediate mission", 1)[0]
-    assert f"CONCEPT_REVISION={CONCEPT_REVISION}" not in product_truth or "rev13" in product_truth
+    text = handoff.read_text(encoding="utf-8")
+    current = _handoff_current_zones(text)
+    live_tag = f"rev{CONCEPT_REVISION}"
+    assert live_tag in current, f"HANDOFF current zones missing {live_tag!r}"
+    assert f"CONCEPT_REVISION = {CONCEPT_REVISION}" in current, (
+        f"HANDOFF current zones missing CONCEPT_REVISION = {CONCEPT_REVISION}"
+    )
+    stale_assign = _CONCEPT_REVISION_EQ.findall(current)
+    assert all(int(rev) == CONCEPT_REVISION for rev in stale_assign), (
+        f"HANDOFF current zones stale CONCEPT_REVISION assignment(s): {stale_assign}"
+    )
+    stale = _stale_revision_hits(current)
+    assert not stale, (
+        f"HANDOFF current zones advertise stale revision(s): {sorted(set(stale))}"
+    )
+    assert "validation/rev13/" not in current, (
+        "HANDOFF current zones still advertise rev13 evidence pack paths"
+    )
+    assert "REFERENCE_ONLY_rev13" not in current, (
+        "HANDOFF current zones still advertise rev13 concept artifact names"
+    )
+    assert "210600" not in current.replace(",", "").replace(" ", ""), (
+        "HANDOFF current zones still cite stale 210600 mm³ lid/shuttle volume"
+    )
+    assert "lid/shuttle" not in current.lower(), (
+        "HANDOFF current zones still narrate live lid/shuttle clash"
+    )
+    assert "50 mm" in current, (
+        "HANDOFF current zones missing tier-2 50 mm headroom (§M canary)"
+    )
