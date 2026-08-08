@@ -7,19 +7,31 @@
 | Field | Value |
 |---|---|
 | Branch | `main` |
-| HEAD | pending FIX-DOC-004 commit — ASSUMPTIONS rev15 sync (D-085) |
+| HEAD | pending FIX-COLL-003 commit — D-086 Full green |
 | Upstream | `origin/main` synced (ordinary push OK) |
-| Next in flight | Owner blockers: §F handle, §M lid headroom, §N retention, §A measurements |
+| Next in flight | Next software audit; owner blockers: §F handle, §M lid headroom, §N retention, §A measurements |
 | Prior base | `65d6fe3` (D-041) |
 | Live `CONCEPT_REVISION` | **15** (`src/stand_cad/geometry/export.py`) |
 | Envelope | **650 × 420 × 529 mm** |
 | Owner-confirmed product | D-075 posts restored; D-076 upper fixed (`upper_extension=0`), lower 250 mm + door/tray choreography |
 | Gates | **No G0–G8 passed** — all CONCEPT / REFERENCE_ONLY / PRELIMINARY |
 | Mode | Autonomously fixing highest-impact **software/honesty** defects until owner says **СТОП** |
-| Verify at land | Quick verify **green** — full pytest exit 0 (393 passed, 1 xfailed), ruff clean (FIX-COLL-002 cycle 2) |
+| Verify at land | Full **green** — `setup_windows.ps1` exit 0 (395 passed, 1 xfailed); ruff clean (FIX-COLL-003) |
 | Commit policy | Mega-land authorized 2026-08-08. Keep excluding `ИИ советы/`, secrets, `.pytest_cache/`. `output/` gitignored. |
 
 ## Last closed defect
+
+### FIX-COLL-003-kinematic-group-mates — delete blanket group `is_mating` (D-086)
+
+| | |
+|---|---|
+| Problem | `is_mating()` returned True for any same kinematic-group pair with no `intersection_volume` ceiling — silent-green deep burial |
+| Root cause | Blanket loop at `collision.py` 663–665 overrode `check_collision_pairs` clearance gate |
+| Fix | Delete blanket; add `is_slide_vibmount_bearing()` for eight residual SLIDE↔VIBMOUNT plane-touch pairs (`SLIDE_VIBMOUNT_MAX_BEARING_MM3=500.0`; live max **0 mm³**) |
+| Measured | Residual same-group non-MATING contacts: 8 SLIDE↔VIBMOUNT @ 0 mm³; EQUIP↔SOFTSTOP live clr=0.5 mm (not mated) |
+| Key paths | `collision.py`; `tests/test_geometry.py` (EQUIP↔SOFTSTOP + SLIDE↔VIBMOUNT burial tests); `docs/14` §11 |
+| Verify | Adversarial accept; Quick 395 passed + ruff 0; Full `setup_windows.ps1` exit 0 |
+| Explicitly NOT done | Gate pass; MATING_PAIRS P2 expansion; TAB removal from kinematics groups |
 
 ### FIX-DOC-004-assumptions-rev15 — ASSUMPTIONS rev15 evidence sync (D-085)
 
@@ -146,3 +158,4 @@
 | 2026-08-08 | FIX-DOC-002 closed (D-082); HANDOFF current zones → rev15; backlog #3 (HANDOFF product-truth) removed. |
 | 2026-08-08 | FIX-DOC-002 cycle 3: PROJECT_STATE Current blockers honesty (F-7/F-8/F-9). |
 | 2026-08-08 | FIX-DOC-004 closed (D-085); A-013/A-017 → rev15 evidence; A-014 AIRPATH honesty (D-071). |
+| 2026-08-08 | FIX-COLL-003 closed (D-086); kinematic-group blanket deleted; SLIDE↔VIBMOUNT ceiling 500; Full green. |

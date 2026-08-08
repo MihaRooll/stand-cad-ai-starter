@@ -2040,6 +2040,79 @@ def test_open_front_penetrating_rejects_volumetric_burial(params, transport):
     assert not is_mating(clad_id, slide_id, parts, threshold=threshold, params=params)
 
 
+def test_kinematic_group_membership_alone_rejects_equip_softstop_burial(params, transport):
+    """FIX-COLL-003 AC-1 — same-group membership must not exempt deep EQUIP↔SOFTSTOP burial."""
+    from stand_cad.geometry.collision import MATING_PAIRS, is_mating, pair_key
+    from stand_cad.geometry.registry import PartRecord
+
+    threshold = float(params.value("tolerance.part_assembly_feature_mm"))
+    equip_id = "EQUIP-PLOTTER1-001"
+    soft_id = "SOFTSTOP-LOWER-001"
+    assert pair_key(equip_id, soft_id) not in MATING_PAIRS
+    equip = transport.parts[equip_id]
+    equip_bounds = bounding_box_bounds(equip.solid)
+    buried_soft = PartRecord(
+        part_id=soft_id,
+        material=transport.parts[soft_id].material,
+        solid=box_from_bounds(
+            equip_bounds[0][0],
+            equip_bounds[1][0],
+            equip_bounds[2][0],
+            equip_bounds[0][1],
+            equip_bounds[1][1] + 50.0,
+            equip_bounds[2][1],
+        ),
+    )
+    parts = dict(transport.parts)
+    parts[soft_id] = buried_soft
+    inter_vol = intersection_volume(equip.solid, buried_soft.solid)
+    assert inter_vol > 20_000.0
+    assert not is_mating(equip_id, soft_id, parts, threshold=threshold, params=params)
+
+
+def test_slide_vibmount_bearing_rejects_volumetric_burial(params, transport):
+    """FIX-COLL-003 — slide↔vibmount skin ceiling rejects deep burial."""
+    from stand_cad.geometry.collision import (
+        SLIDE_VIBMOUNT_MAX_BEARING_MM3,
+        is_mating,
+        is_slide_vibmount_bearing,
+    )
+    from stand_cad.geometry.registry import PartRecord
+
+    threshold = float(params.value("tolerance.part_assembly_feature_mm"))
+    slide_id = "SLIDE-LOWER-LEFT-001"
+    vib_id = "VIBMOUNT-P1-001"
+    slide = transport.parts[slide_id]
+    slide_bounds = bounding_box_bounds(slide.solid)
+    buried_vib = PartRecord(
+        part_id=vib_id,
+        material=transport.parts[vib_id].material,
+        solid=box_from_bounds(
+            slide_bounds[0][0],
+            slide_bounds[1][0],
+            slide_bounds[2][0],
+            slide_bounds[0][1],
+            slide_bounds[1][1] + 50.0,
+            slide_bounds[2][1],
+        ),
+    )
+    parts = dict(transport.parts)
+    parts[vib_id] = buried_vib
+    inter_vol = intersection_volume(slide.solid, buried_vib.solid)
+    assert inter_vol > SLIDE_VIBMOUNT_MAX_BEARING_MM3 + threshold
+    assert inter_vol > 20_000.0
+    assert not is_slide_vibmount_bearing(slide_id, vib_id, parts, threshold)
+    assert not is_mating(slide_id, vib_id, parts, threshold=threshold, params=params)
+    # Live plane-touch stays exempt.
+    live_inter = intersection_volume(
+        transport.parts[slide_id].solid,
+        transport.parts[vib_id].solid,
+    )
+    assert live_inter <= SLIDE_VIBMOUNT_MAX_BEARING_MM3 + threshold
+    assert is_slide_vibmount_bearing(slide_id, vib_id, transport.parts, threshold)
+    assert is_mating(slide_id, vib_id, transport.parts, threshold=threshold, params=params)
+
+
 def test_post_cladding_and_base_org_cladding_not_emitted(params, transport):
     """D-069/D-070 — owner removed BASE/ORG/POST front cladding strips."""
     removed = [

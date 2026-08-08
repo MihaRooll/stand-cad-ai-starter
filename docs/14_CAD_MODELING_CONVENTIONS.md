@@ -53,3 +53,9 @@ The X-band gate tests **overlap with the pocket band** `[0, side_clear]` (left) 
 ## 10. Open-front kinematic contact — intersection-volume ceiling (D-080)
 
 Front perimeter structure (`PANEL-CLAD-FRONT-*`, `FRAME-RAIL-BASE-FRONT-*`, `FRAME-RAIL-ORG-FRONT-*`) legitimately touches the travelling tray/slide/plotter stack at the open front opening — zero clearance with small skin/plane bearing is expected. **`is_open_front_kinematic_contact()`** and the four front clad/rail **`PENETRATING_JOINT_PATTERNS`** (clad/rail ↔ `TRAY-LOWER-*` / `SLIDE-LOWER-*`) exempt only when `intersection_volume <= OPEN_FRONT_MAX_BEARING_MM3 + threshold` (**750 mm³** ceiling; live max **540 mm³** measured 2026-08-08 across transport / service_p1 / tray1_qa). Deep volumetric burial (~1e6 mm³ synthetic) must **not** silent-green. Door ↔ `PANEL-IN-MID-001` / `SOFTSTOP-*` closed-posture mates follow the same volume-ceiling pattern via **`is_door_mate`** and **`DOOR_FRONT_PLANE_MAX_BEARING_MM3`** (D-084; live DOOR-LOWER ↔ MID **5985 → 0 mm³** after Path A trim).
+
+## 11. Kinematic-group mates — no blanket exemption (D-086)
+
+**Do not** treat shared `LOWER_KINEMATIC_GROUP` / `UPPER_KINEMATIC_GROUP` membership as an unconditional `is_mating` pass — that greenwashed deep burial (e.g. synthetic TRAY↔EQUIP). Intentional same-group contacts must be on **`MATING_PAIRS`**, **`is_door_mate`**, **`is_open_front_kinematic_contact`**, INTERLOCK/face helpers, or a measured skin ceiling.
+
+**Slide ↔ vibration mount (`is_slide_vibmount_bearing`):** eight live pairs (`SLIDE-LOWER-*` ↔ `VIBMOUNT-P1-*`, `SLIDE-UPPER-*` ↔ `VIBMOUNT-P2-*`) show plane-touch only — live max **0 mm³** (2026-08-08 transport). Exempt when `intersection_volume <= SLIDE_VIBMOUNT_MAX_BEARING_MM3 + threshold` (**500 mm³** ceiling). Deep burial must fail. **`EQUIP-PLOTTER*`** ↔ **`SOFTSTOP-*`** are **not** on `MATING_PAIRS`; live transport keeps **0.5 mm** clearance — no mate rule needed.

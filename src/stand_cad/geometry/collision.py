@@ -135,6 +135,10 @@ DOOR_STRUT_MAX_BEARING_MM3 = 350.0
 # and the four front clad/rail penetrating patterns. Live max 540 mm³ (2026-08-08).
 OPEN_FRONT_MAX_BEARING_MM3 = 750.0
 
+# Slide rail ↔ adjacent vibration-mount pad skin bearing (mm³) — plane-touch only.
+# Live max 0 mm³ across eight SLIDE-* ↔ VIBMOUNT-* pairs (2026-08-08 transport).
+SLIDE_VIBMOUNT_MAX_BEARING_MM3 = 500.0
+
 OPEN_FRONT_PENETRATING_PATTERNS: frozenset[tuple[str, str]] = frozenset(
     {
         ("PANEL-CLAD-FRONT-", "TRAY-LOWER-"),
@@ -643,6 +647,28 @@ def is_frame_post_bearing(
     return False
 
 
+def is_slide_vibmount_bearing(
+    a: str,
+    b: str,
+    parts: dict[str, PartRecord],
+    threshold: float,
+) -> bool:
+    """Slide rail plane bears on adjacent vibration-mount pads — skin contact only."""
+    tier_pairs = (
+        ("SLIDE-LOWER-", "VIBMOUNT-P1-"),
+        ("SLIDE-UPPER-", "VIBMOUNT-P2-"),
+    )
+    for slide_prefix, vib_prefix in tier_pairs:
+        if (_id_matches(a, slide_prefix) and _id_matches(b, vib_prefix)) or (
+            _id_matches(b, slide_prefix) and _id_matches(a, vib_prefix)
+        ):
+            if minimum_clearance(parts[a].solid, parts[b].solid) >= threshold:
+                return False
+            inter_vol = intersection_volume(parts[a].solid, parts[b].solid)
+            return inter_vol <= SLIDE_VIBMOUNT_MAX_BEARING_MM3 + threshold
+    return False
+
+
 def is_mating(
     a: str,
     b: str,
@@ -660,9 +686,8 @@ def is_mating(
     if is_door_mate(a, b, parts, threshold):
         return True
 
-    for group in (LOWER_KINEMATIC_GROUP, UPPER_KINEMATIC_GROUP):
-        if a in group and b in group:
-            return True
+    if is_slide_vibmount_bearing(a, b, parts, threshold):
+        return True
 
     if is_foot_structure_contact(a, b, parts, threshold):
         return True
