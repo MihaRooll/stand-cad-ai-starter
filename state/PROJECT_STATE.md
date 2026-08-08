@@ -2,6 +2,8 @@
 
 > **Living status:** `state/AUTONOMOUS_STATUS.md` — last closed defect, backlog, anti-false-conclusion notes. Prefer it over mid-file historical narrative for “what next.”
 >
+> **FIX-DOC-005 / D-088 (2026-08-08):** `docs/12_PRODUCTION_RFQ_TEMPLATE.md` §F/§M owner-blocker rows synced to sole-current — tier-2 intrusion ≈1,515,402 mm³ at Y=180.6; §M transport headroom 27/50 mm vs 80 mm (not 210,600 mm³ lid/shuttle). Regression pin in `tests/test_concept_revision_docs.py`. §F/§M/§N/§A remain OPEN. **No** G0–G8 pass.
+>
 > **FIX-COLL-004 / D-087 (2026-08-08):** Volume-gate eight EQUIP-PLOTTER* ↔ TRAY-* / SLIDE-* seating pairs on `MATING_PAIRS` via `EQUIP_SEATING_MAX_BEARING_MM3=500.0` (live max **0 mm³**). TRAY↔SLIDE and other `MATING_PAIRS` uncapped — residual P2. **No** G0–G8 pass.
 >
 > **FIX-COLL-003 / D-086 (2026-08-08):** Deleted blanket kinematic-group `is_mating` exemption; residual eight SLIDE↔VIBMOUNT plane-touch pairs gated by `SLIDE_VIBMOUNT_MAX_BEARING_MM3=500.0` (live max **0 mm³**). EQUIP↔SOFTSTOP not on `MATING_PAIRS`; live clr=0.5 mm. **No** G0–G8 pass.

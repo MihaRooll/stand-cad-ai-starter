@@ -7,7 +7,7 @@
 | Field | Value |
 |---|---|
 | Branch | `main` |
-| HEAD | pending FIX-COLL-004 commit — D-087 Full green |
+| HEAD | pending FIX-DOC-005 commit — D-088 docs/12 §F/§M sync |
 | Upstream | `origin/main` synced (ordinary push OK) |
 | Next in flight | Next software audit; residual MATING_PAIRS P2; owner blockers: §F handle, §M lid headroom, §N retention, §A measurements |
 | Prior base | `65d6fe3` (D-041) |
@@ -16,10 +16,23 @@
 | Owner-confirmed product | D-075 posts restored; D-076 upper fixed (`upper_extension=0`), lower 250 mm + door/tray choreography |
 | Gates | **No G0–G8 passed** — all CONCEPT / REFERENCE_ONLY / PRELIMINARY |
 | Mode | Autonomously fixing highest-impact **software/honesty** defects until owner says **СТОП** |
-| Verify at land | Full **green** — `setup_windows.ps1` exit 0 (399 passed, 1 xfailed); ruff clean (FIX-COLL-004) |
+| Verify at land | Quick **green** — ~400 passed, 1 xfailed; ruff clean (FIX-DOC-005); docs/tests/state only |
 | Commit policy | Mega-land authorized 2026-08-08. Keep excluding `ИИ советы/`, secrets, `.pytest_cache/`. `output/` gitignored. |
 
 ## Last closed defect
+
+### FIX-DOC-005-rfq-fm-advertising — docs/12 §F/§M owner-blocker sync (D-088)
+
+| | |
+|---|---|
+| Problem | `docs/12` §F advertised stale tier-2 intrusion ~1.39×10⁶ mm³; §M cited removed 210,600 mm³ lid/shuttle overlap (D-067) |
+| Root cause | RFQ owner-blocker table not refreshed after D-084 handle Y retune and D-067 INTERLOCK removal |
+| Fix | §F → ≈1,515,402 mm³ (≈1.52×10⁶) at Y=180.6; §M → transport headroom tier 1 **27 mm** / tier 2 **50 mm** vs **80 mm** provisional envelope; regression pin `test_rfq_owner_blocker_table_pins_live_blockers` |
+| Key paths | `docs/12_PRODUCTION_RFQ_TEMPLATE.md`; `tests/test_concept_revision_docs.py`; `state/REQUIREMENTS_TRACEABILITY.csv` (PLT-008/PLT-019) |
+| Verify | Adversarial accept; Quick ~400 passed + ruff 0; targeted docs pin tests pass |
+| Explicitly NOT done | Gate pass; §F/§M/§N/§A closure; geometry/config changes |
+
+**Anti-false-conclusion:** Do **not** treat updated RFQ blocker wording as resolved handle or lid headroom. All four owner blockers remain **OPEN**.
 
 ### FIX-COLL-004-mating-pairs-seating-ceiling — EQUIP seating volume gate (D-087)
 
@@ -173,3 +186,4 @@
 | 2026-08-08 | FIX-DOC-004 closed (D-085); A-013/A-017 → rev15 evidence; A-014 AIRPATH honesty (D-071). |
 | 2026-08-08 | FIX-COLL-003 closed (D-086); kinematic-group blanket deleted; SLIDE↔VIBMOUNT ceiling 500; Full green. |
 | 2026-08-08 | FIX-COLL-004 closed (D-087); EQUIP seating MATING_PAIRS volume gate 500; residual uncapped P2 noted; Full green. |
+| 2026-08-08 | FIX-DOC-005 closed (D-088); docs/12 §F/§M owner blockers → sole-current intrusion/headroom; stale 1.39×10⁶ / 210600 lid/shuttle pin. |

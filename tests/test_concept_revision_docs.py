@@ -99,3 +99,45 @@ def test_handoff_current_zones_pin_live_concept_revision() -> None:
     assert "50 mm" in current, (
         "HANDOFF current zones missing tier-2 50 mm headroom (§M canary)"
     )
+
+
+def _rfq_owner_blocker_table(text: str) -> str:
+    """Owner-decision blocker table in docs/12 — §F/§M/§N/§A rows only."""
+    marker = "### Owner-decision blockers"
+    start = text.index(marker)
+    section, _, _ = text[start:].partition("### DFM / manufacturer-quotation questions")
+    return section
+
+
+def test_rfq_owner_blocker_table_pins_live_blockers() -> None:
+    """docs/12 RFQ owner blockers must advertise sole-current §F/§M facts only."""
+    rfq = REPO_ROOT / "docs" / "12_PRODUCTION_RFQ_TEMPLATE.md"
+    blockers = _rfq_owner_blocker_table(rfq.read_text(encoding="utf-8"))
+    normalized = blockers.replace(",", "").replace(" ", "").lower()
+
+    assert "210600" not in normalized, (
+        "docs/12 owner blockers still cite stale 210600 mm³ lid/shuttle volume"
+    )
+    assert "lid/shuttle" not in blockers.lower(), (
+        "docs/12 owner blockers still narrate live lid/shuttle clash"
+    )
+
+    f_row = next(line for line in blockers.splitlines() if "| §F |" in line)
+    assert "1.39" not in f_row, "docs/12 §F still advertises stale ~1.39×10⁶ intrusion"
+    assert "1,515,402" in f_row or "1.52" in f_row, (
+        "docs/12 §F missing current intrusion ≈1,515,402 / 1.52×10⁶"
+    )
+    assert "180.6" in f_row, "docs/12 §F missing balance-point Y=180.6"
+
+    m_row = next(line for line in blockers.splitlines() if "| §M |" in line)
+    assert "27 mm" in m_row, "docs/12 §M missing tier-1 27 mm headroom"
+    assert "50 mm" in m_row, "docs/12 §M missing tier-2 50 mm headroom"
+    assert "80 mm" in m_row, "docs/12 §M missing 80 mm provisional lid envelope"
+
+    n_row = next(line for line in blockers.splitlines() if "| §N |" in line)
+    assert "Transport retention" in n_row
+    assert "**OPEN**" in n_row
+
+    a_row = next(line for line in blockers.splitlines() if "| §A |" in line)
+    assert "Real-equipment measurements" in a_row
+    assert "**OPEN**" in a_row
