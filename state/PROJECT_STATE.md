@@ -2,11 +2,13 @@
 
 > **Living status:** `state/AUTONOMOUS_STATUS.md` — last closed defect, backlog, anti-false-conclusion notes. Prefer it over mid-file historical narrative for “what next.”
 >
+> **FIX-COLL-002 / D-084 (2026-08-08):** Path A retracts `PANEL-IN-MID-001` front Y to closed-door plane (15.0 mm); caps `is_door_mate` MID/SOFTSTOP with `DOOR_FRONT_PLANE_MAX_BEARING_MM3`. Live DOOR-LOWER↔MID **5985 → 0 mm³**; handle Y **179.8 → 180.6 mm** (F-4 doc sync). **No** G0–G8 pass.
+>
 > **FIX-DOC-003 / D-083 (2026-08-08):** `docs/10_USER_INPUT_REQUIRED.md` §E/§F/§H intrusion + MAINS-INLET wording and `state/REQUIREMENTS_TRACEABILITY.csv` current-evidence pointers synced to rev15 / Y=179.8 / REL-027=55. §F/§M/§N/§A remain OPEN. **No** G0–G8 pass.
 >
 > **FIX-DOC-002 / D-082 (2026-08-08):** `HANDOFF_PROMPT.md` product-truth / startup / Immediate mission refreshed to rev15 + D-075…D-081 live numbers; test pins current zones only. **No** G0–G8 pass.
 >
-> **FIX-COLL-001-open-front-ceiling / D-080 (2026-08-08):** `OPEN_FRONT_MAX_BEARING_MM3=750.0` gates `is_open_front_kinematic_contact` and four front clad/rail penetrating patterns (live max **540 mm³**). P2: door `PANEL-IN-MID` / `SOFTSTOP` unconditional True backlog remains. **No** G0–G8 pass.
+> **FIX-COLL-001-open-front-ceiling / D-080 (2026-08-08):** `OPEN_FRONT_MAX_BEARING_MM3=750.0` gates `is_open_front_kinematic_contact` and four front clad/rail penetrating patterns (live max **540 mm³**). P2 door MID/SOFTSTOP backlog **closed in FIX-COLL-002 (D-084)**. **No** G0–G8 pass.
 >
 > **FIX-MASS-001 / D-078 (2026-08-08):** Mass-report header lists excluded categories from live transport only; no longer claims removed `MAINS-INLET` / `INTERLOCK` / `EDGEGUARD` are physically present. PLT-012 / G4 **not** passed.
 >
@@ -20,7 +22,7 @@
 - **Operating mode: D-060 EXIT — FAST ITERATION MODE (D-043) closed 2026-08-06.** Owner visual 3D approval recorded in D-060; PROD-001 weld-free RFQ campaign active. No G0–G8 gate passed.
 - Current phase: **rev15** FIX-WAVE-004 (D-075…D-076); prior FIX-WAVE-003 reconcile (D-066…D-074)
 - Current gate: G0 (human verdict unconfirmed) — **no G0–G8 gate passed**
-- Status: **`CONCEPT_REVISION`=15** evidence under `output/validation/rev15/`. **`hardware.handle_mount_y_mm`=179.8 mm** (D-074). Corner posts **restored** (D-075); interlock / six service volumes / BASE·ORG·POST cladding remain removed (D-067…D-071). Door/tray choreography updated (D-076, **owner-confirmed**); `trays.upper_extension`=0. Envelope **650 × 420 × 529 mm** unchanged.
+- Status: **`CONCEPT_REVISION`=15** evidence under `output/validation/rev15/`. **`hardware.handle_mount_y_mm`=180.6 mm** (D-084; supersedes D-074 **179.8 mm**). Corner posts **restored** (D-075); interlock / six service volumes / BASE·ORG·POST cladding remain removed (D-067…D-071). Door/tray choreography updated (D-076, **owner-confirmed**); `trays.upper_extension`=0. Envelope **650 × 420 × 529 mm** unchanged.
 - Last updated: 2026-08-07 (FIX-WAVE-004 cycle 2.5 docs reconcile)
 - **Tests:** `uv run pytest -q` green on implementer machine (~370+ cases, 1 skip for missing rev evidence until regenerate); Full profile pending verifier
 - **Tooling/process (D-041, 2026-08-05):** `pytest-xdist` + `-n auto`; `Quick`/`Full` profile guidance; operational-orchestrator turn-ending directive; `docs/14_CAD_MODELING_CONVENTIONS.md`
@@ -31,7 +33,7 @@
 
 - **D-049 — tray travel restored to 250 mm both tiers:** `trays.lower_extension`/`upper_extension` 200→**250**; `lower_quick_access_extension_mm`=130 unchanged. At 250 mm with Cameo 4 depth 195 mm and `plotter.lower_y`=15 mm, plotter rear face Y=**−40 mm** (TZ `front_overhang_min_mm`=40 satisfied). **Indicative tip factors at `case.depth`=420 mm:** upper **2.339**, lower **2.650** (split-mass model D-039). **Supersedes D-048** (200 mm interim and its ~3.480/~3.943 figures).
 - **D-050 — superseded by D-051 (Y choice):** geometric depth-centre handle Y=210 mm / Z=252 mm; service-port/cable aft-shift experiment — do not treat as current.
-- **D-051 — handle at loaded-case balance point (historical snapshot; superseded by D-074):** `hardware.handle_mount_y_mm`=**185.9 mm** (D-063 retune; supersedes D-055 **187.6 mm** snapshot; **current live Y=179.8 mm per D-074**); `handle_mount_z_mm`=**252 mm** unchanged. Service port Y=**275** / cable Y=**320** (D-047 pairing). Port aft margin **≈34.1 mm** (historical at Y=185.9); cable nearest edge **≈79.1 mm** aft of grip (historical). **OPEN:** tier-2 finger intrusion **≈1,529,766 mm³** at current balance point Y=179.8 (was **≈1,389,717 mm³** at historical Y=185.9) — handle concept deferred (`docs/10_USER_INPUT_REQUIRED.md` §E/§F).
+- **D-051 — handle at loaded-case balance point (historical snapshot; superseded by D-074/D-084):** `hardware.handle_mount_y_mm`=**185.9 mm** (D-063 retune; supersedes D-055 **187.6 mm** snapshot; **current live Y=180.6 mm per D-084**, was 179.8 mm at D-074); `handle_mount_z_mm`=**252 mm** unchanged. Service port Y=**275** / cable Y=**320** (D-047 pairing). Port aft margin **≈34.1 mm** (historical at Y=185.9); cable nearest edge **≈79.1 mm** aft of grip (historical). **OPEN:** tier-2 finger intrusion **≈1,515,402 mm³** at current balance point Y=180.6 (was **≈1,529,766 mm³** at D-074 Y=179.8; **≈1,389,717 mm³** at historical Y=185.9) — handle concept deferred (`docs/10_USER_INPUT_REQUIRED.md` §E/§F).
 - **D-052 — PRELIMINARY drawing package rev12:** `CONCEPT_REVISION` 11→**12**; `scripts/generate_drawings.py` → PDF + REFERENCE_ONLY DXF + programmatic `to_measure` traceability; evidence under `output/validation/rev12/`.
 - **D-053 — evidence-integrity fixes:** REL-027 count **42** (was 44 baseline; −2 when D-046 removed `services.edgeguard_depth_mm`/`rearsupport_depth_mm`); manifest readback checks; `doctor.py` rev12 artifact checks; SVG edge-skip warnings; mass-report text sync to D-046 media path.
 - **D-054 — consolidated adversarial-review fix wave:** traceability honesty (PLT-010 `IN_PROGRESS`, D-048↔D-049 supersession link, D-028 partial supersession by D-046), docs honesty (`docs/10`, `docs/08`, `docs/12`), decision-log/ADR-005 corrections, **cable-grommet lining fix** (only 3 mm of 20 mm bore was lined — now full annular grommet), render-view `cable_passthrough_closeup` target fix, test strengthening including **intentionally-failing** `tests/test_kinematics.py::test_lid_envelope_no_intersection_in_service_states` (LID-ENVELOPE-P1-001 vs INTERLOCK-SHUTTLE-001 **≈210,600 mm³** — left failing pending owner decision on lid headroom §M). No new physical design decisions.
@@ -217,9 +219,9 @@ Evidence collected is not a gate verdict: G0 remains an unconfirmed Human Gate.
 
 - D-043 exit condition (owner visual 3D approval) **recorded satisfied in D-060 (2026-08-06)**. FAST ITERATION MODE is closed; PROD-001 weld-free RFQ campaign is the active operating frame. Historical D-043 policy/practice mismatch (pre-D-060) is moot — do not cite FAST ITERATION as still active.
 
-### Handle concept — tier-2 finger intrusion (D-074; `docs/10_USER_INPUT_REQUIRED.md` §E / §F)
+### Handle concept — tier-2 finger intrusion (D-074/D-084; `docs/10_USER_INPUT_REQUIRED.md` §E / §F)
 
-- Balance-point through-cutout at Y=**179.8** / Z=**252** (D-074) intersects tier-2 plotter bay by **≈1,529,766 mm³** (`test_handle_tier2_finger_intrusion_at_balance_point`). Owner deferred choosing: (1) external bolt-on handle, (2) blind side pocket, (3) low aft cutout behind plotters. Blocks production-ready side-panel release.
+- Balance-point through-cutout at Y=**180.6** / Z=**252** (D-084; was 179.8 at D-074) intersects tier-2 plotter bay by **≈1,515,402 mm³** (`test_handle_tier2_finger_intrusion_at_balance_point`). Owner deferred choosing: (1) external bolt-on handle, (2) blind side pocket, (3) low aft cutout behind plotters. Blocks production-ready side-panel release.
 
 ### Open-lid headroom (PLT-008; `docs/10_USER_INPUT_REQUIRED.md` §M)
 

@@ -9,17 +9,29 @@
 | Branch | `main` |
 | HEAD | `5eb2375`+ working tree — FIX-DOC-003-docs10-csv-rev15 closed in WT |
 | Upstream | `origin/main` synced (ordinary push OK) |
-| Next in flight | Door PANEL-IN-MID / SOFTSTOP unconditional True (P2 honesty backlog) |
+| Next in flight | Owner blockers: §F handle, §M lid headroom, §N retention, §A measurements |
 | Prior base | `65d6fe3` (D-041) |
 | Live `CONCEPT_REVISION` | **15** (`src/stand_cad/geometry/export.py`) |
 | Envelope | **650 × 420 × 529 mm** |
 | Owner-confirmed product | D-075 posts restored; D-076 upper fixed (`upper_extension=0`), lower 250 mm + door/tray choreography |
 | Gates | **No G0–G8 passed** — all CONCEPT / REFERENCE_ONLY / PRELIMINARY |
 | Mode | Autonomously fixing highest-impact **software/honesty** defects until owner says **СТОП** |
-| Verify at land | Full `setup_windows.ps1` exit 0 — **383 passed, 1 xfailed**, ruff clean |
+| Verify at land | Quick verify **green** — full pytest exit 0 (393 passed, 1 xfailed), ruff clean (FIX-COLL-002 cycle 2) |
 | Commit policy | Mega-land authorized 2026-08-08. Keep excluding `ИИ советы/`, secrets, `.pytest_cache/`. `output/` gitignored. |
 
 ## Last closed defect
+
+### FIX-COLL-002-door-mid-clearance — DOOR-LOWER ↔ PANEL-IN-MID burial (D-084)
+
+| | |
+|---|---|
+| Problem | Live transport DOOR-LOWER ↔ PANEL-IN-MID-001 **5985 mm³** burial; `is_door_mate` unconditional True for MID/SOFTSTOP |
+| Root cause | MID front Y at shadow gap (2.5 mm) protruded 12.5 mm ahead of closed door plane (15 mm); no volume ceiling on MID/SOFTSTOP mates |
+| Fix | Path A: retract MID front Y to `datums.plotter1_physical.y.min_mm` (15.0 mm); cap MID/SOFTSTOP with `DOOR_FRONT_PLANE_MAX_BEARING_MM3 + threshold`; synthetic burial tests |
+| Measured | Before **5985 mm³** → after **0 mm³** (plane touch); SOFTSTOP live vol=0 (predicate honesty) |
+| Key paths | `collision.py`; `panels.py::_build_inner_mid_panel`; `tests/test_geometry.py` (mid/softstop door_mate tests); `docs/14` §9/§10 |
+| Verify | Quick exit 0 — `-k "door_mate or open_front or mid or handle_mount"` + kinematics collision + full pytest + ruff |
+| Explicitly NOT done | Gate pass; production-verified clearance claims |
 
 ### FIX-DOC-003-docs10-csv-rev15 — docs/10 + CSV rev15 sync (D-083)
 
@@ -63,7 +75,7 @@
 | Fix | `OPEN_FRONT_MAX_BEARING_MM3=750.0` (live max **540 mm³**); gate open-front + four front clad/rail penetrating patterns; synthetic burial tests (open_front + penetrating) |
 | Key paths | `collision.py`; `tests/test_geometry.py::test_open_front_kinematic_contact_rejects_volumetric_burial`; `tests/test_geometry.py::test_open_front_penetrating_rejects_volumetric_burial`; `docs/14` §10 |
 | Verify | Targeted pytest `-k "open_front or door_mate or cavity_joint or collision"` + kinematics collision — pending adversarial/Quick |
-| Explicitly NOT done | Gate pass; P2 door `PANEL-IN-MID` / `SOFTSTOP-*` unconditional True cap (no measured contacts) |
+| Explicitly NOT done | Gate pass; P2 door `PANEL-IN-MID` / `SOFTSTOP-*` unconditional True cap — **closed in FIX-COLL-002 (D-084)** |
 
 **Anti-false-conclusion:** Green collision sweep ≠ physical clearance at prototype. Do **not** treat 750 mm³ ceiling as manufacturing sign-off.
 
@@ -83,8 +95,7 @@
 
 ## Open defect backlog (impact order)
 
-1. **Door PANEL-IN-MID / SOFTSTOP unconditional True** — `is_door_mate` returns True without volume ceiling; no clearance `< thr` contacts measured in transport / service_p1 / tray1_qa. T2+; do not invent cap without evidence.
-2. Owner blockers unchanged: §F handle, §M lid headroom, §N retention, §A measurements.
+1. Owner blockers unchanged: §F handle, §M lid headroom, §N retention, §A measurements.
 
 ## Where we are / next action
 
@@ -119,6 +130,7 @@
 | 2026-08-08 | FIX-MASS-001 closed (D-078); backlog #2 removed; header honesty test added. |
 | 2026-08-08 | FIX-COLL-001 closed (D-080); open-front volume ceiling 750 mm³; backlog #1 narrowed to door PANEL-IN-MID/SOFTSTOP P2. |
 | 2026-08-08 | FIX-TOOL-001 closed (D-081); `_stage1_metrics.py` interlock N/A guard; backlog #2 removed. |
+| 2026-08-08 | FIX-COLL-002 closed (D-084); DOOR-LOWER↔MID 5985→0 mm³; P2 MID/SOFTSTOP backlog cleared. |
 | 2026-08-08 | FIX-DOC-003 closed (D-083); docs/10 §E/§F/§H + CSV current-evidence → rev15; backlog #2 (CSV rev13 pointers) removed. |
 | 2026-08-08 | FIX-DOC-002 closed (D-082); HANDOFF current zones → rev15; backlog #3 (HANDOFF product-truth) removed. |
 | 2026-08-08 | FIX-DOC-002 cycle 3: PROJECT_STATE Current blockers honesty (F-7/F-8/F-9). |

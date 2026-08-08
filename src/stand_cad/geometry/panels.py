@@ -578,12 +578,14 @@ def _build_inner_mid_panel(params: Parameters, datums: Datums) -> PartRecord:
     depth = datums.case_envelope.y.max_mm
     gap = float(params.value("materials.outer_panel_shadow_gap_mm"))
     mid_z = (datums.plotter1_physical.z.max_mm + datums.plotter2_physical.z.min_mm) / 2
+    # Front Y at closed-door / tray front plane — not shadow gap (FIX-COLL-002 Path A).
+    mid_front_y = datums.plotter1_physical.y.min_mm
     return PartRecord(
         part_id="PANEL-IN-MID-001",
         material=INNER_PANEL_MATERIAL,
         solid=box_from_bounds(
             gap,
-            gap,
+            mid_front_y,
             mid_z - thickness / 2,
             width - gap,
             depth - gap,

@@ -1032,7 +1032,7 @@ def test_handle_tier2_finger_intrusion_at_balance_point(params, transport):
         plotter_x_span_mm=pw,
     )
     assert intrusion > 0.0
-    assert intrusion == pytest.approx(1_529_766.0, rel=1e-4)
+    assert intrusion == pytest.approx(1_515_402.0, rel=1e-4)
     geom_y = params.computed_geometric_depth_centre_y_mm
     geom_intrusion = handle_finger_intrusion_volume_mm3(
         handle_mount_y_mm=geom_y,
@@ -1599,7 +1599,7 @@ def test_service_port_cutout_on_right_panel(params, transport):
     assert port_y == pytest.approx(275.0)
     port_aft_margin = port_y - port_w / 2 - (handle_y + grip_len / 2)
     assert port_aft_margin >= 12.0
-    assert port_aft_margin == pytest.approx(32.2, abs=0.5)
+    assert port_aft_margin == pytest.approx(31.4, abs=0.5)
     # Outer 3 mm skin: port centre is open; solid skin remains above the cutout.
     assert solid_point_state(panel, x_exterior, port_y, port_z) == "OUT"
     assert solid_point_state(panel, x_exterior, port_y, port_z + 20) == "IN"
@@ -1761,6 +1761,80 @@ def test_door_mate_rejects_volumetric_burial(params, transport):
     assert not is_door_mate(door_id, slide_id, parts, threshold)
 
 
+def test_door_mate_allows_closed_plane_contact_with_mid_panel(params, transport):
+    """FIX-COLL-002 AC-1 — live closed-door ↔ mid panel stays under front-plane ceiling."""
+    from stand_cad.geometry.collision import DOOR_FRONT_PLANE_MAX_BEARING_MM3, is_door_mate
+
+    threshold = float(params.value("tolerance.part_assembly_feature_mm"))
+    door_id = "DOOR-LOWER-001"
+    mid_id = "PANEL-IN-MID-001"
+    inter_vol = intersection_volume(
+        transport.parts[door_id].solid,
+        transport.parts[mid_id].solid,
+    )
+    assert inter_vol <= DOOR_FRONT_PLANE_MAX_BEARING_MM3 + threshold
+    assert is_door_mate(door_id, mid_id, transport.parts, threshold)
+
+
+def test_door_mate_rejects_mid_panel_volumetric_burial(params, transport):
+    """FIX-COLL-002 AC-1 — synthetic deep door↔mid burial must not pass is_door_mate."""
+    from stand_cad.geometry.collision import DOOR_FRONT_PLANE_MAX_BEARING_MM3, is_door_mate
+    from stand_cad.geometry.registry import PartRecord
+
+    threshold = float(params.value("tolerance.part_assembly_feature_mm"))
+    door_id = "DOOR-LOWER-001"
+    mid_id = "PANEL-IN-MID-001"
+    mid = transport.parts[mid_id]
+    mid_bounds = bounding_box_bounds(mid.solid)
+    buried_door = PartRecord(
+        part_id=door_id,
+        material="cast_opal_pmma_3mm",
+        solid=box_from_bounds(
+            mid_bounds[0][0],
+            mid_bounds[1][0] - 10.0,
+            mid_bounds[2][0] - 5.0,
+            mid_bounds[0][1],
+            mid_bounds[1][1] + 30.0,
+            mid_bounds[2][1] + 5.0,
+        ),
+    )
+    parts = dict(transport.parts)
+    parts[door_id] = buried_door
+    inter_vol = intersection_volume(buried_door.solid, mid.solid)
+    assert inter_vol > DOOR_FRONT_PLANE_MAX_BEARING_MM3 + threshold
+    assert inter_vol > 5_000.0
+    assert not is_door_mate(door_id, mid_id, parts, threshold)
+
+
+def test_door_mate_rejects_softstop_volumetric_burial(params, transport):
+    """FIX-COLL-002 AC-1 — synthetic deep door↔softstop burial must not pass is_door_mate."""
+    from stand_cad.geometry.collision import DOOR_FRONT_PLANE_MAX_BEARING_MM3, is_door_mate
+    from stand_cad.geometry.registry import PartRecord
+
+    threshold = float(params.value("tolerance.part_assembly_feature_mm"))
+    door_id = "DOOR-LOWER-001"
+    soft_id = "SOFTSTOP-LOWER-001"
+    soft = transport.parts[soft_id]
+    soft_bounds = bounding_box_bounds(soft.solid)
+    buried_door = PartRecord(
+        part_id=door_id,
+        material="cast_opal_pmma_3mm",
+        solid=box_from_bounds(
+            soft_bounds[0][0],
+            soft_bounds[1][0] - 5.0,
+            soft_bounds[2][0] - 5.0,
+            soft_bounds[0][1],
+            soft_bounds[1][1] + 40.0,
+            soft_bounds[2][1] + 40.0,
+        ),
+    )
+    parts = dict(transport.parts)
+    parts[door_id] = buried_door
+    inter_vol = intersection_volume(buried_door.solid, soft.solid)
+    assert inter_vol > DOOR_FRONT_PLANE_MAX_BEARING_MM3 + threshold
+    assert not is_door_mate(door_id, soft_id, parts, threshold)
+
+
 def test_door_mate_open_door_rejects_tray_burial(params, service_p1):
     """F-2 — open horizontal door must not use closed-plane 500 mm³ ceiling vs tray/slide."""
     from stand_cad.geometry.collision import (
@@ -1793,6 +1867,68 @@ def test_door_mate_open_door_rejects_tray_burial(params, service_p1):
     inter_vol = intersection_volume(buried_open.solid, slide.solid)
     assert inter_vol > threshold
     assert not is_door_mate(door_id, slide_id, parts, threshold)
+
+
+def test_door_mate_open_door_rejects_mid_panel_burial(params, service_p1):
+    """FIX-COLL-002 F-3 — open horizontal door must not use closed-plane ceiling vs mid panel."""
+    from stand_cad.geometry.collision import _door_is_open_horizontal, is_door_mate
+    from stand_cad.geometry.registry import PartRecord
+
+    threshold = float(params.value("tolerance.part_assembly_feature_mm"))
+    door_id = "DOOR-LOWER-001"
+    mid_id = "PANEL-IN-MID-001"
+    open_door = service_p1.parts[door_id]
+    assert _door_is_open_horizontal(open_door.solid, threshold=threshold)
+    mid = service_p1.parts[mid_id]
+    mid_bounds = bounding_box_bounds(mid.solid)
+    buried_open = PartRecord(
+        part_id=door_id,
+        material=open_door.material,
+        solid=box_from_bounds(
+            mid_bounds[0][0],
+            mid_bounds[1][0] - 5.0,
+            mid_bounds[2][0] - 5.0,
+            mid_bounds[0][1],
+            mid_bounds[1][1] + 30.0,
+            mid_bounds[2][1] + 5.0,
+        ),
+    )
+    parts = dict(service_p1.parts)
+    parts[door_id] = buried_open
+    inter_vol = intersection_volume(buried_open.solid, mid.solid)
+    assert inter_vol > threshold
+    assert not is_door_mate(door_id, mid_id, parts, threshold)
+
+
+def test_door_mate_open_door_rejects_softstop_burial(params, service_p1):
+    """FIX-COLL-002 F-3 — open horizontal door must not use closed-plane ceiling vs softstop."""
+    from stand_cad.geometry.collision import _door_is_open_horizontal, is_door_mate
+    from stand_cad.geometry.registry import PartRecord
+
+    threshold = float(params.value("tolerance.part_assembly_feature_mm"))
+    door_id = "DOOR-LOWER-001"
+    soft_id = "SOFTSTOP-LOWER-001"
+    open_door = service_p1.parts[door_id]
+    assert _door_is_open_horizontal(open_door.solid, threshold=threshold)
+    soft = service_p1.parts[soft_id]
+    soft_bounds = bounding_box_bounds(soft.solid)
+    buried_open = PartRecord(
+        part_id=door_id,
+        material=open_door.material,
+        solid=box_from_bounds(
+            soft_bounds[0][0],
+            soft_bounds[1][0] - 5.0,
+            soft_bounds[2][0] - 5.0,
+            soft_bounds[0][1],
+            soft_bounds[1][1] + 30.0,
+            soft_bounds[2][1] + 5.0,
+        ),
+    )
+    parts = dict(service_p1.parts)
+    parts[door_id] = buried_open
+    inter_vol = intersection_volume(buried_open.solid, soft.solid)
+    assert inter_vol > threshold
+    assert not is_door_mate(door_id, soft_id, parts, threshold)
 
 
 def test_strut_mate_rejects_volumetric_burial(params, service_p1):

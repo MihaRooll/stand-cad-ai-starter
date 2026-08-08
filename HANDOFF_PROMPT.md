@@ -33,7 +33,7 @@ You are the principal orchestrator (Main) for this repository. Continue autonomo
 | Rear media exit | **450 × 10 mm** through **both** rear panels at L1/L2 (D-046); `MEDIA-SUPPORT-L{1,2}-001` glide surfaces — no `REARSUPPORT-*` |
 | Top front frame | **`FRAME-RAIL-TOP-FRONT-001` removed** (D-044); ring closed TOP-LEFT/TOP-RIGHT/TOP-REAR only |
 | Stacking | **STACK-CAP-{FL,FR,RL,RR}-001** + **JT-STACK-CAP-POST** (D-064); assembly Z **≈537 mm** (+8 mm caps); owner waives stacked tip-over |
-| Handle | Y=**179.8 mm** (loaded-case balance-point CoM, D-074 — supersedes D-063 **185.9 mm**), Z=**252 mm**. Grip band **Y ≈ [124.8, 234.8] mm**. **OPEN blocker:** tier-2 finger intrusion — through-cutout not production-usable (`docs/10_USER_INPUT_REQUIRED.md` §E/§F) |
+| Handle | Y=**180.6 mm** (loaded-case balance-point CoM, D-074/D-084 — supersedes D-074 **179.8 mm** and D-063 **185.9 mm**), Z=**252 mm**. Grip band **Y ≈ [125.6, 235.6] mm**. **OPEN blocker:** tier-2 finger intrusion **≈1,515,402 mm³** — through-cutout not production-usable (`docs/10_USER_INPUT_REQUIRED.md` §E/§F) |
 | Cable | Ø30 mm grommeted pass-through on **right side panel** Y=**320** / Z=**120**, next to USB port Y=**275** / Z=**120** (D-047/D-051); full annular grommet lining fixed D-054; certified mains inlet deferred — D-036 |
 | Joining | Weld-free **adhesive-free** bolt/screw catalogue (D-061/D-065); `docs/15_ASSEMBLY_INSTRUCTIONS.md`; §P shelf attachment **CLOSED** (3×M4/cleat) |
 | Service acceptance | At 250 mm extension (D-049): TZ `front_overhang_min_mm`=40 **met** (rear face Y=−40 mm); PARAM-016 front-face clearance also satisfied |
@@ -64,7 +64,7 @@ Plan filenames under `.cursor/plans/` reuse `PLT-00N` tokens that **collide** wi
 - Rear media path solids — **D-046** — `SVC-INSERT-*` / `EDGEGUARD-*` / `REARSUPPORT-*` removed; **450 × 10 mm** dual-panel through-cuts + `MEDIA-SUPPORT-L{1,2}-001`.
 - Cable pass-through rear mount — **D-047** — relocated to right side panel Y=320 / Z=120 (was rear X=325).
 - Tray full-service travel 200 mm interim — **D-048** — **superseded by D-049** (250 mm both tiers; TZ rear-face overhang restored).
-- Handle placement iterations — **D-051** supersedes D-050 (Y) and D-030/D-038 (Z=276.5) / D-022 (Y=100): at D-063 delivery Y=**185.9 mm**; **D-074 current Y=179.8 mm**, Z=**252 mm**.
+- Handle placement iterations — **D-051** supersedes D-050 (Y) and D-030/D-038 (Z=276.5) / D-022 (Y=100): at D-063 delivery Y=**185.9 mm**; **D-074 Y=179.8 mm**; **D-084 current Y=180.6 mm**, Z=**252 mm**.
 - PRELIMINARY drawing package — **D-052/D-062** — at D-062 delivery `CONCEPT_REVISION` was **13** (rev13 PDF + REFERENCE_ONLY DXF + `tests/test_drawings.py`; historical).
 - Evidence integrity / REL-027 count — **D-053/D-061/D-065** — **55** `to_measure` leaves; manifest readback; doctor rev13 checks (historical baseline).
 - Weld-free **adhesive-free** joining catalogue — **D-061/D-065** — `joints.*`, `docs/15_ASSEMBLY_INSTRUCTIONS.md`, RFQ template; §P **CLOSED**; MEC-009 `IN_PROGRESS`.
@@ -85,7 +85,7 @@ Plan filenames under `.cursor/plans/` reuse `PLT-00N` tokens that **collide** wi
 
 ## Open / next product work (priority order)
 
-1. **Handle concept (§F)** — choose and model external bolt-on handle, blind side pocket, or low aft cutout; balance-point through-cutout (Y=**179.8 mm**, D-074) intersects tier-2 bay by **≈1,529,766 mm³** (`test_handle_tier2_finger_intrusion_at_balance_point`; `docs/10_USER_INPUT_REQUIRED.md` §E/§F — §E volume may lag).
+1. **Handle concept (§F)** — choose and model external bolt-on handle, blind side pocket, or low aft cutout; balance-point through-cutout (Y=**180.6 mm**, D-084) intersects tier-2 bay by **≈1,515,402 mm³** (`test_handle_tier2_finger_intrusion_at_balance_point`; `docs/10_USER_INPUT_REQUIRED.md` §E/§F).
 2. **Open-lid headroom (§M)** — provisional 80 mm envelope insufficient (**27 mm** / **50 mm** headroom with trays closed). **`tests/test_kinematics.py::test_lid_envelope_no_intersection_in_service_states` xfail/canary** — transport headroom shortfall only; interlock hardware **absent** (D-067); do **not** weaken the assertion to green pytest; remedy requires owner decision on lid envelope, headroom, or operating procedure (§M).
 3. **Transport retention (§N)** — specify tray closed-position latches and removable film retainer; owner **waived plotter tie-down** for event display; unrestrained **up to 10 kg** film (R-012).
 4. **Mass (PLT-012 PASSING)** — structural **9.590 kg**; indicative fasteners **162** (158 registry + 4 FOOT M4); all-parts **13.383 kg**; STACK-CAP **≈0.118 kg**.

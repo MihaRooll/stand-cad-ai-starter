@@ -587,14 +587,20 @@ def is_door_mate(
             ceiling = threshold if is_open else DOOR_FRONT_PLANE_MAX_BEARING_MM3 + threshold
             return inter_vol <= ceiling
         if other_id == "PANEL-IN-MID-001":
-            return True
+            inter_vol = intersection_volume(solid_a, solid_b)
+            if is_open:
+                return inter_vol <= threshold
+            return inter_vol <= DOOR_FRONT_PLANE_MAX_BEARING_MM3 + threshold
         if other_id.startswith(DOOR_CLOSED_FRONT_MATE_PREFIXES):
             inter_vol = intersection_volume(solid_a, solid_b)
             if is_open:
                 return inter_vol <= threshold
             return inter_vol <= DOOR_FRONT_PLANE_MAX_BEARING_MM3 + threshold
         if other_id.startswith(("SOFTSTOP-LOWER-", "SOFTSTOP-UPPER-")):
-            return True
+            inter_vol = intersection_volume(solid_a, solid_b)
+            if is_open:
+                return inter_vol <= threshold
+            return inter_vol <= DOOR_FRONT_PLANE_MAX_BEARING_MM3 + threshold
         if other_id.startswith("PANEL-CLAD-FRONT-") and other_id.endswith("-001"):
             inter_vol = intersection_volume(solid_a, solid_b)
             if is_open:
