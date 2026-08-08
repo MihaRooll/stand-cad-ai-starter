@@ -7,9 +7,9 @@
 | Field | Value |
 |---|---|
 | Branch | `main` |
-| HEAD | pending FIX-HONESTY-001 land — D-099 Full green |
+| HEAD | pending FIX-DOC-008 land — D-100 |
 | Upstream | `origin/main` synced (ordinary push OK) |
-| Next in flight | Live uncapped MATING_PAIRS (SOFT↔TRAY etc.); CSV pytest-count honesty; owner blockers: §F/§M/§N/§A |
+| Next in flight | Live uncapped MATING_PAIRS (SOFT↔TRAY etc.); owner blockers: §F/§M/§N/§A |
 | Live `CONCEPT_REVISION` | **15** (`src/stand_cad/geometry/export.py`) |
 | Envelope | **650 × 420 × 540 mm** (D-089 full +11 mm stack; was 529 pre-D-089) |
 | Owner-confirmed product | D-075 posts restored; D-076 upper fixed (`upper_extension=0`), lower 250 mm + door/tray choreography |
@@ -19,6 +19,21 @@
 | Commit policy | Mega-land authorized 2026-08-08. Keep excluding `ИИ советы/`, secrets, `.pytest_cache/`. `output/` gitignored. |
 
 ## Last closed defect
+
+### FIX-DOC-008-csv-pytest-count — traceability pytest-count honesty (D-100) — **closed**
+
+| | |
+|---|---|
+| Problem | `state/REQUIREMENTS_TRACEABILITY.csv` SWE-001/SWE-003 still advertised **345 pytest** as current after D-099 Full (**433 passed, 1 xfailed**) |
+| Root cause | Stale hardcoded count in CSV evidence column |
+| Fix | Durable wording: pytest suite green on Full/`uv run pytest`; count drifts — do not treat as physical proof; SWE-003 weak-oracle note preserved |
+| Measured | N/A — documentation honesty only |
+| Residual P2 | Unchanged — live uncapped `MATING_PAIRS`; owner blockers §F/§M/§N/§A |
+| Key paths | `state/REQUIREMENTS_TRACEABILITY.csv`; `state/DECISION_LOG.md` D-100 |
+| Verify | Verifier pass; `uv run ruff check .` exit 0 (state-only Quick) |
+| Explicitly NOT done | Gate pass; geometry/collision changes; pinned numeric count |
+
+**Anti-false-conclusion:** green pytest count ≠ physical clearance or manufacturability proof.
 
 ### FIX-HONESTY-001-dead-collision-allowlists — prune zombie allowlists (D-099) — **closed cycle 1**
 
@@ -366,3 +381,4 @@
 | 2026-08-08 | FIX-COLL-011 closed (D-096); COVER↔FRAME BASE/POST ceilings 10000/500; Full green. |
 | 2026-08-08 | FIX-COLL-013 closed (D-098); cross-tier TRAY/SLIDE↔rail share_face exclude; Full green. |
 | 2026-08-08 | FIX-HONESTY-001 closed (D-099); prune zombie INTERLOCK/MAINS/… allowlists; Full green. |
+| 2026-08-08 | FIX-DOC-008 closed (D-100); CSV SWE-001/003 stop advertising stale 345 pytest. |
