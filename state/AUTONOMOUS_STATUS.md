@@ -7,18 +7,33 @@
 | Field | Value |
 |---|---|
 | Branch | `main` |
-| HEAD | pending FIX-COLL-012 land — D-097 Full green |
+| HEAD | pending FIX-COLL-013 land — D-098 Full green |
 | Upstream | `origin/main` synced (ordinary push OK) |
-| Next in flight | F-1 share_face TRAY/SLIDE↔cross-tier rail; dead INTERLOCK/MAINS allowlists; owner blockers: §F/§M/§N/§A |
+| Next in flight | Dead INTERLOCK/MAINS allowlist honesty; owner blockers: §F/§M/§N/§A |
 | Live `CONCEPT_REVISION` | **15** (`src/stand_cad/geometry/export.py`) |
 | Envelope | **650 × 420 × 540 mm** (D-089 full +11 mm stack; was 529 pre-D-089) |
 | Owner-confirmed product | D-075 posts restored; D-076 upper fixed (`upper_extension=0`), lower 250 mm + door/tray choreography |
 | Gates | **No G0–G8 passed** — all CONCEPT / REFERENCE_ONLY / PRELIMINARY |
 | Mode | Autonomously fixing highest-impact **software/honesty** defects until owner says **СТОП** |
-| Verify at land | Full **green** — `setup_windows.ps1` exit 0 (430 passed, 1 xfailed); ruff clean (FIX-COLL-012) |
+| Verify at land | Full **green** — `setup_windows.ps1` exit 0 (432 passed, 1 xfailed); ruff clean (FIX-COLL-013) |
 | Commit policy | Mega-land authorized 2026-08-08. Keep excluding `ИИ советы/`, secrets, `.pytest_cache/`. `output/` gitignored. |
 
 ## Last closed defect
+
+### FIX-COLL-013-cross-tier-share-face-bypass — cross-tier TRAY/SLIDE↔rail share_face exclude (D-098) — **closed cycle 1**
+
+| | |
+|---|---|
+| Problem | Uncapped `TRAY-`/`SLIDE-` ↔ `FRAME-RAIL-TRAY` `_share_face_if_prefix` in `is_mating()` returned True before staggered check — cross-tier synthetic burial with share_face silent-green (~**1222650 mm³** TRAY, ~**105300 mm³** SLIDE) |
+| Root cause | Share_face short-circuit at `collision.py` ~1055–1058 ran before `is_staggered_tier_y_overlap()` (~1121); D-097 staggered gate never reached for cross-tier share_face contacts |
+| Fix | `_is_cross_tier_tray_slide_rail_pair()`; skip uncapped share_face when cross-tier; reuse `STAGGERED_TIER_MAX_BEARING_MM3=500.0` (D-097). Two new regression tests; staggered plane-touch retained via D-097 |
+| Measured | Live transport/service cross-tier TRAY/SLIDE↔opposite rail share_face max **0 mm³**; same-tier SLIDE↔rail `MATING_PAIRS` vol≈0 |
+| Residual P2 | Dead INTERLOCK/MAINS allowlists; other uncapped `MATING_PAIRS`/share_face |
+| Key paths | `collision.py`; `tests/test_geometry.py`; `docs/14` §11; `state/DECISION_LOG.md` D-098 |
+| Verify | Adversarial accept; Quick 432 passed; Full `setup_windows.ps1` exit 0 |
+| Explicitly NOT done | Gate pass; §F/§M/§N/§A closure; Path A geometry; INTERLOCK/MAINS restore |
+
+**Anti-false-conclusion:** share_face exclude + staggered 500 mm³ hygiene ≠ prototype Z clearance proof.
 
 ### FIX-COLL-012-staggered-tier-volume-gate — staggered-tier Y-overlap volume gate (D-097) — **closed cycle 1**
 
@@ -334,3 +349,4 @@
 | 2026-08-08 | FIX-COLL-009 closed (D-094); TRAY-rail↔PANEL-IN ceiling 15000; share_face ORG∪POST∪TRAY; Full green. |
 | 2026-08-08 | FIX-COLL-012 closed (D-097); staggered-tier ceiling 500 mm³; Full green. |
 | 2026-08-08 | FIX-COLL-011 closed (D-096); COVER↔FRAME BASE/POST ceilings 10000/500; Full green. |
+| 2026-08-08 | FIX-COLL-013 closed (D-098); cross-tier TRAY/SLIDE↔rail share_face exclude; Full green. |

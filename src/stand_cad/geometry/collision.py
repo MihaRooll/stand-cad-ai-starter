@@ -1051,11 +1051,13 @@ def is_mating(
     if _share_face_if_prefix(a, b, parts, threshold, "ORG-", "FRAME-RAIL-ORG"):
         return True
 
-    # Tray/slide pairs mounted on tray carrier rails.
+    # Tray/slide pairs mounted on tray carrier rails (same-tier only — D-098).
     if _share_face_if_prefix(a, b, parts, threshold, "TRAY-", "FRAME-RAIL-TRAY"):
-        return True
+        if not _is_cross_tier_tray_slide_rail_pair(a, b):
+            return True
     if _share_face_if_prefix(a, b, parts, threshold, "SLIDE-", "FRAME-RAIL-TRAY"):
-        return True
+        if not _is_cross_tier_tray_slide_rail_pair(a, b):
+            return True
 
     # Interlock hardware in the captive channel between slide zones.
     if a.startswith("INTERLOCK-") or b.startswith("INTERLOCK-"):
@@ -1166,6 +1168,33 @@ def is_open_front_kinematic_contact(
                 if minimum_clearance(parts[a].solid, parts[b].solid) < threshold:
                     inter_vol = intersection_volume(parts[a].solid, parts[b].solid)
                     return inter_vol <= OPEN_FRONT_MAX_BEARING_MM3 + threshold
+    return False
+
+
+def _is_cross_tier_tray_slide_rail_pair(a: str, b: str) -> bool:
+    """TRAY-/SLIDE- on one tier vs opposite-tier FRAME-RAIL-TRAY (D-098).
+
+    Uncapped share_face must not apply — defer to ``is_staggered_tier_y_overlap``.
+    """
+    tray_slide_lower = ("TRAY-LOWER-", "SLIDE-LOWER-")
+    tray_slide_upper = ("TRAY-UPPER-", "SLIDE-UPPER-")
+    rail_lower = "FRAME-RAIL-TRAY-LOWER-"
+    rail_upper = "FRAME-RAIL-TRAY-UPPER-"
+
+    def _lower_tray_slide(part_id: str) -> bool:
+        return any(part_id.startswith(marker) for marker in tray_slide_lower)
+
+    def _upper_tray_slide(part_id: str) -> bool:
+        return any(part_id.startswith(marker) for marker in tray_slide_upper)
+
+    if (_lower_tray_slide(a) and b.startswith(rail_upper)) or (
+        _lower_tray_slide(b) and a.startswith(rail_upper)
+    ):
+        return True
+    if (_upper_tray_slide(a) and b.startswith(rail_lower)) or (
+        _upper_tray_slide(b) and a.startswith(rail_lower)
+    ):
+        return True
     return False
 
 
