@@ -2,6 +2,8 @@
 
 > **Living status:** `state/AUTONOMOUS_STATUS.md` — last closed defect, backlog, anti-false-conclusion notes. Prefer it over mid-file historical narrative for “what next.”
 >
+> **FIX-COLL-004 / D-087 (2026-08-08):** Volume-gate eight EQUIP-PLOTTER* ↔ TRAY-* / SLIDE-* seating pairs on `MATING_PAIRS` via `EQUIP_SEATING_MAX_BEARING_MM3=500.0` (live max **0 mm³**). TRAY↔SLIDE and other `MATING_PAIRS` uncapped — residual P2. **No** G0–G8 pass.
+>
 > **FIX-COLL-003 / D-086 (2026-08-08):** Deleted blanket kinematic-group `is_mating` exemption; residual eight SLIDE↔VIBMOUNT plane-touch pairs gated by `SLIDE_VIBMOUNT_MAX_BEARING_MM3=500.0` (live max **0 mm³**). EQUIP↔SOFTSTOP not on `MATING_PAIRS`; live clr=0.5 mm. **No** G0–G8 pass.
 >
 > **FIX-COLL-002 / D-084 (2026-08-08):** Path A retracts `PANEL-IN-MID-001` front Y to closed-door plane (15.0 mm); caps `is_door_mate` MID/SOFTSTOP with `DOOR_FRONT_PLANE_MAX_BEARING_MM3`. Live DOOR-LOWER↔MID **5985 → 0 mm³**; handle Y **179.8 → 180.6 mm** (F-4 doc sync). **No** G0–G8 pass.

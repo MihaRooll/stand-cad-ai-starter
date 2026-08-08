@@ -7,19 +7,32 @@
 | Field | Value |
 |---|---|
 | Branch | `main` |
-| HEAD | pending FIX-COLL-003 commit — D-086 Full green |
+| HEAD | pending FIX-COLL-004 commit — D-087 Full green |
 | Upstream | `origin/main` synced (ordinary push OK) |
-| Next in flight | Next software audit; owner blockers: §F handle, §M lid headroom, §N retention, §A measurements |
+| Next in flight | Next software audit; residual MATING_PAIRS P2; owner blockers: §F handle, §M lid headroom, §N retention, §A measurements |
 | Prior base | `65d6fe3` (D-041) |
 | Live `CONCEPT_REVISION` | **15** (`src/stand_cad/geometry/export.py`) |
 | Envelope | **650 × 420 × 529 mm** |
 | Owner-confirmed product | D-075 posts restored; D-076 upper fixed (`upper_extension=0`), lower 250 mm + door/tray choreography |
 | Gates | **No G0–G8 passed** — all CONCEPT / REFERENCE_ONLY / PRELIMINARY |
 | Mode | Autonomously fixing highest-impact **software/honesty** defects until owner says **СТОП** |
-| Verify at land | Full **green** — `setup_windows.ps1` exit 0 (395 passed, 1 xfailed); ruff clean (FIX-COLL-003) |
+| Verify at land | Full **green** — `setup_windows.ps1` exit 0 (399 passed, 1 xfailed); ruff clean (FIX-COLL-004) |
 | Commit policy | Mega-land authorized 2026-08-08. Keep excluding `ИИ советы/`, secrets, `.pytest_cache/`. `output/` gitignored. |
 
 ## Last closed defect
+
+### FIX-COLL-004-mating-pairs-seating-ceiling — EQUIP seating volume gate (D-087)
+
+| | |
+|---|---|
+| Problem | `is_mating()` returned unconditional True for all `MATING_PAIRS` — synthetic EQUIP↔TRAY deep burial (~1.22×10⁶ mm³) silent-green |
+| Root cause | `pair_key in MATING_PAIRS: return True` with no volume ceiling on seating subset |
+| Fix | Add `is_equip_seating_bearing()` for eight EQUIP-PLOTTER* ↔ TRAY-* / SLIDE-* pairs (`EQUIP_SEATING_MAX_BEARING_MM3=500.0`; live max **0 mm³**) |
+| Measured | Live transport seating inter_vol **0 mm³** across four spot-checked pairs; synthetic burial > ceiling rejected |
+| Residual P2 | TRAY↔SLIDE (~96525 mm³), VIB↔EQUIP, SOFT↔TRAY, INTERLOCK, shelf/org, media, mains, … on `MATING_PAIRS` remain uncapped |
+| Key paths | `collision.py`; `tests/test_geometry.py` (EQUIP↔TRAY/SLIDE burial + live transport spot-check); `docs/14` §11 |
+| Verify | Adversarial accept; Quick 399 passed + ruff 0; Full `setup_windows.ps1` exit 0 |
+| Explicitly NOT done | Gate pass; global MATING_PAIRS ceiling; uncapped P2 classes |
 
 ### FIX-COLL-003-kinematic-group-mates — delete blanket group `is_mating` (D-086)
 
@@ -159,3 +172,4 @@
 | 2026-08-08 | FIX-DOC-002 cycle 3: PROJECT_STATE Current blockers honesty (F-7/F-8/F-9). |
 | 2026-08-08 | FIX-DOC-004 closed (D-085); A-013/A-017 → rev15 evidence; A-014 AIRPATH honesty (D-071). |
 | 2026-08-08 | FIX-COLL-003 closed (D-086); kinematic-group blanket deleted; SLIDE↔VIBMOUNT ceiling 500; Full green. |
+| 2026-08-08 | FIX-COLL-004 closed (D-087); EQUIP seating MATING_PAIRS volume gate 500; residual uncapped P2 noted; Full green. |

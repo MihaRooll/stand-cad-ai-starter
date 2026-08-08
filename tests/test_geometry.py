@@ -2113,6 +2113,144 @@ def test_slide_vibmount_bearing_rejects_volumetric_burial(params, transport):
     assert is_mating(slide_id, vib_id, transport.parts, threshold=threshold, params=params)
 
 
+def test_equip_seating_bearing_rejects_tray_volumetric_burial(params, transport):
+    """FIX-COLL-004 — EQUIP↔TRAY seating ceiling rejects deep burial."""
+    from stand_cad.geometry.collision import (
+        EQUIP_SEATING_MAX_BEARING_MM3,
+        MATING_PAIRS,
+        is_equip_seating_bearing,
+        is_mating,
+        pair_key,
+    )
+    from stand_cad.geometry.registry import PartRecord
+
+    threshold = float(params.value("tolerance.part_assembly_feature_mm"))
+    equip_id = "EQUIP-PLOTTER1-001"
+    tray_id = "TRAY-LOWER-001"
+    assert pair_key(equip_id, tray_id) in MATING_PAIRS
+    equip = transport.parts[equip_id]
+    equip_bounds = bounding_box_bounds(equip.solid)
+    buried_tray = PartRecord(
+        part_id=tray_id,
+        material=transport.parts[tray_id].material,
+        solid=box_from_bounds(
+            equip_bounds[0][0],
+            equip_bounds[1][0],
+            equip_bounds[2][0],
+            equip_bounds[0][1],
+            equip_bounds[1][1] + 50.0,
+            equip_bounds[2][1],
+        ),
+    )
+    parts = dict(transport.parts)
+    parts[tray_id] = buried_tray
+    inter_vol = intersection_volume(equip.solid, buried_tray.solid)
+    assert inter_vol > EQUIP_SEATING_MAX_BEARING_MM3 + threshold
+    assert inter_vol > 20_000.0
+    assert not is_equip_seating_bearing(equip_id, tray_id, parts, threshold)
+    assert not is_mating(equip_id, tray_id, parts, threshold=threshold, params=params)
+    live_inter = intersection_volume(
+        transport.parts[equip_id].solid,
+        transport.parts[tray_id].solid,
+    )
+    assert live_inter <= EQUIP_SEATING_MAX_BEARING_MM3 + threshold
+    assert is_equip_seating_bearing(equip_id, tray_id, transport.parts, threshold)
+    assert is_mating(equip_id, tray_id, transport.parts, threshold=threshold, params=params)
+
+
+def test_equip_seating_bearing_rejects_slide_volumetric_burial(params, transport):
+    """FIX-COLL-004 — EQUIP↔SLIDE seating ceiling rejects deep burial."""
+    from stand_cad.geometry.collision import (
+        EQUIP_SEATING_MAX_BEARING_MM3,
+        MATING_PAIRS,
+        is_equip_seating_bearing,
+        is_mating,
+        pair_key,
+    )
+    from stand_cad.geometry.registry import PartRecord
+
+    threshold = float(params.value("tolerance.part_assembly_feature_mm"))
+    equip_id = "EQUIP-PLOTTER1-001"
+    slide_id = "SLIDE-LOWER-LEFT-001"
+    assert pair_key(equip_id, slide_id) in MATING_PAIRS
+    equip = transport.parts[equip_id]
+    equip_bounds = bounding_box_bounds(equip.solid)
+    buried_slide = PartRecord(
+        part_id=slide_id,
+        material=transport.parts[slide_id].material,
+        solid=box_from_bounds(
+            equip_bounds[0][0],
+            equip_bounds[1][0],
+            equip_bounds[2][0],
+            equip_bounds[0][1],
+            equip_bounds[1][1] + 50.0,
+            equip_bounds[2][1],
+        ),
+    )
+    parts = dict(transport.parts)
+    parts[slide_id] = buried_slide
+    inter_vol = intersection_volume(equip.solid, buried_slide.solid)
+    assert inter_vol > EQUIP_SEATING_MAX_BEARING_MM3 + threshold
+    assert inter_vol > 20_000.0
+    assert not is_equip_seating_bearing(equip_id, slide_id, parts, threshold)
+    assert not is_mating(equip_id, slide_id, parts, threshold=threshold, params=params)
+    live_inter = intersection_volume(
+        transport.parts[equip_id].solid,
+        transport.parts[slide_id].solid,
+    )
+    assert live_inter <= EQUIP_SEATING_MAX_BEARING_MM3 + threshold
+    assert is_equip_seating_bearing(equip_id, slide_id, transport.parts, threshold)
+    assert is_mating(equip_id, slide_id, transport.parts, threshold=threshold, params=params)
+
+
+def test_tray_slide_mating_pair_stays_uncapped(params, transport):
+    """FIX-COLL-004 AC-4 — TRAY↔SLIDE MATING_PAIRS not volume-gated this cycle."""
+    from stand_cad.geometry.collision import MATING_PAIRS, is_mating, pair_key
+
+    threshold = float(params.value("tolerance.part_assembly_feature_mm"))
+    tray_id = "TRAY-LOWER-001"
+    slide_id = "SLIDE-LOWER-LEFT-001"
+    assert pair_key(tray_id, slide_id) in MATING_PAIRS
+    assert is_mating(tray_id, slide_id, threshold=threshold, params=params)
+
+
+def test_live_transport_seating_pairs_no_false_collision(params, transport):
+    """FIX-COLL-004 AC-3 — live transport seating pairs stay mated under ceiling."""
+    from stand_cad.geometry.collision import (
+        EQUIP_SEATING_MAX_BEARING_MM3,
+        check_collision_pairs,
+        is_equip_seating_bearing,
+        is_mating,
+    )
+
+    threshold = float(params.value("tolerance.part_assembly_feature_mm"))
+    seating_pairs = (
+        ("EQUIP-PLOTTER1-001", "TRAY-LOWER-001"),
+        ("EQUIP-PLOTTER1-001", "SLIDE-LOWER-LEFT-001"),
+        ("EQUIP-PLOTTER2-001", "TRAY-UPPER-001"),
+        ("EQUIP-PLOTTER2-001", "SLIDE-UPPER-LEFT-001"),
+    )
+    for equip_id, target_id in seating_pairs:
+        inter_vol = intersection_volume(
+            transport.parts[equip_id].solid,
+            transport.parts[target_id].solid,
+        )
+        assert inter_vol <= EQUIP_SEATING_MAX_BEARING_MM3 + threshold
+        assert is_equip_seating_bearing(equip_id, target_id, transport.parts, threshold)
+        assert is_mating(
+            equip_id,
+            target_id,
+            transport.parts,
+            threshold=threshold,
+            params=params,
+        )
+    violations = check_collision_pairs(transport.parts, params, "transport")
+    for equip_id, target_id in seating_pairs:
+        assert not any(
+            equip_id in msg and target_id in msg for msg in violations
+        ), f"False positive: {equip_id}<->{target_id}"
+
+
 def test_post_cladding_and_base_org_cladding_not_emitted(params, transport):
     """D-069/D-070 — owner removed BASE/ORG/POST front cladding strips."""
     removed = [
