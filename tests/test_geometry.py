@@ -3358,3 +3358,45 @@ def test_stack_cap_foot_recess_registration(params, transport):
         ).move(Location((cx, cy, z_top - recess_depth)))
         assert intersection_volume(foot_proxy, cap) == pytest.approx(0.0, abs=1.0)
     assert recess_d == pytest.approx(foot_d + clearance, abs=1e-6)
+
+
+def test_collision_allowlists_exclude_absent_part_prefixes():
+    """FIX-HONESTY-001 / D-099 — dead allowlists must not advertise absent parts."""
+    from stand_cad.geometry.collision import (
+        MATING_PAIRS,
+        PENETRATING_JOINT_PATTERNS,
+        RAW_MATING_PAIRS,
+    )
+
+    absent_prefixes = (
+        "INTERLOCK-",
+        "MAINS-INLET",
+        "EDGEGUARD-",
+        "REARSUPPORT-",
+        "AIRPATH-",
+        "SVC-INSERT-",
+        "ADAPTER-P1",
+    )
+
+    def _contains_absent(value: str) -> str | None:
+        for prefix in absent_prefixes:
+            if value.startswith(prefix) or prefix in value:
+                return prefix
+        return None
+
+    for a, b in RAW_MATING_PAIRS:
+        for part_id in (a, b):
+            hit = _contains_absent(part_id)
+            assert hit is None, f"RAW_MATING_PAIRS lists absent part {part_id} ({hit})"
+
+    for a, b in MATING_PAIRS:
+        for part_id in (a, b):
+            hit = _contains_absent(part_id)
+            assert hit is None, f"MATING_PAIRS lists absent part {part_id} ({hit})"
+
+    for pattern_a, pattern_b in PENETRATING_JOINT_PATTERNS:
+        for pattern in (pattern_a, pattern_b):
+            hit = _contains_absent(pattern)
+            assert hit is None, (
+                f"PENETRATING_JOINT_PATTERNS lists absent prefix {pattern} ({hit})"
+            )

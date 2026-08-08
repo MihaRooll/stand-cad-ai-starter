@@ -2,9 +2,11 @@
 
 > **Living status:** `state/AUTONOMOUS_STATUS.md` — last closed defect, backlog, anti-false-conclusion notes. Prefer it over mid-file historical narrative for “what next.”
 >
-> **FIX-COLL-013 / D-098 (2026-08-08, closed cycle 1):** Cross-tier TRAY/SLIDE↔opposite `FRAME-RAIL-TRAY` excluded from uncapped share_face — defers to staggered **500 mm³** gate (D-097). Live cross-tier share_face max **0 mm³**; pre-fix burial ~**1222650 mm³** (TRAY) / ~**105300 mm³** (SLIDE) rejected. Same-tier slide↔rail `MATING_PAIRS` unchanged. Residual dead INTERLOCK/MAINS allowlists P2. **No** G0–G8 pass.
+> **FIX-HONESTY-001 / D-099 (2026-08-08, closed cycle 1):** Pruned dead INTERLOCK/MAINS/EDGEGUARD/REARSUPPORT/AIRPATH/SVC-INSERT/ADAPTER allowlists from `collision.py` — honesty only, no geometry restore. Residual live P2: SOFT↔TRAY, shelf/org, media on uncapped `MATING_PAIRS`. **No** G0–G8 pass.
 >
-> **FIX-COLL-012 / D-097 (2026-08-08, closed cycle 1):** Staggered-tier Y-overlap ceiling **500 mm³** (live max **0 mm³** across 149 transport cross-tier marker pairs); pre-fix burial ~**43875 mm³** rejected. Residual F-1 (cross-tier TRAY/SLIDE↔rail share_face) closed in D-098; dead INTERLOCK/MAINS allowlists remain residual P2. **No** G0–G8 pass.
+> **FIX-COLL-013 / D-098 (2026-08-08, closed cycle 1):** Cross-tier TRAY/SLIDE↔opposite `FRAME-RAIL-TRAY` excluded from uncapped share_face — defers to staggered **500 mm³** gate (D-097). Live cross-tier share_face max **0 mm³**; pre-fix burial ~**1222650 mm³** (TRAY) / ~**105300 mm³** (SLIDE) rejected. Same-tier slide↔rail `MATING_PAIRS` unchanged. Dead INTERLOCK/MAINS allowlists closed in D-099. **No** G0–G8 pass.
+>
+> **FIX-COLL-012 / D-097 (2026-08-08, closed cycle 1):** Staggered-tier Y-overlap ceiling **500 mm³** (live max **0 mm³** across 149 transport cross-tier marker pairs); pre-fix burial ~**43875 mm³** rejected. Residual F-1 closed in D-098; dead INTERLOCK/MAINS allowlists closed in D-099. **No** G0–G8 pass.
 >
 > **FIX-COLL-011 / D-096 (2026-08-08, cycle 1 closed):** COVER-SVC↔FRAME BASE ceiling **10000 mm³** (live max **7350.0 mm³** BASE-REAR share_face); POST ceiling **500 mm³** (live max **122.9474 mm³** RL/RR share_face + penetrating). Residual INTERLOCK/MAINS/SOFT P2. **No** G0–G8 pass.
 >
@@ -49,7 +51,7 @@
 - Current phase: **rev15** FIX-WAVE-004 (D-075…D-076); prior FIX-WAVE-003 reconcile (D-066…D-074)
 - Current gate: G0 (human verdict unconfirmed) — **no G0–G8 gate passed**
 - Status: **`CONCEPT_REVISION`=15** evidence under `output/validation/rev15/`. **`hardware.handle_mount_y_mm`=181.3 mm** (D-089; was 180.6 at D-084). **`hardware.handle_mount_z_mm`=263 mm** (D-089; was 252). Corner posts **restored** (D-075); interlock / six service volumes / BASE·ORG·POST cladding remain removed (D-067…D-071). Door/tray choreography updated (D-076, **owner-confirmed**); `trays.upper_extension`=0. Envelope **650 × 420 × 540 mm** (D-089).
-- Last updated: 2026-08-08 (FIX-COLL-013 / D-098 cross-tier share_face exclude — closed cycle 1)
+- Last updated: 2026-08-08 (FIX-HONESTY-001 / D-099 dead collision allowlists — closed cycle 1)
 - **Tests:** `uv run pytest -q` green on implementer machine (~370+ cases, 1 skip for missing rev evidence until regenerate); Full profile pending verifier
 - **Tooling/process (D-041, 2026-08-05):** `pytest-xdist` + `-n auto`; `Quick`/`Full` profile guidance; operational-orchestrator turn-ending directive; `docs/14_CAD_MODELING_CONVENTIONS.md`
 - **Handoff:** paste `HANDOFF_PROMPT.md` into a new chat to continue; do not use stale mid-file “Older status” narratives from prior drafts

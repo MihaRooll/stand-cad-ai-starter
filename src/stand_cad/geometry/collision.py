@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from itertools import combinations
 
-from stand_cad.geometry.kinematics import LOWER_KINEMATIC_GROUP, UPPER_KINEMATIC_GROUP
 from stand_cad.geometry.primitives import (
     bounding_box_bounds,
     intersection_volume,
@@ -39,10 +38,6 @@ COLLISION_EXCLUDE = frozenset(
 
 FOOT_IDS = frozenset({"FOOT-001", "FOOT-002", "FOOT-003", "FOOT-004"})
 
-REAR_BOTTOM_SERVICE_CLUSTER = frozenset(
-    {"COVER-SVC-001", "MAINS-INLET-001", "AIRPATH-001", "ADAPTER-P1-001"}
-)
-
 SERVICE_MOUNT_PREFIXES = ("PANEL-", "FRAME-", "COVER-SVC-001")
 
 RAW_MATING_PAIRS = [
@@ -60,8 +55,6 @@ RAW_MATING_PAIRS = [
     ("EQUIP-PLOTTER2-001", "SLIDE-UPPER-LEFT-001"),
     ("EQUIP-PLOTTER2-001", "SLIDE-UPPER-RIGHT-001"),
     ("EQUIP-PLOTTER2-001", "SLIDE-UPPER-CENTER-001"),
-    ("EQUIP-PLOTTER1-001", "INTERLOCK-SHUTTLE-001"),
-    ("EQUIP-PLOTTER2-001", "INTERLOCK-SHUTTLE-001"),
     ("VIBMOUNT-P1-001", "TRAY-LOWER-001"),
     ("VIBMOUNT-P1-001", "EQUIP-PLOTTER1-001"),
     ("VIBMOUNT-P1-002", "TRAY-LOWER-001"),
@@ -78,8 +71,6 @@ RAW_MATING_PAIRS = [
     ("VIBMOUNT-P2-003", "EQUIP-PLOTTER2-001"),
     ("VIBMOUNT-P2-004", "TRAY-UPPER-001"),
     ("VIBMOUNT-P2-004", "EQUIP-PLOTTER2-001"),
-    ("INTERLOCK-TAB-LOWER-001", "INTERLOCK-SHUTTLE-001"),
-    ("INTERLOCK-TAB-UPPER-001", "INTERLOCK-SHUTTLE-001"),
     ("FRAME-RAIL-TRAY-LOWER-L-001", "SLIDE-LOWER-LEFT-001"),
     ("FRAME-RAIL-TRAY-LOWER-R-001", "SLIDE-LOWER-RIGHT-001"),
     ("FRAME-RAIL-TRAY-LOWER-C-001", "SLIDE-LOWER-CENTER-001"),
@@ -98,9 +89,6 @@ RAW_MATING_PAIRS = [
     ("MEDIA-SUPPORT-L2-001", "PANEL-IN-REAR-001"),
     ("EQUIP-PLOTTER1-001", "MEDIA-SUPPORT-L1-001"),
     ("EQUIP-PLOTTER2-001", "MEDIA-SUPPORT-L2-001"),
-    ("MAINS-INLET-001", "PANEL-IN-REAR-001"),
-    ("MAINS-INLET-001", "PANEL-OUT-REAR-001"),
-    ("MAINS-INLET-001", "PANEL-IN-BOTTOM-001"),
     ("SVC-CABLE-PASSTHROUGH-001", "PANEL-OUT-RIGHT-001"),
     ("COVER-SVC-001", "PANEL-IN-BOTTOM-001"),
     ("COVER-SVC-001", "PANEL-OUT-REAR-001"),
@@ -348,10 +336,6 @@ def is_service_volume_mount(
         return False
     svc_id = a if parts[a].material == SERVICE_VOLUME_MATERIAL else b
     other_id = b if svc_id == a else a
-    if other_id in REAR_BOTTOM_SERVICE_CLUSTER:
-        return (
-            minimum_clearance(parts[svc_id].solid, parts[other_id].solid) < threshold
-        )
     if not other_id.startswith(SERVICE_MOUNT_PREFIXES):
         return False
     return minimum_clearance(parts[svc_id].solid, parts[other_id].solid) < threshold
@@ -494,14 +478,10 @@ PENETRATING_JOINT_PATTERNS: tuple[tuple[str, str], ...] = (
     # Rear service cover overlaps rear corner posts.
     ("COVER-SVC-001", "FRAME-POST-RL-"),
     ("COVER-SVC-001", "FRAME-POST-RR-"),
-    # Mains inlet pocket shares rear base rail structure.
-    ("FRAME-RAIL-BASE-REAR-", "MAINS-INLET-"),
     # Organizer support rails bolt to rear inner panel.
     ("FRAME-RAIL-ORG-", "PANEL-IN-REAR-"),
     # Tray carrier rails attach to inner partition panels.
     ("FRAME-RAIL-TRAY-", "PANEL-IN-"),
-    # Interlock tabs pass through inner panel cutouts.
-    ("INTERLOCK-TAB-", "PANEL-IN-"),
     ("SLIDE-UPPER-", "PANEL-IN-MID-001"),
     ("TRAY-UPPER-001", "PANEL-IN-MID-001"),
     ("SOFTSTOP-UPPER-001", "PANEL-IN-MID-001"),
@@ -1059,24 +1039,6 @@ def is_mating(
         if not _is_cross_tier_tray_slide_rail_pair(a, b):
             return True
 
-    # Interlock hardware in the captive channel between slide zones.
-    if a.startswith("INTERLOCK-") or b.startswith("INTERLOCK-"):
-        other = b if a.startswith("INTERLOCK-") else a
-        interlock_id = a if a.startswith("INTERLOCK-") else b
-        channel_prefixes = (
-            "FRAME-RAIL-TRAY",
-            "FRAME-RAIL-BASE",
-            "PANEL-IN-",
-            "TRAY-",
-            "SLIDE-",
-            "PANEL-OUT-",
-        )
-        if other.startswith(channel_prefixes) or other.startswith("INTERLOCK-"):
-            if aabb_share_face(solid_a, solid_b, threshold):
-                return True
-        if interlock_id == "INTERLOCK-SHUTTLE-001" and other.startswith("INTERLOCK-TAB-"):
-            return True
-
     # Horizontal shelf plates seated on organizer floor/insert — share bottom face only.
     if a.startswith("SHELF-") or b.startswith("SHELF-"):
         other = b if a.startswith("SHELF-") else a
@@ -1084,21 +1046,7 @@ def is_mating(
             if aabb_share_face(solid_a, solid_b, threshold):
                 return True
 
-    # Media-path service cluster on rear panel.
-    if _share_face_if_prefix(a, b, parts, threshold, "REARSUPPORT-", "PANEL-"):
-        return True
-    if _share_face_if_prefix(a, b, parts, threshold, "REARSUPPORT-", "SVC-INSERT-"):
-        return True
-    if _share_face_if_prefix(a, b, parts, threshold, "EDGEGUARD-", "SVC-INSERT-"):
-        return True
-    if _share_face_if_prefix(a, b, parts, threshold, "EDGEGUARD-", "PANEL-"):
-        return True
-    if _share_face_if_prefix(a, b, parts, threshold, "EDGEGUARD-", "REARSUPPORT-"):
-        return True
-    if _share_face_if_prefix(a, b, parts, threshold, "SVC-INSERT-", "PANEL-"):
-        return True
-    if _share_face_if_prefix(a, b, parts, threshold, "MAINS-INLET-", "PANEL-"):
-        return True
+    # Service cover flush mounts — volume-gated paths below.
     if is_cover_svc_panel_pair(a, b):
         if _share_face_if_prefix(a, b, parts, threshold, "COVER-SVC-", "PANEL-"):
             return is_cover_svc_panel_bearing(a, b, parts, threshold)
@@ -1108,11 +1056,6 @@ def is_mating(
     if is_cover_svc_frame_post_pair(a, b):
         if _share_face_if_prefix(a, b, parts, threshold, "COVER-SVC-", "FRAME-POST-R"):
             return is_cover_svc_frame_post_bearing(a, b, parts, threshold)
-
-    # Rear/bottom service pocket cluster — intentional shared faces.
-    if a in REAR_BOTTOM_SERVICE_CLUSTER and b in REAR_BOTTOM_SERVICE_CLUSTER:
-        if aabb_share_face(solid_a, solid_b, threshold):
-            return True
 
     if is_service_volume_mount(a, b, parts, threshold):
         return True
@@ -1154,11 +1097,9 @@ def is_open_front_kinematic_contact(
         "TRAY-LOWER-",
         "SLIDE-LOWER-",
         "EQUIP-PLOTTER1-",
-        "INTERLOCK-TAB-LOWER-",
         "TRAY-UPPER-",
         "SLIDE-UPPER-",
         "EQUIP-PLOTTER2-",
-        "INTERLOCK-TAB-UPPER-",
     )
     for clad_prefix in open_front_prefixes:
         for stack_prefix in stack_prefixes:
@@ -1218,7 +1159,6 @@ def is_staggered_tier_y_overlap(
         "FRAME-RAIL-TRAY-LOWER-",
         "SOFTSTOP-LOWER-",
         "VIBMOUNT-P1-",
-        "INTERLOCK-TAB-LOWER-",
     )
     upper_markers = (
         "EQUIP-PLOTTER2-",
@@ -1227,7 +1167,6 @@ def is_staggered_tier_y_overlap(
         "FRAME-RAIL-TRAY-UPPER-",
         "SOFTSTOP-UPPER-",
         "VIBMOUNT-P2-",
-        "INTERLOCK-TAB-UPPER-",
     )
 
     def _tier(part_id: str) -> str | None:
@@ -1251,25 +1190,7 @@ def is_staggered_tier_y_overlap(
 
 
 def intentional_block_pair(state_name: str, a: str, b: str) -> bool:
-    """Shuttle blocking contact in service states — excluded from clearance sweep."""
-    shuttle = "INTERLOCK-SHUTTLE-001"
-    if shuttle not in (a, b):
-        return False
-    other = b if a == shuttle else a
-    if state_name == "service_plotter_1":
-        blocked = UPPER_KINEMATIC_GROUP | {
-            "PANEL-IN-MID-001",
-            "SLIDE-UPPER-RIGHT-001",
-            "FRAME-RAIL-TRAY-UPPER-R-001",
-        }
-        return other in blocked or other.startswith("PANEL-OUT-")
-    if state_name == "service_plotter_2":
-        blocked = LOWER_KINEMATIC_GROUP | {
-            "SLIDE-LOWER-RIGHT-001",
-            "FRAME-RAIL-TRAY-LOWER-R-001",
-            "FRAME-RAIL-BASE-FRONT-001",
-        }
-        return other in blocked
+    """Shuttle blocking contact — hardware absent since D-067; no-op stub."""
     return False
 
 
