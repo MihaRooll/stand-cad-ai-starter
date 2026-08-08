@@ -7,9 +7,9 @@
 | Field | Value |
 |---|---|
 | Branch | `main` |
-| HEAD | `d816e5a` (status snapshot); mega-land `b4da1d7` — *Land rev15 + FIX-TIP-001* |
+| HEAD | `c0410de` — FIX-MASS-001; mega-land `b4da1d7`; status `d816e5a` |
 | Upstream | `origin/main` synced (ordinary push OK) |
-| Next in flight | Collision allowlist burial — backlog #1 confirmation |
+| Next in flight | Collision allowlist burial (P0) + docs/12 rev15 advertising (P1) confirmation |
 | Prior base | `65d6fe3` (D-041) |
 | Live `CONCEPT_REVISION` | **15** (`src/stand_cad/geometry/export.py`) |
 | Envelope | **650 × 420 × 529 mm** |
