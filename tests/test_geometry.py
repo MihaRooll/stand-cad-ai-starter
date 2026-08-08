@@ -2324,6 +2324,90 @@ def test_tray_slide_bearing_rejects_volumetric_burial(params, transport):
     )
 
 
+def test_vib_equip_bearing_rejects_volumetric_burial(params, transport):
+    """FIX-COLL-006 — VIB↔EQUIP pad ceiling rejects deep burial."""
+    from stand_cad.geometry.collision import (
+        MATING_PAIRS,
+        VIB_EQUIP_MAX_BEARING_MM3,
+        is_mating,
+        is_vib_equip_bearing,
+        pair_key,
+    )
+    from stand_cad.geometry.registry import PartRecord
+
+    threshold = float(params.value("tolerance.part_assembly_feature_mm"))
+    vib_id = "VIBMOUNT-P1-001"
+    equip_id = "EQUIP-PLOTTER1-001"
+    assert pair_key(vib_id, equip_id) in MATING_PAIRS
+    equip = transport.parts[equip_id]
+    equip_bounds = bounding_box_bounds(equip.solid)
+    buried_vib = PartRecord(
+        part_id=vib_id,
+        material=transport.parts[vib_id].material,
+        solid=box_from_bounds(
+            equip_bounds[0][0],
+            equip_bounds[1][0],
+            equip_bounds[2][0],
+            equip_bounds[0][1],
+            equip_bounds[1][1] + 50.0,
+            equip_bounds[2][1],
+        ),
+    )
+    parts = dict(transport.parts)
+    parts[vib_id] = buried_vib
+    inter_vol = intersection_volume(equip.solid, buried_vib.solid)
+    assert inter_vol > VIB_EQUIP_MAX_BEARING_MM3 + threshold
+    assert inter_vol > 20_000.0
+    assert not is_vib_equip_bearing(vib_id, equip_id, parts, threshold)
+    assert not is_mating(vib_id, equip_id, parts, threshold=threshold, params=params)
+
+
+def test_live_transport_vib_equip_pairs_no_false_collision(params, transport):
+    """FIX-COLL-006 AC-3 — live transport VIB↔EQUIP pairs stay mated under ceiling."""
+    from stand_cad.geometry.collision import (
+        VIB_EQUIP_MAX_BEARING_MM3,
+        check_collision_pairs,
+        is_mating,
+        is_vib_equip_bearing,
+        is_vib_equip_bearing_pair,
+    )
+
+    threshold = float(params.value("tolerance.part_assembly_feature_mm"))
+    vib_equip_pairs = (
+        ("VIBMOUNT-P1-001", "EQUIP-PLOTTER1-001"),
+        ("VIBMOUNT-P1-002", "EQUIP-PLOTTER1-001"),
+        ("VIBMOUNT-P1-003", "EQUIP-PLOTTER1-001"),
+        ("VIBMOUNT-P1-004", "EQUIP-PLOTTER1-001"),
+        ("VIBMOUNT-P2-001", "EQUIP-PLOTTER2-001"),
+        ("VIBMOUNT-P2-002", "EQUIP-PLOTTER2-001"),
+        ("VIBMOUNT-P2-003", "EQUIP-PLOTTER2-001"),
+        ("VIBMOUNT-P2-004", "EQUIP-PLOTTER2-001"),
+    )
+    for vib_id, equip_id in vib_equip_pairs:
+        assert is_vib_equip_bearing_pair(vib_id, equip_id)
+        inter_vol = intersection_volume(
+            transport.parts[vib_id].solid,
+            transport.parts[equip_id].solid,
+        )
+        assert abs(inter_vol - 2000.0) <= threshold + 1.0, (
+            f"{vib_id}<->{equip_id} inter_vol={inter_vol} mm³ expected ~2000 pad embed"
+        )
+        assert inter_vol <= VIB_EQUIP_MAX_BEARING_MM3 + threshold
+        assert is_vib_equip_bearing(vib_id, equip_id, transport.parts, threshold)
+        assert is_mating(
+            vib_id,
+            equip_id,
+            transport.parts,
+            threshold=threshold,
+            params=params,
+        )
+    violations = check_collision_pairs(transport.parts, params, "transport")
+    for vib_id, equip_id in vib_equip_pairs:
+        assert not any(
+            vib_id in msg and equip_id in msg for msg in violations
+        ), f"False positive: {vib_id}<->{equip_id}"
+
+
 def test_live_tray_slide_bearing_under_ceiling(params, transport, service_p1):
     """FIX-COLL-005 — live TRAY↔SLIDE pairs stay mated under ceiling (transport + service)."""
     from stand_cad.geometry.collision import (

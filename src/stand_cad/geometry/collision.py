@@ -141,9 +141,14 @@ SLIDE_VIBMOUNT_MAX_BEARING_MM3 = 500.0
 
 # Equipment plotter ↔ tray/slide seating skin bearing (mm³) — plane-touch only.
 # Live max 0 mm³ across eight EQUIP-PLOTTER* ↔ TRAY-* / SLIDE-* seating pairs
-# (2026-08-08 transport). Other MATING_PAIRS (VIB↔EQUIP, SOFT↔TRAY, …) stay
-# uncapped — see D-087 residual P2; TRAY↔SLIDE gated separately (D-089).
+# (2026-08-08 transport). Other MATING_PAIRS (SOFT↔TRAY, …) stay uncapped —
+# see D-087 residual P2; VIB↔EQUIP gated separately (D-091); TRAY↔SLIDE (D-089).
 EQUIP_SEATING_MAX_BEARING_MM3 = 500.0
+
+# Vibration-mount pad ↔ equipment plotter skin bearing (mm³) — full pad embed only.
+# Live max 2000 mm³ (20×20×5 pad) across eight VIBMOUNT-P* ↔ EQUIP-PLOTTER* pairs
+# (2026-08-08 transport). Hygiene ceiling; D-091 — not a live beyond-pad burial fix.
+VIB_EQUIP_MAX_BEARING_MM3 = 2500.0
 
 # Tray platform ↔ slide rail skin bearing (mm³) — plane-touch only after Path A
 # Z-stack (slide fully below tray). Live max 0 mm³ across six TRAY-* ↔ SLIDE-*
@@ -711,6 +716,35 @@ def is_equip_seating_bearing(
     return inter_vol <= EQUIP_SEATING_MAX_BEARING_MM3 + threshold
 
 
+def is_vib_equip_bearing_pair(a: str, b: str) -> bool:
+    """True when a,b is a tier-correct vibration-mount pad ↔ equipment plotter pair."""
+    tier_pairs = (
+        ("VIBMOUNT-P1-", "EQUIP-PLOTTER1-"),
+        ("VIBMOUNT-P2-", "EQUIP-PLOTTER2-"),
+    )
+    for vib_prefix, equip_prefix in tier_pairs:
+        if (_id_matches(a, vib_prefix) and _id_matches(b, equip_prefix)) or (
+            _id_matches(b, vib_prefix) and _id_matches(a, equip_prefix)
+        ):
+            return True
+    return False
+
+
+def is_vib_equip_bearing(
+    a: str,
+    b: str,
+    parts: dict[str, PartRecord],
+    threshold: float,
+) -> bool:
+    """Vibration-mount pad embeds into equipment plotter underside — pad volume only."""
+    if not is_vib_equip_bearing_pair(a, b):
+        return False
+    if minimum_clearance(parts[a].solid, parts[b].solid) >= threshold:
+        return False
+    inter_vol = intersection_volume(parts[a].solid, parts[b].solid)
+    return inter_vol <= VIB_EQUIP_MAX_BEARING_MM3 + threshold
+
+
 def is_tray_slide_pair(a: str, b: str) -> bool:
     """True when a,b is a tier-correct tray platform ↔ slide rail pair."""
     tier_pairs = (
@@ -758,6 +792,10 @@ def is_mating(
             if parts is None or threshold is None:
                 return False
             return is_tray_slide_bearing(a, b, parts, threshold)
+        if is_vib_equip_bearing_pair(a, b):
+            if parts is None or threshold is None:
+                return False
+            return is_vib_equip_bearing(a, b, parts, threshold)
         return True
     if parts is None or threshold is None:
         return False

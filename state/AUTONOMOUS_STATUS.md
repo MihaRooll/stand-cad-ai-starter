@@ -7,18 +7,33 @@
 | Field | Value |
 |---|---|
 | Branch | `main` |
-| HEAD | pending FIX-DOC-007 land — D-090 envelope/mass/tip advertising |
+| HEAD | pending FIX-COLL-006 land — D-091 VIB↔EQUIP hygiene gate; Full green |
 | Upstream | `origin/main` synced (ordinary push OK) |
-| Next in flight | Next software audit; residual MATING_PAIRS P2; owner blockers: §F/§M/§N/§A |
+| Next in flight | Next software audit; residual MATING_PAIRS P2 (SOFT↔TRAY, …); owner blockers: §F/§M/§N/§A |
 | Live `CONCEPT_REVISION` | **15** (`src/stand_cad/geometry/export.py`) |
 | Envelope | **650 × 420 × 540 mm** (D-089 full +11 mm stack; was 529 pre-D-089) |
 | Owner-confirmed product | D-075 posts restored; D-076 upper fixed (`upper_extension=0`), lower 250 mm + door/tray choreography |
 | Gates | **No G0–G8 passed** — all CONCEPT / REFERENCE_ONLY / PRELIMINARY |
 | Mode | Autonomously fixing highest-impact **software/honesty** defects until owner says **СТОП** |
-| Verify at land | Quick **green** — 406 passed, 1 xfailed; ruff clean (FIX-DOC-007); docs/tests/state only |
+| Verify at land | Full **green** — `setup_windows.ps1` exit 0 (408 passed, 1 xfailed); ruff clean (FIX-COLL-006) |
 | Commit policy | Mega-land authorized 2026-08-08. Keep excluding `ИИ советы/`, secrets, `.pytest_cache/`. `output/` gitignored. |
 
 ## Last closed defect
+
+### FIX-COLL-006-vib-equip-bearing-ceiling — VIB↔EQUIP pad volume gate (D-091)
+
+| | |
+|---|---|
+| Problem | Eight `VIBMOUNT-P*` ↔ `EQUIP-PLOTTER*` pairs on `MATING_PAIRS` returned unconditional True — D-087 residual P2 hygiene gap |
+| Root cause | `pair_key in MATING_PAIRS: return True` with no volume ceiling on VIB↔EQUIP subset |
+| Fix | Add `is_vib_equip_bearing()` for eight tier-correct pairs (`VIB_EQUIP_MAX_BEARING_MM3=2500.0`; live exactly **2000 mm³** full pad embed) |
+| Measured | Live transport: all eight pairs **2000.000 mm³**; no beyond-pad live burial (FALSE_ALARM C1) |
+| Residual P2 | SOFT↔TRAY, INTERLOCK, shelf/org, media, mains, … on `MATING_PAIRS` remain uncapped |
+| Key paths | `collision.py`; `tests/test_geometry.py`; `docs/14` §11 |
+| Verify | Adversarial accept; Quick 408 passed; Full `setup_windows.ps1` exit 0 |
+| Explicitly NOT done | Gate pass; §F/§M/§N/§A closure; beyond-pad burial claim |
+
+**Anti-false-conclusion:** Do **not** treat the 2500 mm³ ceiling as evidence of live deep burial — live was exactly pad volume (2000 mm³). Fix is hygiene gate only.
 
 ### FIX-DOC-007-post-d089-advertising — sole-current envelope/mass/tip sync (D-090) — **closed cycle 1**
 
@@ -74,7 +89,7 @@
 | Root cause | `pair_key in MATING_PAIRS: return True` with no volume ceiling on seating subset |
 | Fix | Add `is_equip_seating_bearing()` for eight EQUIP-PLOTTER* ↔ TRAY-* / SLIDE-* pairs (`EQUIP_SEATING_MAX_BEARING_MM3=500.0`; live max **0 mm³**) |
 | Measured | Live transport seating inter_vol **0 mm³** across four spot-checked pairs; synthetic burial > ceiling rejected |
-| Residual P2 | VIB↔EQUIP, SOFT↔TRAY, INTERLOCK, shelf/org, media, mains, … on `MATING_PAIRS` remain uncapped |
+| Residual P2 | SOFT↔TRAY, INTERLOCK, shelf/org, media, mains, … on `MATING_PAIRS` remain uncapped |
 | Key paths | `collision.py`; `tests/test_geometry.py` (EQUIP↔TRAY/SLIDE burial + live transport spot-check); `docs/14` §11 |
 | Verify | Adversarial accept; Quick 399 passed + ruff 0; Full `setup_windows.ps1` exit 0 |
 | Explicitly NOT done | Gate pass; global MATING_PAIRS ceiling; uncapped P2 classes |
@@ -223,3 +238,4 @@
 | 2026-08-08 | FIX-DOC-006 HANDOFF current zones → D-089 (540 / 181.3 / 263 / intrusion 1,502,833.5). |
 | 2026-08-08 | FIX-DOC-007 closed (D-090); README/docs/12/HANDOFF/CSV advertising → 540 / 9.651 / 13.445 / 3.828; PLT-012 PASSING claim removed. |
 | 2026-08-08 | FIX-DOC-007b closed; A-017 tip validation action → **≈3.828** (residual D-090). |
+| 2026-08-08 | FIX-COLL-006 closed (D-091); VIB↔EQUIP hygiene ceiling 2500 (live pad 2000); Full green. |
