@@ -2,7 +2,9 @@
 
 > **Living status:** `state/AUTONOMOUS_STATUS.md` — last closed defect, backlog, anti-false-conclusion notes. Prefer it over mid-file historical narrative for “what next.”
 >
-> **FIX-COLL-009 / D-094 (2026-08-08, cycle 1 pending review):** TRAY-rail↔PANEL-IN penetrating ceiling **15000 mm³** (live max **10237.5 mm³**); TRAY excluded from `PANEL-IN-`/`FRAME-` share_face bypass (union with ORG∪POST); volumetric + coplanar burial regressions. ORG/MID/POST/OPEN_FRONT unchanged. Residual INTERLOCK/MAINS/COVER/SOFT P2. **No** G0–G8 pass.
+> **FIX-COLL-010 / D-095 (2026-08-08, cycle 1 pending review):** COVER-SVC↔PANEL ceiling **10000 mm³** (live max **7901.25 mm³** BOTTOM/IN-REAR, **1048.99 mm³** OUT-REAR); `MATING_PAIRS` + share_face paths volume-gated. Residual COVER↔POST/BASE-REAR, INTERLOCK/MAINS/SOFT P2. **No** G0–G8 pass.
+>
+> **FIX-COLL-009 / D-094 (2026-08-08, cycle 1 closed):** TRAY-rail↔PANEL-IN penetrating ceiling **15000 mm³** (live max **10237.5 mm³**); TRAY excluded from `PANEL-IN-`/`FRAME-` share_face bypass (union with ORG∪POST); volumetric + coplanar burial regressions. ORG/MID/POST/OPEN_FRONT unchanged. Residual INTERLOCK/MAINS/COVER/SOFT P2. **No** G0–G8 pass.
 >
 > **FIX-COLL-008 / D-093 (2026-08-08, cycle 1 closed):** POST↔PANEL-IN penetrating ceiling **25000 mm³** (live max **18652.9 mm³**); POST excluded from `PANEL-IN-`/`FRAME-` share_face bypass (union with ORG); volumetric + coplanar burial regressions. ORG/MID/OPEN_FRONT unchanged. **No** G0–G8 pass.
 >

@@ -2397,6 +2397,127 @@ def test_tray_rail_panel_penetrating_live_mate_passes(params, transport):
     assert is_mating(rail_id, panel_id, parts, threshold=threshold, params=params)
 
 
+def test_cover_svc_panel_live_mate_passes(params, transport):
+    """FIX-COLL-010 AC-1 — live COVER-SVC↔PANEL MATING pairs stay under class ceiling."""
+    from stand_cad.geometry.collision import (
+        COVER_SVC_PANEL_MAX_BEARING_MM3,
+        MATING_PAIRS,
+        is_cover_svc_panel_bearing,
+        is_mating,
+        pair_key,
+    )
+
+    threshold = float(params.value("tolerance.part_assembly_feature_mm"))
+    cover_id = "COVER-SVC-001"
+    for panel_id in ("PANEL-IN-BOTTOM-001", "PANEL-OUT-REAR-001"):
+        assert pair_key(cover_id, panel_id) in MATING_PAIRS
+        inter_vol = intersection_volume(
+            transport.parts[cover_id].solid,
+            transport.parts[panel_id].solid,
+        )
+        assert inter_vol <= COVER_SVC_PANEL_MAX_BEARING_MM3 + threshold
+        assert is_cover_svc_panel_bearing(cover_id, panel_id, transport.parts, threshold)
+        assert is_mating(cover_id, panel_id, transport.parts, threshold=threshold, params=params)
+
+
+def test_cover_svc_panel_in_rear_share_face_live_mate_passes(params, transport):
+    """FIX-COLL-010 — live COVER-SVC↔PANEL-IN-REAR share_face path stays under ceiling."""
+    from stand_cad.geometry.collision import (
+        COVER_SVC_PANEL_MAX_BEARING_MM3,
+        MATING_PAIRS,
+        is_mating,
+        pair_key,
+    )
+
+    threshold = float(params.value("tolerance.part_assembly_feature_mm"))
+    cover_id = "COVER-SVC-001"
+    panel_id = "PANEL-IN-REAR-001"
+    assert pair_key(cover_id, panel_id) not in MATING_PAIRS
+    inter_vol = intersection_volume(
+        transport.parts[cover_id].solid,
+        transport.parts[panel_id].solid,
+    )
+    assert inter_vol <= COVER_SVC_PANEL_MAX_BEARING_MM3 + threshold
+    assert is_mating(cover_id, panel_id, transport.parts, threshold=threshold, params=params)
+
+
+def test_cover_svc_panel_rejects_volumetric_burial(params, transport):
+    """FIX-COLL-010 AC-2 — COVER-SVC↔PANEL MATING pair must reject deep burial."""
+    from stand_cad.geometry.collision import (
+        COVER_SVC_PANEL_MAX_BEARING_MM3,
+        MATING_PAIRS,
+        is_cover_svc_panel_bearing,
+        is_mating,
+        pair_key,
+    )
+    from stand_cad.geometry.registry import PartRecord
+
+    threshold = float(params.value("tolerance.part_assembly_feature_mm"))
+    cover_id = "COVER-SVC-001"
+    panel_id = "PANEL-IN-BOTTOM-001"
+    assert pair_key(cover_id, panel_id) in MATING_PAIRS
+    cover = transport.parts[cover_id]
+    panel = transport.parts[panel_id]
+    panel_bounds = bounding_box_bounds(panel.solid)
+    buried_cover = PartRecord(
+        part_id=cover_id,
+        material=cover.material,
+        solid=box_from_bounds(
+            panel_bounds[0][0] + 2.0,
+            panel_bounds[1][0] + 2.0,
+            panel_bounds[2][0] + 2.0,
+            panel_bounds[0][0] + 200.0,
+            panel_bounds[1][0] + 200.0,
+            panel_bounds[2][0] + 200.0,
+        ),
+    )
+    parts = dict(transport.parts)
+    parts[cover_id] = buried_cover
+    inter_vol = intersection_volume(buried_cover.solid, panel.solid)
+    assert inter_vol > COVER_SVC_PANEL_MAX_BEARING_MM3 + threshold
+    assert inter_vol > 30_000.0
+    assert not is_cover_svc_panel_bearing(cover_id, panel_id, parts, threshold)
+    assert not is_mating(cover_id, panel_id, parts, threshold=threshold, params=params)
+
+
+def test_cover_svc_panel_share_face_burial_rejects_volumetric_burial(params, transport):
+    """FIX-COLL-010 cycle 1 — coplanar-face COVER-SVC↔PANEL-IN-REAR burial must not silent-green."""
+    from stand_cad.geometry.collision import (
+        COVER_SVC_PANEL_MAX_BEARING_MM3,
+        aabb_share_face,
+        is_cover_svc_panel_bearing,
+        is_mating,
+    )
+    from stand_cad.geometry.registry import PartRecord
+
+    threshold = float(params.value("tolerance.part_assembly_feature_mm"))
+    cover_id = "COVER-SVC-001"
+    panel_id = "PANEL-IN-REAR-001"
+    panel = transport.parts[panel_id]
+    panel_bounds = bounding_box_bounds(panel.solid)
+    cover = transport.parts[cover_id]
+    buried_cover = PartRecord(
+        part_id=cover_id,
+        material=cover.material,
+        solid=box_from_bounds(
+            panel_bounds[0][0],
+            panel_bounds[1][0],
+            panel_bounds[2][0],
+            panel_bounds[0][1],
+            panel_bounds[1][1] + 50.0,
+            panel_bounds[2][1],
+        ),
+    )
+    parts = dict(transport.parts)
+    parts[cover_id] = buried_cover
+    inter_vol = intersection_volume(buried_cover.solid, panel.solid)
+    assert aabb_share_face(buried_cover.solid, panel.solid, threshold)
+    assert inter_vol > COVER_SVC_PANEL_MAX_BEARING_MM3 + threshold
+    assert inter_vol > 30_000.0
+    assert not is_cover_svc_panel_bearing(cover_id, panel_id, parts, threshold)
+    assert not is_mating(cover_id, panel_id, parts, threshold=threshold, params=params)
+
+
 def test_mid_upper_penetrating_rejects_volumetric_burial(params, transport):
     """FIX-COLL-007 AC-2 — MID ↔ SLIDE-UPPER penetrating pattern must reject deep burial."""
     from stand_cad.geometry.collision import (

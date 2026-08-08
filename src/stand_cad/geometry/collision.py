@@ -155,6 +155,12 @@ VIB_EQUIP_MAX_BEARING_MM3 = 2500.0
 # pairs (2026-08-08 transport); pre-fix burial ~96525 mm³ rejected.
 TRAY_SLIDE_MAX_BEARING_MM3 = 500.0
 
+# Service cover ↔ panel skin bearing (mm³) — flush mount on bottom/rear panels.
+# Live max 7901.25 mm³ (COVER-SVC-001 ↔ PANEL-IN-BOTTOM-001 / PANEL-IN-REAR-001)
+# and 1048.99 mm³ (↔ PANEL-OUT-REAR-001, 2026-08-08 transport). IN-REAR mates
+# via share_face only (not on MATING_PAIRS) — gate that path too (D-095).
+COVER_SVC_PANEL_MAX_BEARING_MM3 = 10_000.0
+
 OPEN_FRONT_PENETRATING_PATTERNS: frozenset[tuple[str, str]] = frozenset(
     {
         ("PANEL-CLAD-FRONT-", "TRAY-LOWER-"),
@@ -842,6 +848,28 @@ def is_tray_slide_bearing(
     return inter_vol <= TRAY_SLIDE_MAX_BEARING_MM3 + threshold
 
 
+def is_cover_svc_panel_pair(a: str, b: str) -> bool:
+    """True when a,b is a service cover ↔ panel mating pair."""
+    return (_id_matches(a, "COVER-SVC-") and _id_matches(b, "PANEL-")) or (
+        _id_matches(b, "COVER-SVC-") and _id_matches(a, "PANEL-")
+    )
+
+
+def is_cover_svc_panel_bearing(
+    a: str,
+    b: str,
+    parts: dict[str, PartRecord],
+    threshold: float,
+) -> bool:
+    """Service cover flush-mounted on panel — skin bearing only."""
+    if not is_cover_svc_panel_pair(a, b):
+        return False
+    if minimum_clearance(parts[a].solid, parts[b].solid) >= threshold:
+        return False
+    inter_vol = intersection_volume(parts[a].solid, parts[b].solid)
+    return inter_vol <= COVER_SVC_PANEL_MAX_BEARING_MM3 + threshold
+
+
 def is_mating(
     a: str,
     b: str,
@@ -864,6 +892,10 @@ def is_mating(
             if parts is None or threshold is None:
                 return False
             return is_vib_equip_bearing(a, b, parts, threshold)
+        if is_cover_svc_panel_pair(a, b):
+            if parts is None or threshold is None:
+                return False
+            return is_cover_svc_panel_bearing(a, b, parts, threshold)
         return True
     if parts is None or threshold is None:
         return False
@@ -992,8 +1024,9 @@ def is_mating(
         return True
     if _share_face_if_prefix(a, b, parts, threshold, "MAINS-INLET-", "PANEL-"):
         return True
-    if _share_face_if_prefix(a, b, parts, threshold, "COVER-SVC-", "PANEL-"):
-        return True
+    if is_cover_svc_panel_pair(a, b):
+        if _share_face_if_prefix(a, b, parts, threshold, "COVER-SVC-", "PANEL-"):
+            return is_cover_svc_panel_bearing(a, b, parts, threshold)
     if _share_face_if_prefix(a, b, parts, threshold, "COVER-SVC-", "FRAME-RAIL-BASE"):
         return True
     if _share_face_if_prefix(a, b, parts, threshold, "COVER-SVC-", "FRAME-POST-R"):
