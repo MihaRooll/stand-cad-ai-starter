@@ -246,6 +246,43 @@ def build_lid_envelope_parts(params: Parameters, datums: Datums) -> list[PartRec
     return lids
 
 
+def build_single_tray_fabricated_part(
+    part_id: str, params: Parameters, datums: Datums
+) -> PartRecord:
+    """Build one fabricated tray-level part (tray platform or tray frame rail)."""
+    if part_id == "TRAY-LOWER-001":
+        level = "lower"
+    elif part_id == "TRAY-UPPER-001":
+        level = "upper"
+    elif part_id.startswith("FRAME-RAIL-TRAY-LOWER-"):
+        level = "lower"
+        side_suffix = part_id.removeprefix("FRAME-RAIL-TRAY-LOWER-").removesuffix("-001")
+    elif part_id.startswith("FRAME-RAIL-TRAY-UPPER-"):
+        level = "upper"
+        side_suffix = part_id.removeprefix("FRAME-RAIL-TRAY-UPPER-").removesuffix("-001")
+    else:
+        raise ValueError(f"unknown tray fabricated part id: {part_id}")
+
+    datum = datums.plotter1_physical if level == "lower" else datums.plotter2_physical
+    tray_b = _tray_bounds(params, datum)
+    if part_id.startswith("TRAY-"):
+        tray_id = "TRAY-LOWER-001" if level == "lower" else "TRAY-UPPER-001"
+        return PartRecord(
+            part_id=tray_id,
+            material=TRAY_MATERIAL,
+            solid=box_from_bounds(*tray_b),
+        )
+    side_by_suffix = {"L": "left", "R": "right", "C": "center"}
+    side = side_by_suffix[side_suffix]
+    rail_b = _tray_frame_rail_bounds(params, tray_b, side=side)
+    rail_prefix = "FRAME-RAIL-TRAY-LOWER" if level == "lower" else "FRAME-RAIL-TRAY-UPPER"
+    return PartRecord(
+        part_id=f"{rail_prefix}-{side_suffix}-001",
+        material=FRAME_MATERIAL,
+        solid=box_from_bounds(*rail_b),
+    )
+
+
 def build_tray_parts(params: Parameters, datums: Datums) -> list[PartRecord]:
     """Both tray levels at closed (transport) positions — no lid envelopes."""
     return build_tray_level_parts(params, datums, level="lower") + build_tray_level_parts(

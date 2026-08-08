@@ -32,6 +32,7 @@ MATERIAL_DENSITY_PATHS = {
     "interlock_tab_hardware": "materials.aluminium_density_kg_m3",
     "soft_trim_brush": "materials.silicone_density_kg_m3",
     "hardware_mains_inlet": "materials.aluminium_density_kg_m3",
+    "aluminium_stack_cap": "materials.aluminium_density_kg_m3",
 }
 
 SHELL_THICKNESS_PATHS = {
@@ -47,16 +48,16 @@ SHELL_THICKNESS_PATHS = {
 
 
 def _panel_shell_volume_mm3(sx: float, sy: float, sz: float, thickness_mm: float) -> float:
-    """Single-face shell volume from the two largest bounding-box dimensions."""
+    """Single-face shell volume: largest face area × material thickness."""
     dims = sorted([sx, sy, sz])
-    return dims[1] * dims[2] * thickness_mm / 2
+    return dims[1] * dims[2] * thickness_mm
 
 
 def _frame_member_volume_mm3(sx: float, sy: float, sz: float, params: Parameters) -> float:
-    """Approximate aluminium profile volume using open-section strip model."""
+    """Approximate equal-leg angle volume: section area × member length."""
     profile = float(params.value("materials.frame_profile_size_mm"))
     wall = float(params.value("materials.frame_wall_thickness_mm"))
-    section = 4 * profile * wall
+    section = (2 * profile - wall) * wall
     length = max(sx, sy, sz)
     return section * length
 
@@ -157,6 +158,51 @@ def weighted_centre_of_mass_mm(
     return (x, y, z)
 
 
+def loaded_case_centre_of_mass_mm(
+    parts: dict[str, PartRecord], params: Parameters
+) -> tuple[float, float, float]:
+    """Indicative loaded-case CoM from structural mass + both plotters (transport state)."""
+    return weighted_centre_of_mass_mm(
+        structural_mass_samples(parts, params) + plotter_mass_samples(parts, params)
+    )
+
+
+def indicative_loaded_case_com_y_mm(params: Parameters) -> float:
+    """Recompute indicative loaded-case CoM Y from live transport assembly geometry."""
+    from stand_cad.geometry.assembly import build_transport_assembly
+
+    state = build_transport_assembly(params)
+    return loaded_case_centre_of_mass_mm(state.parts, params)[1]
+
+
+def handle_finger_intrusion_volume_mm3(
+    *,
+    handle_mount_y_mm: float,
+    handle_mount_z_mm: float,
+    grip_length_mm: float,
+    grip_depth_mm: float,
+    plotter_y_bounds: tuple[float, float],
+    plotter_z_bounds: tuple[float, float],
+    plotter_x_span_mm: float,
+) -> float:
+    """Axis-aligned finger-reach volume overlapping a plotter bay (Y/Z band × plotter X span).
+
+    Models fingers passing through the side through-cutout into the interior — not the
+    20 mm side-slab solid alone. Used for carry-ergonomics reporting (D-050/D-051).
+    """
+    y0 = handle_mount_y_mm - grip_length_mm / 2
+    y1 = handle_mount_y_mm + grip_length_mm / 2
+    z0 = handle_mount_z_mm - grip_depth_mm / 2
+    z1 = handle_mount_z_mm + grip_depth_mm / 2
+    overlap_y0 = max(y0, plotter_y_bounds[0])
+    overlap_y1 = min(y1, plotter_y_bounds[1])
+    overlap_z0 = max(z0, plotter_z_bounds[0])
+    overlap_z1 = min(z1, plotter_z_bounds[1])
+    if overlap_y1 <= overlap_y0 or overlap_z1 <= overlap_z0:
+        return 0.0
+    return (overlap_y1 - overlap_y0) * (overlap_z1 - overlap_z0) * plotter_x_span_mm
+
+
 def structural_mass_samples(
     parts: dict[str, PartRecord], params: Parameters
 ) -> list[tuple[tuple[float, float, float], float]]:
@@ -195,6 +241,20 @@ def empty_case_mass_kg(parts: dict[str, PartRecord], params: Parameters) -> floa
             continue
         total += part_mass_kg(record, params)
     return total
+
+
+def indicative_joining_hardware_mass_kg(params: Parameters) -> float:
+    """Indicative bought-in M3/M4 fasteners + corner brackets (D-061) — not modeled as solids."""
+    from stand_cad.geometry.hardware import indicative_bracket_mass_kg, indicative_fastener_mass_kg
+
+    return indicative_fastener_mass_kg(params) + indicative_bracket_mass_kg(params)
+
+
+def empty_case_mass_for_stability_kg(
+    parts: dict[str, PartRecord], params: Parameters
+) -> float:
+    """Empty-case mass for tip-over model — geometric structural + indicative joining hardware."""
+    return empty_case_mass_kg(parts, params) + indicative_joining_hardware_mass_kg(params)
 
 
 def indicative_tray_deflection_single_span_mm(params: Parameters) -> float:
@@ -257,6 +317,7 @@ class StabilityReportInputs:
     overturn_moment_n_mm: float
     factor: float
     legacy_factor: float
+    applicable: bool
 
 
 def _extended_tier_ids(extended_level: str) -> tuple[str, str, str, int]:
@@ -321,6 +382,12 @@ def stability_report_inputs(
         stationary_samples.append((_solid_centroid_mm(record), mass))
     other_plotter_mass = params.plotter_mass_kg(other_plotter_index)
     stationary_samples.append((_solid_centroid_mm(parts[other_plotter_id]), other_plotter_mass))
+    joining_mass = indicative_joining_hardware_mass_kg(params)
+    if joining_mass > 0:
+        struct_samples = structural_mass_samples(parts, params)
+        if struct_samples:
+            struct_cog = weighted_centre_of_mass_mm(struct_samples)
+            stationary_samples.append((struct_cog, joining_mass))
     stationary_mass = sum(mass for _, mass in stationary_samples)
     _, stationary_cog_y, _ = weighted_centre_of_mass_mm(stationary_samples)
 
@@ -331,9 +398,11 @@ def stability_report_inputs(
     overturn_moment = moving_mass * g * overturn_arm
     factor = restore_moment / overturn_moment if overturn_moment > 0 else float("inf")
 
-    structural_mass = empty_case_mass_kg(parts, params)
+    structural_mass = empty_case_mass_for_stability_kg(parts, params)
     plotter_mass = params.plotter_mass_kg(1) + params.plotter_mass_kg(2)
     total_mass = structural_mass + plotter_mass
+
+    applicable = extension > 0.0 and overturn_moment > 0.0
 
     return StabilityReportInputs(
         pivot_edge=f"front foot line (Y={foot_inset:.1f} mm, foot inset)",
@@ -357,6 +426,7 @@ def stability_report_inputs(
         overturn_moment_n_mm=overturn_moment,
         factor=factor,
         legacy_factor=_legacy_tip_factor(params, extended_level=extended_level),
+        applicable=applicable,
     )
 
 
@@ -366,7 +436,12 @@ def indicative_tip_factor(
     *,
     extended_level: str = "lower",
 ) -> float:
-    """Indicative tip-over factor with one tray extended — NOT G4 stability analysis."""
+    """Indicative tip-over factor with one tray extended — NOT G4 stability analysis.
+
+    ``float('inf')`` when overturn moment ≤ 0 is arithmetic-only; callers must check
+    ``stability_report_inputs(...).applicable`` (extension > 0 and overturn moment > 0)
+    before comparing to ``stability.tip_factor_min``.
+    """
     return stability_report_inputs(
         params, parts, extended_level=extended_level
     ).factor

@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import errno
 import json
 import re
 import socketserver
@@ -19,6 +20,7 @@ from pathlib import Path
 
 HOST = "127.0.0.1"
 PORT = 8000
+MAX_PORT_CANDIDATES = 20
 REPO_ROOT = Path(__file__).resolve().parents[1]
 CONCEPT_DIR = REPO_ROOT / "output" / "concept"
 MODELS_JSON_PATH = "/viewer/models.json"
@@ -202,9 +204,39 @@ def _fetch(url: str) -> tuple[int, int]:
         return resp.status, len(data)
 
 
-def verify_viewer(base_url: str | None = None) -> int:
+def _should_try_next_port(exc: OSError) -> bool:
+    if exc.errno == errno.EADDRINUSE:
+        return True
+    winerror = getattr(exc, "winerror", None)
+    return winerror in (10048, 10013)
+
+
+def _bind_tcp_server(host: str, requested_port: int) -> tuple[socketserver.TCPServer, int]:
+    """Bind TCPServer, trying requested_port .. requested_port+MAX_PORT_CANDIDATES-1."""
+    socketserver.TCPServer.allow_reuse_address = True
+    candidates = range(requested_port, requested_port + MAX_PORT_CANDIDATES)
+    last_error: OSError | None = None
+    for port in candidates:
+        try:
+            httpd = socketserver.TCPServer((host, port), RepositoryHandler)
+        except OSError as exc:
+            if not _should_try_next_port(exc):
+                raise
+            last_error = exc
+            continue
+        if port != requested_port:
+            print(f"Port {requested_port} unavailable — using {port} instead.")
+        return httpd, port
+    tried = ", ".join(str(p) for p in candidates)
+    detail = f" ({last_error})" if last_error else ""
+    raise SystemExit(
+        f"Could not bind to any port on {host} (tried: {tried}){detail}"
+    )
+
+
+def verify_viewer(base_url: str | None = None, *, port: int = PORT) -> int:
     ensure_three_vendor()
-    base = base_url or f"http://{HOST}:{PORT}"
+    base = base_url or f"http://{HOST}:{port}"
     index = build_models_index()
     if not index["models"]:
         print("VERIFY FAIL: no concept models under output/concept/")
@@ -236,16 +268,17 @@ def verify_viewer(base_url: str | None = None) -> int:
     return 0
 
 
-def _run_verify_with_ephemeral_server() -> int:
+def _run_verify_with_ephemeral_server(port: int = PORT) -> int:
     ensure_three_vendor()
-    with socketserver.TCPServer((HOST, PORT), RepositoryHandler) as httpd:
-        thread = threading.Thread(target=httpd.serve_forever, daemon=True)
-        thread.start()
-        time.sleep(0.3)
-        try:
-            return verify_viewer(f"http://{HOST}:{PORT}")
-        finally:
-            httpd.shutdown()
+    httpd, bound_port = _bind_tcp_server(HOST, port)
+    thread = threading.Thread(target=httpd.serve_forever, daemon=True)
+    thread.start()
+    time.sleep(0.3)
+    try:
+        return verify_viewer(f"http://{HOST}:{bound_port}")
+    finally:
+        httpd.shutdown()
+        httpd.server_close()
 
 
 def main() -> None:
@@ -274,13 +307,19 @@ def main() -> None:
         default=1.0,
         help="Concept directory poll interval in seconds when --watch is set (default: 1.0).",
     )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=PORT,
+        help=f"TCP port to bind (default: {PORT}; tries successive ports if unavailable).",
+    )
     args = parser.parse_args()
 
     if args.verify_only_running:
-        raise SystemExit(verify_viewer())
+        raise SystemExit(verify_viewer(port=args.port))
 
     if args.verify:
-        raise SystemExit(_run_verify_with_ephemeral_server())
+        raise SystemExit(_run_verify_with_ephemeral_server(args.port))
 
     ensure_three_vendor()
     if args.watch:
@@ -291,17 +330,19 @@ def main() -> None:
             daemon=True,
         )
         poll_thread.start()
-    with socketserver.TCPServer((HOST, PORT), RepositoryHandler) as httpd:
-        url = f"http://{HOST}:{PORT}/viewer/index.html"
-        print(f"Serving repository root at {url}")
-        print(f"Concept model index: http://{HOST}:{PORT}{MODELS_JSON_PATH}")
-        if args.watch:
-            print(f"Live reload status: http://{HOST}:{PORT}{RELOAD_STATUS_PATH}")
-            print(f"Polling {CONCEPT_DIR} every {args.watch_interval}s")
-        try:
-            httpd.serve_forever()
-        except KeyboardInterrupt:
-            print("\nShutting down.")
+    httpd, bound_port = _bind_tcp_server(HOST, args.port)
+    url = f"http://{HOST}:{bound_port}/viewer/index.html"
+    print(f"Serving repository root at {url}")
+    print(f"Concept model index: http://{HOST}:{bound_port}{MODELS_JSON_PATH}")
+    if args.watch:
+        print(f"Live reload status: http://{HOST}:{bound_port}{RELOAD_STATUS_PATH}")
+        print(f"Polling {CONCEPT_DIR} every {args.watch_interval}s")
+    try:
+        httpd.serve_forever()
+    except KeyboardInterrupt:
+        print("\nShutting down.")
+    finally:
+        httpd.server_close()
 
 
 if __name__ == "__main__":

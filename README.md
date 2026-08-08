@@ -4,6 +4,8 @@
 
 This repository is a production-oriented starter for designing a light desktop tower for two Silhouette cutting plotters plus horizontal film storage, with an AI agent in Cursor. It is intentionally **not** a finished or released design: critical dimensions, loads, operating clearances, materials, and the target manufacturer's bend data are not yet known.
 
+**Current status (rev13, 2026-08-06):** envelope **650 × 420 × 529 mm**; `CONCEPT_REVISION=13`; weld-free **and adhesive-free** mechanical joining (D-061/D-065); **STACK-CAP-*** stacking interface (D-064); §P shelf attachment **CLOSED**. Open owner blockers: §F handle, §M lid headroom, §N tray/film retention (plotter tie-down waived), §A measurements. All exports **CONCEPT / REFERENCE_ONLY / PRELIMINARY** — no G0–G8 passed. See [`HANDOFF_PROMPT.md`](HANDOFF_PROMPT.md) for full product truth.
+
 The chosen workflow is:
 
 1. Cursor and Opus 5 orchestrate the project.
@@ -21,6 +23,14 @@ After the first setup:
 2. Serve the three.js viewer with live reload: `uv run python scripts/serve_viewer.py --watch`, then open `http://127.0.0.1:8000/viewer/index.html`
 3. When something misbehaves, run the environment doctor: `uv run python scripts/doctor.py`
 4. Before modeling, skim [`docs/14_CAD_MODELING_CONVENTIONS.md`](docs/14_CAD_MODELING_CONVENTIONS.md) for established patterns (cladding bounds, render tie-break, stability model) so a fix with a documented precedent is not re-derived from scratch.
+5. Continuing in a **new chat**: paste [`HANDOFF_PROMPT.md`](HANDOFF_PROMPT.md) as the first message (it is the current product truth + next packet).
+
+### Agent speed (do not weaken safety floors)
+
+- Prefer **Quick** (`uv run pytest` + `uv run ruff check .`) for intermediate implement → review → fix cycles and for pure `state/**` / `docs/**` / `.cursor/**` edits. Pytest uses `-n auto` via `pytest-xdist`.
+- Run **Full** (`powershell -ExecutionPolicy Bypass -File .\scripts\setup_windows.ps1`) only at stage/revision close, after dependency/setup changes, or before presenting a stage’s final commit — not on every review cycle.
+- Physical-quantity edits stay **T2 minimum** with mandatory adversarial review. Never skip that to go faster.
+- Orchestrators must finish or explicitly `BLOCKED` a dispatched implementer/reviewer/verifier in the same turn (see `.cursor/agents/operational-orchestrator.md`).
 
 See [`viewer/README.md`](viewer/README.md) for viewer controls, manifest paths, and troubleshooting.
 

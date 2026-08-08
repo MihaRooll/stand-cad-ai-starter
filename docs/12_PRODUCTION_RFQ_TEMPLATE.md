@@ -1,40 +1,87 @@
 # Prototype manufacturing RFQ template
 
-Subject: DFM and quotation request — light desktop plotter tower prototype — `<PROJECT>/<REV>`
+Subject: DFM and quotation request — light desktop plotter tower prototype — `light_plotter_tower` / **CONCEPT rev13** (`REFERENCE_ONLY`)
 
 ## Project summary
 
-We need one functional prototype of a light desktop tower for two Silhouette cutting plotters plus horizontal film storage, for event operation and transport. The attached package is marked `PRELIMINARY_NOT_FOR_PRODUCTION` and is submitted for DFM and quotation only.
+We need one functional prototype of a light desktop tower for two Silhouette cutting plotters plus horizontal film storage, for event operation and transport. The attached package is marked **`PRELIMINARY` / `CONCEPT` / `NOT FOR PRODUCTION` / `REFERENCE_ONLY`** and is submitted for DFM and quotation only.
 
-Expected processes may include cutting, bending, profile/tube fabrication, welding or mechanical fastening, inserts, grinding, powder coating, and final assembly. Please recommend changes based on your actual equipment and standard tooling.
+**Overall envelope (derived):** **650 × 420 × 529 mm** (W × D × H).  
+**Frame:** 15×15×1.5 mm aluminium angle — **no welding** (owner requirement D-060).  
+**Joining (concept level, D-061/D-063/D-064):** 20×20×2 mm aluminium corner brackets + M4/M3 pan-head machine screws into rivnuts. Frame corners: **2×M4 per node** (1 per bracket leg — dual M4 per 15 mm angle leg rejected for edge distance). **Stacking (D-064):** four **STACK-CAP-*** parts + **JT-STACK-CAP-POST** (2×M4 per cap into post tops). Full joint schedule: `config/parameters.yaml` `joints.*`, drawing sheet **JOIN-001**, assembly sequence **`docs/15_ASSEMBLY_INSTRUCTIONS.md`**. Manufacturer may counter-propose equivalent brackets, insert brands, and screw lengths after DFM — we expect written rationale.
 
-## Attached package
+Expected processes may include cutting, bending, profile/tube fabrication, **mechanical fastening only (no welded frame)**, inserts, grinding, powder coating, and final assembly.
 
-- formed assembly STEP;
-- formed part STEP files;
-- preliminary PDF drawings;
-- BOM and bought-in hardware list;
-- controlled renders and requirements;
-- list of critical-to-function dimensions;
-- questions below.
+## Owner responsibilities and known gaps (read before quoting)
 
-## Questions requiring written response
+These items are **not** resolved in the attached STEP/PDF package. Do not infer completed design from geometry presence alone.
 
-1. Which proposed construction/material/thickness changes do you recommend and why?
-2. Which processes and machines would you use?
-3. What minimum inside bend radii, flange lengths, hole-to-bend distances, and tool clearances apply?
-4. Do you generate flat patterns from formed STEP, or require customer DXF?
-5. Who owns and approves bend deduction/K-factor/table values?
-6. Which tolerances can you hold economically, and where must the drawing change?
-7. Are all inserts, hinges, handles, welds, and fasteners feasible and accessible?
-8. What welding distortion/cosmetic risks exist?
-9. What powder-coat preparation, masking, colour/texture, and minimum batch constraints apply?
-10. Which supplied details are ambiguous or impossible to inspect?
-11. What is included in first-article inspection and what measurement report can you provide?
-12. Quote engineering/NRE, prototype, optional corrected second prototype, delivery, and lead times separately.
-13. Identify every intended deviation before manufacture.
+### Owner-decision blockers (must be resolved by owner before production release — not DFM alone)
+
+| ID | Topic | Status |
+|---|---|---|
+| §F | Handle concept — through-cut grip only; tier-2 finger intrusion ~1.39×10⁶ mm³ | **OPEN** |
+| §N | Transport retention — trays, plotters, film unrestrained | **OPEN** |
+| §M | Lid-open headroom — 210,600 mm³ lid/shuttle overlap at tier-1 service extension | **OPEN** |
+| §A | Real-equipment measurements (feed plane, lid envelope, sheet thickness, …) | **OPEN** |
+
+### DFM / manufacturer-quotation questions (we invite your written response)
+
+1. **Joining counter-proposals:** For each joint type in **JOIN-001**, confirm feasibility or propose alternatives (bracket stock, rivnut vs rivet, through-bolt access).
+2. **Grip lengths / torques:** Nominal M4×12 and M3×10 called out; all install torques and final grip lengths marked **`to_measure`** until prototype stack-up — quote allowance for trial assembly.
+3. **Panel-to-frame:** 3 mm opal PMMA cavity walls are **not** primary structural load path; confirm screw pitch (~150 mm). **Adhesive-free** — M4 pan-head into frame rivnuts only (D-065).
+4. **Slide mounting:** `JT-TRAY-SLIDE-FRAME` — hole pattern **`to_measure`** until slide part number selected (`trays.slide_rail_*`).
+5. Which proposed construction/material/thickness changes do you recommend and why?
+6. Which processes and machines would you use?
+7. Minimum inside bend radii, flange lengths, hole-to-bend distances, tool clearances?
+8. Flat patterns from formed STEP vs customer DXF — who owns bend deduction/K-factor?
+9. Economically held tolerances vs drawing changes required?
+10. Inserts, hinges, **non-welded** fasteners — accessibility from cavity with side slabs installed last?
+11. Powder-coat preparation, masking, colour/texture, minimum batch constraints?
+12. Ambiguous or impossible-to-inspect details in the package?
+13. First-article inspection scope and measurement report format?
+14. Quote engineering/NRE, prototype, optional corrected second prototype, delivery, lead times **separately**.
+15. Identify every intended deviation before manufacture.
+
+### Settled concept facts (do not re-open without owner approval)
+
+1. **Electrical arrangement — NOT engineered.** Owner routes extension cord through **SVC-CABLE-PASSTHROUGH-001** (D-036). Safe in-case distribution remains owner responsibility (R-005).
+
+2. **Flat patterns and bend data — factory-owned until DFM says otherwise.** Per ADR-003: preliminary DXF stays **`REFERENCE_ONLY`**; formed STEP and controlled PDF precede production DXF.
+
+3. **`MAINS-INLET-001` — deferred placeholder only** (D-036). Do not procure as a specification.
+
+4. **Weld-free frame — mandatory.** Do not quote welded 15×15×1.5 mm angle joints; propose bolted brackets/gussets instead.
+
+## Attached package (CONCEPT rev13)
+
+| Artifact | Path / note |
+|---|---|
+| Formed assembly STEP | `output/concept/light_plotter_tower_ASSEMBLY_CONCEPT_REFERENCE_ONLY_rev13.step` |
+| PRELIMINARY PDF drawings | `output/validation/rev13/drawings/…_rev13.pdf` — sheets GA/OP/SEC/BOM/**JOIN-001**/OPEN/DET |
+| REFERENCE_ONLY DXF (flat panels) | `output/validation/rev13/dxf/*_REFERENCE_ONLY_rev13.dxf` |
+| Assembly instructions | `docs/15_ASSEMBLY_INSTRUCTIONS.md` |
+| Indicative mass report | `output/validation/rev13/mass_report.csv` |
+| Stability / deflection | `output/validation/rev13/stability_report.md`, `deflection_report.md` |
+| BOM + joint schedule | PDF **BOM-001**, **JOIN-001** |
+
+## Indicative mass figures (NOT Gate G4 — regenerate for latest)
+
+Figures below are **indicative** from `scripts/generate_mass_report.py` at regenerate time; cavity-wall side-slab policy per D-055 (see OPEN-001).
+
+| Metric | Typical rev13 order of magnitude |
+|---|---|
+| Empty structural (excl. verify_on_real_machine parts) | **8.806 kg** |
+| All-parts (+ plotters in model) | **12.860 kg** |
+| Bought-in fasteners (indicative, excl. structural total) | **≈0.174 kg** registry (**158** screws: **137 M4 + 21 M3** from `joints.*`) **+ 4 FOOT M4 + 5 base-cladding M3** (docs/15, not in `joints.*`) → **167** total indicative |
+| Corner brackets (indicative, not all modeled as solids) | **0.145 kg** (34 nodes: 22 JT-FRAME-CORNER + 12 JT-TRAY-RAIL-FRAME) |
+| Stacking caps (D-064, four **STACK-CAP-***) | **~0.10 kg** indicative (4× 40×40×8 mm plate less Ø30.75×2.5 mm recess; `part_mass_kg`) |
+| Stacking cap fasteners | included in registry **158** (**JT-STACK-CAP-POST**, 4 corners × qty 2) |
+| Tip factor lower tier @ 250 mm ext / 420 mm depth | **3.756** (incl. D-061 joining roll-up) |
+| Tip factor upper tier | **3.348** |
+| Tray deflection (3-rail indicative model @ 10 kg) | ~0.23 mm vs 1.5 mm ceiling |
+| REL-027 `to_measure` leaf count | **55** (see `state/REQUIREMENTS_TRACEABILITY.csv` PLT-017) |
 
 ## Release boundary
 
-Do not manufacture from this RFQ package. A separate `PROTOTYPE_RELEASED` revision with manifest will follow after DFM resolution and written authorization.
-
+Do not manufacture from this RFQ package. A separate `PROTOTYPE_RELEASED` revision with manifest will follow after DFM resolution, owner closure of §F/§N/§M/§A blockers, and written authorization (`docs/10` §B).

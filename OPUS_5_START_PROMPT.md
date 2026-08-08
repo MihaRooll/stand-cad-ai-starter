@@ -1,5 +1,7 @@
 # Start prompt for Opus 5
 
+**Continuing an existing checkout:** prefer pasting [`HANDOFF_PROMPT.md`](HANDOFF_PROMPT.md) into a new chat — it carries current rev11 numbers, closed defects, and the next work packet. Use the block below only for a cold start on a fresh extract.
+
 Copy the entire block below into Opus 5 after extracting this folder, opening it in Cursor, and initializing Git.
 
 ---

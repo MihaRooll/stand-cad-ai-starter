@@ -34,7 +34,7 @@ Requirement IDs are stable. Add rows rather than renumbering existing items.
 - `MEC-006`: doors, drawers, extensions, and presses cannot create uncontrolled tipping.
 - `MEC-007`: restraint, latch, hinge, and handle loads are defined.
 - `MEC-008`: sharp edges, pinch/shear points, and hot-contact zones are mitigated.
-- `MEC-009`: fasteners, inserts, welds, adhesives, and serviceability are specified.
+- `MEC-009`: fasteners, inserts, welds, adhesives, and serviceability are specified. **IN_PROGRESS (D-061/D-065):** weld-free **and adhesive-free** mechanical catalogue in `config/parameters.yaml` `joints.*` + `docs/15_ASSEMBLY_INSTRUCTIONS.md`; §P shelf attachment **CLOSED** (D-065); install torques/grip lengths remain `to_measure` — not production-released.
 
 ## Thermal/electrical
 

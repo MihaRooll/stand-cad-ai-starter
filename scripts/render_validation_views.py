@@ -9,6 +9,7 @@ Also exports SVG orthographic line drawings (HLR), STL, and GLB for the transpor
 from __future__ import annotations
 
 import struct
+import sys
 import zlib
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
@@ -32,11 +33,13 @@ from OCP.TopoDS import TopoDS
 
 from stand_cad.geometry.assembly import (
     AssemblyState,
+    build_case_only_assembly,
     build_organizer_loaded_assembly,
     build_panels_hidden_assembly,
     build_service_plotter_1_assembly,
     build_service_plotter_2_assembly,
     build_transport_assembly,
+    build_transport_display_assembly,
     build_tray1_quick_access_assembly,
 )
 from stand_cad.geometry.export import CONCEPT_REVISION, export_transport_mesh_bundle
@@ -53,6 +56,8 @@ MATERIAL_RGB: dict[str, tuple[int, int, int]] = {
     "cast_opal_pmma_3mm": (245, 245, 250),
     "white_composite_3_4mm": (252, 252, 252),
     "aluminium_angle_15x15x1.5": (175, 178, 188),
+    "aluminium_strut_hardware": (160, 165, 175),
+    "aluminium_stack_cap": (170, 173, 183),
     "sandwich_panel_10_12mm": (205, 205, 215),
     "transparent_petg_2mm": (120, 185, 235),
     "hdpe_insert_thin": (210, 210, 200),
@@ -94,6 +99,7 @@ MATERIAL_RENDER_PRIORITY: dict[str, int] = {
     "cast_opal_pmma_3mm": 1,
     "white_composite_3_4mm": 1,
     "transparent_petg_2mm": 1,
+    "aluminium_strut_hardware": 0,
 }
 
 # Contrast backgrounds for legibility (Finding 1 / Finding 5 — near-white panel on white PNG).
@@ -429,12 +435,12 @@ def build_rear_vent_closeup_assembly(params: Parameters) -> AssemblyState:
 
 
 def build_cable_passthrough_closeup_assembly(params: Parameters) -> AssemblyState:
-    """Rear outer panel + grommet — cable pass-through opening legibility evidence."""
+    """Right outer side panel + grommet — cable pass-through opening legibility evidence."""
     state = build_transport_assembly(params)
     state.parts = {
         part_id: record
         for part_id, record in state.parts.items()
-        if part_id in ("PANEL-OUT-REAR-001", "SVC-CABLE-PASSTHROUGH-001")
+        if part_id in ("PANEL-OUT-RIGHT-001", "SVC-CABLE-PASSTHROUGH-001")
     }
     state.name = "cable_passthrough_closeup"
     return state
@@ -474,16 +480,26 @@ def default_render_targets() -> list[RenderTarget]:
     iso = ViewSpec(direction=(-1.0, -1.0, 1.0))
     organizer_view = ViewSpec(direction=ORGANIZER_VIEW_DIRECTION)
     return [
-        RenderTarget("transport_iso.png", build_transport_assembly, iso),
-        RenderTarget("transport_front.png", build_transport_assembly, ViewSpec((0.0, -1.0, 0.0))),
-        RenderTarget("transport_rear.png", build_transport_assembly, ViewSpec((0.0, 1.0, 0.0))),
-        RenderTarget("transport_left.png", build_transport_assembly, ViewSpec((-1.0, 0.0, 0.0))),
-        RenderTarget("transport_right.png", build_transport_assembly, ViewSpec((1.0, 0.0, 0.0))),
+        RenderTarget("transport_iso.png", build_transport_display_assembly, iso),
+        RenderTarget(
+            "transport_front.png", build_transport_display_assembly, ViewSpec((0.0, -1.0, 0.0))
+        ),
+        RenderTarget(
+            "transport_rear.png", build_transport_display_assembly, ViewSpec((0.0, 1.0, 0.0))
+        ),
+        RenderTarget(
+            "transport_left.png", build_transport_display_assembly, ViewSpec((-1.0, 0.0, 0.0))
+        ),
+        RenderTarget(
+            "transport_right.png", build_transport_display_assembly, ViewSpec((1.0, 0.0, 0.0))
+        ),
         RenderTarget(
             "transport_top.png",
-            build_transport_assembly,
+            build_transport_display_assembly,
             ViewSpec((0.0, 0.0, 1.0)),
         ),
+        RenderTarget("case_only_iso.png", build_case_only_assembly, iso),
+        RenderTarget("case_only_front.png", build_case_only_assembly, ViewSpec((0.0, -1.0, 0.0))),
         RenderTarget("service_plotter_1_iso.png", build_service_plotter_1_assembly, iso),
         RenderTarget("service_plotter_2_iso.png", build_service_plotter_2_assembly, iso),
         RenderTarget("tray1_quick_access_iso.png", build_tray1_quick_access_assembly, iso),
@@ -507,7 +523,7 @@ def default_render_targets() -> list[RenderTarget]:
         RenderTarget(
             "cable_passthrough_closeup.png",
             build_cable_passthrough_closeup_assembly,
-            ViewSpec(direction=(0.0, 1.0, 0.0)),
+            ViewSpec(direction=(1.0, 0.0, 0.0)),
         ),
         RenderTarget(
             "service_port_closeup.png",
@@ -568,24 +584,59 @@ def _edge_is_exportable(edge: Edge) -> bool:
     return True
 
 
+def _edge_is_svg_addable(edge: Edge) -> bool:
+    """Probe whether an edge can be added to ExportSVG (fillet arcs often fail)."""
+    if not _edge_is_exportable(edge):
+        return False
+    probe = ExportSVG()
+    try:
+        probe.add_shape(edge)
+    except Exception:  # noqa: BLE001 — documented fillet-arc / OCP null-object failures
+        return False
+    return True
+
+
 def render_assembly_svg(
     state: AssemblyState,
     view: ViewSpec,
     output_path: Path,
 ) -> None:
-    """Render one orthographic SVG line drawing via OCP HLR."""
+    """Render one orthographic SVG line drawing via OCP HLR.
+
+    Fillet-arc HLR edges that OCP/build123d cannot serialize are skipped with an
+    explicit warning (documented degenerate-edge tolerance). Any ``add_shape`` failure
+    on a probe-passing edge, or zero exportable edges, is a hard failure (D-053).
+    """
     compound = state.compound().wrapped
     edges = _hlr_edges_for_compound(compound, view.direction)
     if not edges:
         raise RuntimeError(f"No HLR edges for state {state.name!r}")
     exporter = ExportSVG()
+    skipped = 0
+    added = 0
     for edge in edges:
-        if not _edge_is_exportable(edge):
+        if not _edge_is_svg_addable(edge):
+            skipped += 1
             continue
         try:
             exporter.add_shape(edge)
-        except BaseException:  # noqa: BLE001 — OCP Standard_NullObject may escape Exception
-            continue
+        except Exception as exc:
+            raise RuntimeError(
+                f"SVG add_shape failed on exportable HLR edge for state {state.name!r} "
+                f"(view {view.direction}): {exc}"
+            ) from exc
+        added += 1
+    if skipped:
+        print(
+            f"WARNING: {output_path.name}: skipped {skipped} of {len(edges)} HLR edges "
+            f"(fillet-arc / OCP null-object — documented ExportSVG limitation)",
+            file=sys.stderr,
+        )
+    if added == 0:
+        raise RuntimeError(
+            f"No exportable HLR edges for state {state.name!r} "
+            f"(view {view.direction}; {skipped} skipped)"
+        )
     output_path.parent.mkdir(parents=True, exist_ok=True)
     exporter.write(output_path)
 
@@ -631,13 +682,13 @@ def render_all_views(
         if target.filename in (
             "base_plate_closeup.png",
             "rear_vent_closeup.png",
-            "cable_passthrough_closeup.png",
         ):
             bg = BASE_PLATE_CLOSEUP_BACKGROUND_RGB
         elif target.filename in (
             "transport_left.png",
             "transport_right.png",
             "service_port_closeup.png",
+            "cable_passthrough_closeup.png",
         ):
             bg = SIDE_VIEW_BACKGROUND_RGB
         elif target.filename == "transport_rear.png":

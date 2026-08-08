@@ -56,6 +56,7 @@ For each meaningful geometry change:
 7. Store evidence under `output/validation/<revision>/`.
 8. Update traceability and project state.
 9. Check `docs/14_CAD_MODELING_CONVENTIONS.md` for an established pattern before re-deriving a fix — cladding bounds, render depth tie-break, and the stability moment split all have documented precedents there.
+10. For a new chat continuation, start from `HANDOFF_PROMPT.md` rather than re-deriving status from old plan notes. Prefer Quick verification inside a stage; reserve Full for stage/revision close (see `.cursor/rules/21-orchestration-overlay.mdc`).
 
 Never use `--no-sandbox` merely to make an MCP script work. Never expose MCP HTTP mode outside localhost; the reviewed server documentation states that HTTP mode has no built-in authentication.
 

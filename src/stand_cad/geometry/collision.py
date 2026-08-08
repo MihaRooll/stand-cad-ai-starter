@@ -94,30 +94,51 @@ RAW_MATING_PAIRS = [
     ("SHELF-001", "ORG-INSERT-001"),
     ("SHELF-002", "ORG-FLOOR-001"),
     ("SHELF-002", "ORG-INSERT-001"),
-    ("SVC-INSERT-L1-001", "PANEL-IN-REAR-001"),
-    ("SVC-INSERT-L2-001", "PANEL-IN-REAR-001"),
-    ("SVC-INSERT-L1-001", "PANEL-OUT-REAR-001"),
-    ("SVC-INSERT-L2-001", "PANEL-OUT-REAR-001"),
-    ("EDGEGUARD-L1-001", "SVC-INSERT-L1-001"),
-    ("EDGEGUARD-L2-001", "SVC-INSERT-L2-001"),
-    ("EDGEGUARD-L1-001", "PANEL-IN-REAR-001"),
-    ("EDGEGUARD-L2-001", "PANEL-IN-REAR-001"),
-    ("EDGEGUARD-L1-001", "REARSUPPORT-L1-001"),
-    ("EDGEGUARD-L2-001", "REARSUPPORT-L2-001"),
+    ("MEDIA-SUPPORT-L1-001", "PANEL-IN-REAR-001"),
+    ("MEDIA-SUPPORT-L2-001", "PANEL-IN-REAR-001"),
+    ("EQUIP-PLOTTER1-001", "MEDIA-SUPPORT-L1-001"),
+    ("EQUIP-PLOTTER2-001", "MEDIA-SUPPORT-L2-001"),
     ("MAINS-INLET-001", "PANEL-IN-REAR-001"),
     ("MAINS-INLET-001", "PANEL-OUT-REAR-001"),
     ("MAINS-INLET-001", "PANEL-IN-BOTTOM-001"),
-    ("SVC-CABLE-PASSTHROUGH-001", "PANEL-OUT-REAR-001"),
-    ("SVC-CABLE-PASSTHROUGH-001", "PANEL-IN-REAR-001"),
+    ("SVC-CABLE-PASSTHROUGH-001", "PANEL-OUT-RIGHT-001"),
     ("COVER-SVC-001", "PANEL-IN-BOTTOM-001"),
     ("COVER-SVC-001", "PANEL-OUT-REAR-001"),
     ("CABLE-CH-001", "PANEL-OUT-LEFT-001"),
     ("CABLE-CH-001", "PANEL-IN-BOTTOM-001"),
     ("LIGHT-STRIP-001", "PANEL-OUT-REAR-001"),
     ("LIGHT-STRIP-001", "FRAME-RAIL-TOP-REAR-001"),
-    ("PANEL-CLAD-FRONT-POST-FL-001", "PANEL-IN-MID-001"),
-    ("PANEL-CLAD-FRONT-POST-FR-001", "PANEL-IN-MID-001"),
 ]
+
+DOOR_IDS = frozenset({"DOOR-LOWER-001", "DOOR-UPPER-001"})
+
+# Closed drop-front doors share the tray front plane — zero clearance is expected.
+DOOR_CLOSED_FRONT_MATE_PREFIXES = (
+    "TRAY-",
+    "SLIDE-",
+    "EQUIP-PLOTTER",
+    "PANEL-CLAD-FRONT-TRAY-",
+    "FRAME-RAIL-BASE-FRONT-",
+    "FRAME-RAIL-ORG-FRONT-",
+    "FRAME-RAIL-TRAY-",
+)
+
+# Closed drop-front door front-plane bearing ceiling (mm³) — plane-touch / skin
+# bearing only; rejects volumetric burial when extended tray intrudes (closed posture).
+DOOR_FRONT_PLANE_MAX_BEARING_MM3 = 500.0
+
+# Cosmetic strut ↔ post/panel/rail attachment at corner (7 mm Ø cylinder clip).
+DOOR_STRUT_MAX_BEARING_MM3 = 350.0
+
+
+def _door_is_open_horizontal(solid, *, threshold: float = 1.0) -> bool:
+    """True when a drop-front door has swung to horizontal work-surface posture."""
+    (_, _), (y0, y1), (z0, z1) = bounding_box_bounds(solid)
+    y_span = y1 - y0
+    z_span = z1 - z0
+    if z_span < threshold:
+        return y_span > threshold
+    return y_span > z_span * 5.0
 
 
 def pair_key(a: str, b: str) -> tuple[str, str]:
@@ -239,6 +260,116 @@ def _id_matches(part_id: str, pattern: str) -> bool:
     return part_id == pattern
 
 
+SIDE_SLAB_IDS = frozenset({"PANEL-OUT-LEFT-001", "PANEL-OUT-RIGHT-001"})
+
+SIDE_SLAB_FRAME_PREFIXES = (
+    "FRAME-POST-",
+    "FRAME-RAIL-BASE-LEFT-",
+    "FRAME-RAIL-BASE-RIGHT-",
+)
+
+# Pre-cavity solid-slab burial at a corner post was ~428×10³ mm³ synthetic (rejected —
+# far above ``_max_legitimate_skin_bearing_volume_mm3`` ≈56×10³). Legitimate cavity-wall
+# bearing on X skin + front/rear Y return reaches ~47–48×10³ mm³ at zero clearance.
+SIDE_SLAB_FRAME_MAX_INTERSECTION_MM3 = 35_000.0  # legacy rail-only reference
+
+
+def _max_legitimate_skin_bearing_volume_mm3(
+    params: Parameters,
+    panel_bounds: tuple[tuple[float, float], ...],
+    frame_id: str,
+) -> float:
+    """Volume ceiling when Al frame bears on the 3 mm cavity-wall skin (not solid acrylic burial).
+
+    TZ lines 218–219: hidden aluminium frame inside the wall pocket; the opal skin is
+    non-load-bearing cosmetic PMMA. Corner posts mate flush to the inner face of the outer
+    X skin and the front/rear Y returns — zero clearance is an expected bearing joint.
+    """
+    wall_mm = float(params.value("materials.outer_panel_thickness_mm"))
+    side_clear = float(params.side_slab_thickness_mm)
+    profile = float(params.value("materials.frame_profile_size_mm"))
+    contact_height = panel_bounds[2][1] - panel_bounds[2][0]
+    if frame_id.startswith("FRAME-POST-"):
+        return (profile + side_clear) * wall_mm * contact_height
+    return profile * wall_mm * contact_height * 2.0
+
+
+def _is_side_slab_frame_pair(a: str, b: str) -> tuple[str, str] | None:
+    """Return (panel_id, frame_id) when a is a side slab mated to a wall-pocket frame member."""
+    if a in SIDE_SLAB_IDS and any(b.startswith(prefix) for prefix in SIDE_SLAB_FRAME_PREFIXES):
+        return a, b
+    if b in SIDE_SLAB_IDS and any(a.startswith(prefix) for prefix in SIDE_SLAB_FRAME_PREFIXES):
+        return b, a
+    return None
+
+
+def is_side_slab_frame_cavity_joint(
+    a: str,
+    b: str,
+    parts: dict[str, PartRecord],
+    params: Parameters,
+    threshold: float,
+) -> bool:
+    """Frame members legitimately occupy the side-slab air pocket behind the 3 mm opal skin.
+
+    Allows zero-clearance **bearing contact** where aluminium posts/rails meet the inner face
+    of the opal skin (designed joint per TZ hidden-frame-in-wall intent). Rejects volumetric
+    burial in solid acrylic (~428×10³ mm³ synthetic at corner — far above max_bearing).
+    """
+    pair = _is_side_slab_frame_pair(a, b)
+    if pair is None:
+        return False
+    panel_id, frame_id = pair
+    side_clear = float(params.side_slab_thickness_mm)
+    case_width = float(params.value("case.width"))
+    case_depth = float(params.value("case.depth"))
+    frame_bounds = bounding_box_bounds(parts[frame_id].solid)
+    panel_bounds = bounding_box_bounds(parts[panel_id].solid)
+
+    # Corner posts span the wall pocket plus an inward leg (~40 mm); require X overlap
+    # with the pocket band [0, side_clear] / [width - side_clear, width], not full confinement.
+    if panel_id == "PANEL-OUT-LEFT-001":
+        if not (
+            frame_bounds[0][0] < side_clear + threshold
+            and frame_bounds[0][1] > -threshold
+        ):
+            return False
+    else:
+        if not (
+            frame_bounds[0][1] > case_width - side_clear - threshold
+            and frame_bounds[0][0] < case_width + threshold
+        ):
+            return False
+
+    # Corner posts mate at front/rear Y returns only — reject mid-wall skin burial that
+    # passes X overlap and volume ceiling but sits away from the return bands.
+    if frame_id.startswith("FRAME-POST-"):
+        front_y_overlap = (
+            frame_bounds[1][0] < side_clear + threshold
+            and frame_bounds[1][1] > -threshold
+        )
+        rear_y_overlap = (
+            frame_bounds[1][1] > case_depth - side_clear - threshold
+            and frame_bounds[1][0] < case_depth + threshold
+        )
+        if not (front_y_overlap or rear_y_overlap):
+            return False
+
+    if not (
+        frame_bounds[2][1] > panel_bounds[2][0] - threshold
+        and frame_bounds[2][0] < panel_bounds[2][1] + threshold
+    ):
+        return False
+
+    inter_vol = intersection_volume(parts[panel_id].solid, parts[frame_id].solid)
+    max_bearing = _max_legitimate_skin_bearing_volume_mm3(params, panel_bounds, frame_id)
+    if inter_vol > max_bearing + threshold:
+        return False
+
+    clearance = minimum_clearance(parts[panel_id].solid, parts[frame_id].solid)
+    return clearance < threshold or inter_vol > threshold
+
+
 PENETRATING_JOINT_PATTERNS: tuple[tuple[str, str], ...] = (
     # Corner posts pierce inner panel stack at shared corners.
     ("FRAME-POST-", "PANEL-IN-"),
@@ -260,8 +391,114 @@ PENETRATING_JOINT_PATTERNS: tuple[tuple[str, str], ...] = (
     ("PANEL-CLAD-FRONT-", "SLIDE-LOWER-"),
     ("FRAME-RAIL-BASE-FRONT-", "TRAY-LOWER-"),
     ("FRAME-RAIL-BASE-FRONT-", "SLIDE-LOWER-"),
-    ("PANEL-CLAD-FRONT-POST-", "EQUIP-PLOTTER1-"),
 )
+
+
+STACK_CAP_TOP_RAIL_MATES: dict[str, frozenset[str]] = {
+    "STACK-CAP-FL-001": frozenset({"FRAME-RAIL-TOP-LEFT-001"}),
+    "STACK-CAP-FR-001": frozenset({"FRAME-RAIL-TOP-RIGHT-001"}),
+    "STACK-CAP-RL-001": frozenset({"FRAME-RAIL-TOP-REAR-001", "FRAME-RAIL-TOP-LEFT-001"}),
+    "STACK-CAP-RR-001": frozenset({"FRAME-RAIL-TOP-REAR-001", "FRAME-RAIL-TOP-RIGHT-001"}),
+}
+
+STACK_CAP_REAR_PANEL_MATES: dict[str, frozenset[str]] = {
+    "STACK-CAP-RL-001": frozenset({"PANEL-IN-REAR-001", "PANEL-OUT-REAR-001"}),
+    "STACK-CAP-RR-001": frozenset({"PANEL-IN-REAR-001", "PANEL-OUT-REAR-001"}),
+}
+
+STACK_CAP_SIDE_PANEL_MATES: dict[str, frozenset[str]] = {
+    "STACK-CAP-FL-001": frozenset({"PANEL-OUT-LEFT-001"}),
+    "STACK-CAP-FR-001": frozenset({"PANEL-OUT-RIGHT-001"}),
+    "STACK-CAP-RL-001": frozenset({"PANEL-OUT-LEFT-001"}),
+    "STACK-CAP-RR-001": frozenset({"PANEL-OUT-RIGHT-001"}),
+}
+
+# Corner cap↔rail/panel bearing overlap ceiling (mm³) — rejects mid-span burial.
+STACK_CAP_MAX_BEARING_MM3 = 8_000.0
+# Cap plate + notch boss into matching post (includes boss below case.height).
+STACK_CAP_POST_MAX_INTERSECTION_MM3 = 20_000.0
+
+
+def _stack_cap_z_adjacent(
+    cap_bounds: tuple[tuple[float, float], tuple[float, float], tuple[float, float]],
+    other_bounds: tuple[tuple[float, float], tuple[float, float], tuple[float, float]],
+    threshold: float,
+) -> bool:
+    """Cap bottom mates other top, or Z bands overlap for corner bearing."""
+    cap_z0, cap_z1 = cap_bounds[2]
+    other_z0, other_z1 = other_bounds[2]
+    if abs(cap_z0 - other_z1) <= threshold:
+        return True
+    if abs(other_z0 - cap_z1) <= threshold:
+        return True
+    z_overlap = min(cap_z1, other_z1) - max(cap_z0, other_z0)
+    return z_overlap > threshold
+
+
+def _stack_cap_corner_xy_overlap(
+    cap_bounds: tuple[tuple[float, float], tuple[float, float], tuple[float, float]],
+    other_bounds: tuple[tuple[float, float], tuple[float, float], tuple[float, float]],
+    threshold: float,
+) -> bool:
+    x_overlap = min(cap_bounds[0][1], other_bounds[0][1]) - max(
+        cap_bounds[0][0], other_bounds[0][0]
+    )
+    y_overlap = min(cap_bounds[1][1], other_bounds[1][1]) - max(
+        cap_bounds[1][0], other_bounds[1][0]
+    )
+    return x_overlap > threshold and y_overlap > threshold
+
+
+def is_stack_cap_mate(
+    a: str,
+    b: str,
+    parts: dict[str, PartRecord],
+    threshold: float,
+) -> bool:
+    """STACK-001 / D-064 — stacking caps bear on post tops and overlap top ring at corners."""
+    cap_id = a if a.startswith("STACK-CAP-") else b if b.startswith("STACK-CAP-") else None
+    if cap_id is None:
+        return False
+    other_id = b if cap_id == a else a
+    cap_solid = parts[cap_id].solid
+    other_solid = parts[other_id].solid
+    if minimum_clearance(cap_solid, other_solid) >= threshold:
+        return False
+    cap_bounds = bounding_box_bounds(cap_solid)
+    other_bounds = bounding_box_bounds(other_solid)
+    inter_vol = intersection_volume(cap_solid, other_solid)
+    if other_id.startswith("FRAME-POST-"):
+        suffix = cap_id.removeprefix("STACK-CAP-").removesuffix("-001")
+        if other_id == f"FRAME-POST-{suffix}-001":
+            return inter_vol <= STACK_CAP_POST_MAX_INTERSECTION_MM3 + threshold
+    if other_id.startswith("FRAME-RAIL-TOP-"):
+        allowed = STACK_CAP_TOP_RAIL_MATES.get(cap_id, frozenset())
+        if other_id not in allowed:
+            return False
+        if not _stack_cap_corner_xy_overlap(cap_bounds, other_bounds, threshold):
+            return False
+        if not _stack_cap_z_adjacent(cap_bounds, other_bounds, threshold):
+            return False
+        return inter_vol <= STACK_CAP_MAX_BEARING_MM3 + threshold
+    if other_id in ("PANEL-IN-REAR-001", "PANEL-OUT-REAR-001"):
+        allowed = STACK_CAP_REAR_PANEL_MATES.get(cap_id, frozenset())
+        if other_id not in allowed:
+            return False
+        if not _stack_cap_corner_xy_overlap(cap_bounds, other_bounds, threshold):
+            return False
+        if not _stack_cap_z_adjacent(cap_bounds, other_bounds, threshold):
+            return False
+        return inter_vol <= STACK_CAP_MAX_BEARING_MM3 + threshold
+    if other_id.startswith("PANEL-OUT-"):
+        allowed = STACK_CAP_SIDE_PANEL_MATES.get(cap_id, frozenset())
+        if other_id not in allowed:
+            return False
+        if not _stack_cap_corner_xy_overlap(cap_bounds, other_bounds, threshold):
+            return False
+        if not _stack_cap_z_adjacent(cap_bounds, other_bounds, threshold):
+            return False
+        return inter_vol <= STACK_CAP_MAX_BEARING_MM3 + threshold
+    return False
 
 
 def is_penetrating_structural_joint(
@@ -286,12 +523,109 @@ def is_penetrating_structural_joint(
     return False
 
 
+def is_door_mate(
+    a: str,
+    b: str,
+    parts: dict[str, PartRecord],
+    threshold: float,
+) -> bool:
+    """Drop-front doors (D-073) — closed-plane and open-strut contacts at the front opening."""
+    door_a = a in DOOR_IDS
+    door_b = b in DOOR_IDS
+    strut_a = a.startswith("DOOR-STRUT-")
+    strut_b = b.startswith("DOOR-STRUT-")
+    if not (door_a or door_b or strut_a or strut_b):
+        return False
+
+    solid_a = parts[a].solid
+    solid_b = parts[b].solid
+    clearance = minimum_clearance(solid_a, solid_b)
+    if clearance >= threshold:
+        return False
+
+    if door_a and door_b:
+        return True
+
+    door_id = a if door_a else b if door_b else None
+    strut_id = a if strut_a else b if strut_b else None
+    other_id = b if a in (door_id, strut_id) else a
+
+    if strut_id is not None:
+        if other_id in DOOR_IDS or other_id.startswith("DOOR-STRUT-"):
+            return True
+        if other_id.startswith(("FRAME-RAIL-", "PANEL-OUT-", "PANEL-IN-", "FRAME-POST-")):
+            inter_vol = intersection_volume(solid_a, solid_b)
+            return inter_vol <= DOOR_STRUT_MAX_BEARING_MM3 + threshold
+        return False
+
+    if door_id is not None:
+        door_solid = parts[door_id].solid
+        is_open = _door_is_open_horizontal(door_solid, threshold=threshold)
+
+        if other_id.startswith("DOOR-STRUT-"):
+            return True
+        if other_id.startswith("FRAME-POST-"):
+            inter_vol = intersection_volume(solid_a, solid_b)
+            ceiling = threshold if is_open else DOOR_FRONT_PLANE_MAX_BEARING_MM3 + threshold
+            return inter_vol <= ceiling
+        if other_id == "PANEL-IN-MID-001":
+            return True
+        if other_id.startswith(DOOR_CLOSED_FRONT_MATE_PREFIXES):
+            inter_vol = intersection_volume(solid_a, solid_b)
+            if is_open:
+                return inter_vol <= threshold
+            return inter_vol <= DOOR_FRONT_PLANE_MAX_BEARING_MM3 + threshold
+        if other_id.startswith(("SOFTSTOP-LOWER-", "SOFTSTOP-UPPER-")):
+            return True
+        if other_id.startswith("PANEL-CLAD-FRONT-") and other_id.endswith("-001"):
+            inter_vol = intersection_volume(solid_a, solid_b)
+            if is_open:
+                return inter_vol <= threshold
+            return inter_vol <= DOOR_FRONT_PLANE_MAX_BEARING_MM3 + threshold
+
+    return False
+
+
+def is_frame_post_bearing(
+    a: str,
+    b: str,
+    parts: dict[str, PartRecord],
+    threshold: float,
+) -> bool:
+    """D-075 — corner posts bear on cleats and front-corner tray hardware (plane touch)."""
+    post_id = (
+        a
+        if a.startswith("FRAME-POST-")
+        else b
+        if b.startswith("FRAME-POST-")
+        else None
+    )
+    if post_id is None:
+        return False
+    other_id = b if post_id == a else a
+    if other_id.startswith(("DOOR-", "DOOR-STRUT-")):
+        return False
+    solid_a = parts[a].solid
+    solid_b = parts[b].solid
+    if minimum_clearance(solid_a, solid_b) >= threshold:
+        return False
+    inter_vol = intersection_volume(solid_a, solid_b)
+    if other_id.startswith("SHELF-SUPPORT-"):
+        return inter_vol <= 200.0 + threshold
+    if other_id.startswith(("SLIDE-LOWER-", "TRAY-LOWER-", "EQUIP-PLOTTER1-")):
+        return inter_vol <= threshold
+    if other_id.startswith(("SLIDE-UPPER-", "TRAY-UPPER-", "EQUIP-PLOTTER2-")):
+        return inter_vol <= threshold
+    return False
+
+
 def is_mating(
     a: str,
     b: str,
     parts: dict[str, PartRecord] | None = None,
     *,
     threshold: float | None = None,
+    params: Parameters | None = None,
 ) -> bool:
     """Return True when zero-distance contact between a and b is expected."""
     if pair_key(a, b) in MATING_PAIRS:
@@ -299,11 +633,20 @@ def is_mating(
     if parts is None or threshold is None:
         return False
 
+    if is_door_mate(a, b, parts, threshold):
+        return True
+
     for group in (LOWER_KINEMATIC_GROUP, UPPER_KINEMATIC_GROUP):
         if a in group and b in group:
             return True
 
     if is_foot_structure_contact(a, b, parts, threshold):
+        return True
+
+    if is_stack_cap_mate(a, b, parts, threshold):
+        return True
+
+    if is_frame_post_bearing(a, b, parts, threshold):
         return True
 
     solid_a = parts[a].solid
@@ -323,6 +666,10 @@ def is_mating(
     # Panels flush-mounted to frame rails/posts.
     if _share_face_if_prefix(a, b, parts, threshold, "PANEL-IN-", "FRAME-"):
         return True
+    if _is_side_slab_frame_pair(a, b) is not None:
+        if params is None:
+            return False
+        return is_side_slab_frame_cavity_joint(a, b, parts, params, threshold)
     if _share_face_if_prefix(a, b, parts, threshold, "PANEL-OUT-", "FRAME-"):
         return True
     # Cosmetic opal strips flush over front frame rails and side-slab inner faces (PLT-006).
@@ -344,6 +691,15 @@ def is_mating(
             return True
         if _share_face_if_prefix(a, b, parts, threshold, side_prefix, "SHELF-"):
             return True
+
+    # D-059 shelf-support cleats bear on side panels (D-075 posts restored at corners).
+    for support_prefix in ("SHELF-SUPPORT-L-", "SHELF-SUPPORT-R-"):
+        if a.startswith(support_prefix) and b.startswith("PANEL-OUT-"):
+            if minimum_clearance(solid_a, solid_b) < threshold:
+                return True
+        if b.startswith(support_prefix) and a.startswith("PANEL-OUT-"):
+            if minimum_clearance(solid_a, solid_b) < threshold:
+                return True
 
     # Organizer stack and org-support rails.
     if _share_face_if_prefix(a, b, parts, threshold, "ORG-", "ORG-"):
@@ -444,8 +800,6 @@ def is_open_front_kinematic_contact(
         "PANEL-CLAD-FRONT-",
         "FRAME-RAIL-BASE-FRONT-",
         "FRAME-RAIL-ORG-FRONT-",
-        "FRAME-POST-FL-",
-        "FRAME-POST-FR-",
     )
     stack_prefixes = (
         "TRAY-LOWER-",
@@ -569,7 +923,7 @@ def check_collision_pairs(
 
     part_ids = sorted(pid for pid in parts if pid not in COLLISION_EXCLUDE)
     for a_id, b_id in combinations(part_ids, 2):
-        if is_mating(a_id, b_id, parts, threshold=threshold):
+        if is_mating(a_id, b_id, parts, threshold=threshold, params=params):
             continue
         if intentional_block_pair(state_name, a_id, b_id):
             continue

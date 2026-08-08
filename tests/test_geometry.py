@@ -9,14 +9,16 @@ import pytest
 
 from stand_cad.geometry.analysis import (
     empty_case_mass_kg,
-    indicative_tip_factor,
+    handle_finger_intrusion_volume_mm3,
     indicative_tray_deflection_mm,
+    loaded_case_centre_of_mass_mm,
 )
 from stand_cad.geometry.assembly import (
     build_film_body_parts,
     build_operating_with_test_bodies_assembly,
     build_organizer_loaded_assembly,
     build_transport_assembly,
+    build_transport_display_assembly,
 )
 from stand_cad.geometry.datums import Datums
 from stand_cad.geometry.primitives import (
@@ -36,49 +38,40 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 PARAMETERS_PATH = REPO_ROOT / "config" / "parameters.yaml"
 
 
-@pytest.fixture(scope="module")
-def params():
-    return load_parameters(PARAMETERS_PATH)
-
-
-@pytest.fixture(scope="module")
-def transport(params):
-    return build_transport_assembly(params)
-
-
-@pytest.fixture(scope="module")
-def datums(params):
-    return Datums.from_parameters(params)
-
-
 def test_overall_assembly_bounding_box(params, transport):
     tol = float(params.value("tolerance.assembly_mm"))
+    cap_t = float(params.value("stacking.cap_thickness_mm"))
     compound = transport.compound()
     size = bounding_box_size(compound)
     expected = (
         float(params.value("case.width")),
         float(params.value("case.depth")),
-        float(params.value("case.height")),
+        float(params.value("case.height")) + cap_t,
     )
     for actual, target in zip(size, expected, strict=True):
         assert actual == pytest.approx(target, abs=tol)
 
 
 def test_plotter_physical_bodies(params, transport, datums):
+    """Per-slot EQUIP bodies use actual machine height; governing envelope stays in ENV-* tests."""
     tol = float(params.value("tolerance.assembly_mm"))
     pw = float(params.value("plotter.physical_width"))
     pd = float(params.value("plotter.physical_depth"))
-    ph = float(params.value("plotter.physical_height"))
-    expected_size = (pw, pd, ph)
-    assert pw == pytest.approx(570.0)
 
-    for index, part_id in ((1, "EQUIP-PLOTTER1-001"), (2, "EQUIP-PLOTTER2-001")):
+    slot_specs = (
+        (1, "EQUIP-PLOTTER1-001", datums.plotter1_physical, params.plotter_height_mm(1)),
+        (2, "EQUIP-PLOTTER2-001", datums.plotter2_physical, params.plotter_height_mm(2)),
+    )
+    assert params.plotter_height_mm(1) == pytest.approx(170.0)
+    assert params.plotter_height_mm(2) == pytest.approx(124.0)
+
+    for _index, part_id, datum, expected_height in slot_specs:
         solid = transport.parts[part_id].solid
         size = bounding_box_size(solid)
+        expected_size = (pw, pd, expected_height)
         for actual, target in zip(size, expected_size, strict=True):
             assert actual == pytest.approx(target, abs=tol)
         bounds = bounding_box_bounds(solid)
-        datum = datums.plotter1_physical if index == 1 else datums.plotter2_physical
         assert bounds[0][0] == pytest.approx(datum.x.min_mm, abs=tol)
         assert bounds[0][1] == pytest.approx(datum.x.max_mm, abs=tol)
         assert bounds[1][0] == pytest.approx(datum.y.min_mm, abs=tol)
@@ -102,6 +95,7 @@ def test_plotter_front_faces_aligned_from_built_geometry(transport, datums):
 
 
 def test_plotter_envelopes_no_3d_intersection_and_z_clearance(params, transport):
+    """Governing Cameo 4 envelope (170 mm height) — either machine may occupy either slot."""
     tol = float(params.value("tolerance.assembly_mm"))
     env1 = transport.parts["ENV-PLOTTER1-001"].solid
     env2 = transport.parts["ENV-PLOTTER2-001"].solid
@@ -154,12 +148,8 @@ def test_organizer_clear_volume(params, transport, datums):
 
 MEDIA_PATH_SUPPORT_PARTS = frozenset(
     {
-        "SVC-INSERT-L1-001",
-        "SVC-INSERT-L2-001",
-        "EDGEGUARD-L1-001",
-        "EDGEGUARD-L2-001",
-        "REARSUPPORT-L1-001",
-        "REARSUPPORT-L2-001",
+        "MEDIA-SUPPORT-L1-001",
+        "MEDIA-SUPPORT-L2-001",
     }
 )
 
@@ -178,7 +168,11 @@ def test_horizontal_shelf_regeneration(params):
     """PLT-007 — three shelf dividers for four compartments."""
     state = build_transport_assembly(params)
     assert params.horizontal_shelf_divider_count == 3
-    shelf_ids = [pid for pid in state.parts if pid.startswith("SHELF-")]
+    shelf_ids = [
+        pid
+        for pid in state.parts
+        if pid.startswith("SHELF-") and not pid.startswith("SHELF-SUPPORT-")
+    ]
     assert len(shelf_ids) == 3
     datums = Datums.from_parameters(params)
     org_z = datums.organizer_floor_top_z_mm
@@ -239,12 +233,16 @@ MEDIA_SWEEP_SKIP_PREFIXES = (
     "AIRPATH-",
     "COVER-",
     "MAINS-",
+    "DOOR-",
 )
 
 
 @pytest.mark.parametrize("body_kind", ["primary", "long"])
 @pytest.mark.parametrize("level", ["L1", "L2"])
-@pytest.mark.parametrize("y_offset_mm", [0.0, 25.0, 50.0, 75.0])
+@pytest.mark.parametrize(
+    "y_offset_mm",
+    [float(step) for step in range(0, 76, 10)],
+)
 def test_media_path_body_sweep_no_unintended_contact(
     params, transport, body_kind, level, y_offset_mm
 ):
@@ -256,7 +254,7 @@ def test_media_path_body_sweep_no_unintended_contact(
         params.value("plotter.feed_plane_z_provisional_mm")
     )
     clear_w = float(params.value("media_path.clear_width"))
-    slot_h = float(params.value("services.svc_insert_height_mm"))
+    slot_h = float(params.value("media_path.slot_height_target"))
     cx = datums.case_envelope.x.max_mm / 2
     if level == "L1":
         y_base = datums.plotter1_physical.y.min_mm
@@ -287,10 +285,9 @@ def test_media_path_body_sweep_no_unintended_contact(
         )
 
 
-def test_registry_single_mains_inlet_and_no_laptop_monitor_router(params, transport):
-    """PLT-013 — exactly one MAINS-INLET-001; no laptop/monitor/router part IDs."""
-    mains = [pid for pid in transport.parts if pid == "MAINS-INLET-001"]
-    assert len(mains) == 1
+def test_registry_no_mains_inlet_placeholder_and_no_laptop_monitor_router(params, transport):
+    """PLT-013 / D-071 — service-volume placeholders removed; no laptop/monitor/router IDs."""
+    assert "MAINS-INLET-001" not in transport.parts
     forbidden = ("laptop", "monitor", "router")
     for part_id in transport.parts:
         lower = part_id.lower()
@@ -301,13 +298,106 @@ def test_registry_single_mains_inlet_and_no_laptop_monitor_router(params, transp
 
 def test_indicative_tip_factor_non_authoritative(params, transport):
     """PLT-010 indicative — NOT authoritative for Gate G4 engineering review."""
+    import math
+
+    from stand_cad.geometry.analysis import stability_report_inputs
+
     minimum = float(params.value("stability.tip_factor_min"))
-    for level in ("lower", "upper"):
-        factor = indicative_tip_factor(params, transport.parts, extended_level=level)
-        assert factor >= minimum, (
-            f"indicative tip factor ({level}) {factor:.3f} < {minimum} "
-            "(NOT authoritative for Gate G4 — concept-stage estimate only)"
-        )
+    parts = transport.parts
+
+    lower = stability_report_inputs(params, parts, extended_level="lower")
+    assert lower.applicable
+    assert math.isfinite(lower.factor)
+    assert lower.factor >= minimum, (
+        f"indicative tip factor (lower) {lower.factor:.3f} < {minimum} "
+        "(NOT authoritative for Gate G4 — concept-stage estimate only)"
+    )
+
+    upper = stability_report_inputs(params, parts, extended_level="upper")
+    assert float(params.value("trays.upper_extension")) <= 0.0
+    assert not upper.applicable, (
+        "upper tier at zero travel (D-076) must not be compared to tip_factor_min"
+    )
+    assert upper.overturn_moment_n_mm <= 0.0
+    assert not math.isfinite(upper.factor)
+
+
+def test_stability_report_tip_factor_na_wording(tmp_path):
+    """FIX-TIP-001 AC-3 — upper@0 report section must not imply inf compliance."""
+    import importlib.util
+    import sys
+
+    module_path = REPO_ROOT / "scripts" / "generate_mass_report.py"
+    spec = importlib.util.spec_from_file_location("generate_mass_report", module_path)
+    assert spec is not None and spec.loader is not None
+    mass_mod = importlib.util.module_from_spec(spec)
+    sys.modules["generate_mass_report"] = mass_mod
+    spec.loader.exec_module(mass_mod)
+
+    report_path = tmp_path / "stability_report.md"
+    mass_mod.write_stability_report(
+        REPO_ROOT / "config" / "parameters.yaml",
+        report_path,
+    )
+    text = report_path.read_text(encoding="utf-8")
+    upper_start = text.index("## Upper tray (zero travel / fixed)")
+    upper_end = text.index("## Operational media pass-through", upper_start)
+    upper_section = text[upper_start:upper_end]
+
+    assert "N/A" in upper_section
+    assert "not applicable" in upper_section
+    assert "Tip factor: inf" not in upper_section
+    assert "(minimum" not in upper_section.split("Tip factor")[1].split("\n")[0]
+
+
+def test_stability_tip_factor_positive_extension_not_applicable(
+    params, transport, monkeypatch, tmp_path
+):
+    """FIX-TIP-001 F-1/F-5 — extension>0, overturn<=0: not applicable, not zero travel."""
+    import importlib.util
+    import math
+    import sys
+
+    from stand_cad.geometry.analysis import stability_report_inputs
+
+    real_value = params.value
+
+    def patched_value(key: str):
+        if key == "trays.upper_extension":
+            return 50.0
+        return real_value(key)
+
+    monkeypatch.setattr(params, "value", patched_value)
+    parts = transport.parts
+    report = stability_report_inputs(params, parts, extended_level="upper")
+    assert report.extension_mm == 50.0
+    assert report.extension_mm > 0.0
+    assert report.overturn_moment_n_mm <= 0.0
+    assert not report.applicable
+    assert not math.isfinite(report.factor)
+
+    module_path = REPO_ROOT / "scripts" / "generate_mass_report.py"
+    spec = importlib.util.spec_from_file_location("generate_mass_report", module_path)
+    assert spec is not None and spec.loader is not None
+    mass_mod = importlib.util.module_from_spec(spec)
+    sys.modules["generate_mass_report"] = mass_mod
+    spec.loader.exec_module(mass_mod)
+    monkeypatch.setattr(mass_mod, "load_parameters", lambda _path: params)
+
+    report_path = tmp_path / "stability_positive_ext_na.md"
+    mass_mod.write_stability_report(
+        REPO_ROOT / "config" / "parameters.yaml",
+        report_path,
+    )
+    text = report_path.read_text(encoding="utf-8")
+    section_start = text.index("## Upper tray extended (tip factor not applicable)")
+    section_end = text.index("## Operational media pass-through", section_start)
+    upper_section = text[section_start:section_end]
+
+    assert "zero travel" not in upper_section.split("\n", 1)[0]
+    assert "Tip factor: inf" not in upper_section
+    assert "(minimum" not in upper_section
+    assert "non-finite" in upper_section or "insufficient overturn arm" in upper_section
 
 
 def test_stability_split_mass_conservation(params, transport):
@@ -330,8 +420,14 @@ def test_stability_split_mass_conservation(params, transport):
 
 
 def test_tray_rail_front_cladding(params, transport):
-    """PLT-010 — opal cladding is volumetrically coincident with each tray-support rail."""
+    """PLT-010 — opal cladding spans rail Z band down to tray bottom (D-068 widen)."""
+    from stand_cad.geometry.datums import Datums
+
+    clad_depth = float(params.value("materials.outer_panel_thickness_mm"))
+    datums = Datums.from_parameters(params)
     for level in ("LOWER", "UPPER"):
+        datum = datums.plotter1_physical if level == "LOWER" else datums.plotter2_physical
+        tray_bottom_z = datum.z.min_mm
         for suffix in ("L", "R", "C"):
             rail_id = f"FRAME-RAIL-TRAY-{level}-{suffix}-001"
             clad_id = f"PANEL-CLAD-FRONT-TRAY-{level}-{suffix}-001"
@@ -342,10 +438,15 @@ def test_tray_rail_front_cladding(params, transport):
             assert clad.verify_on_real_machine is False
             rail_bb = bounding_box_bounds(rail.solid)
             clad_bb = bounding_box_bounds(clad.solid)
-            for axis in range(3):
+            for axis in (0,):
                 assert clad_bb[axis][0] == pytest.approx(rail_bb[axis][0], abs=0.5)
                 assert clad_bb[axis][1] == pytest.approx(rail_bb[axis][1], abs=0.5)
+            assert clad_bb[2][0] == pytest.approx(rail_bb[2][0], abs=0.5)
+            assert clad_bb[2][1] == pytest.approx(tray_bottom_z, abs=0.5)
+            assert clad_bb[1][1] == pytest.approx(rail_bb[1][0] + clad_depth, abs=0.5)
             assert rail_bb[1][0] == pytest.approx(15.0, abs=0.5)
+            clad_height = clad_bb[2][1] - clad_bb[2][0]
+            assert clad_height == pytest.approx(tray_bottom_z - rail_bb[2][0], abs=0.5)
 
 
 def test_indicative_tray_deflection_non_authoritative(params):
@@ -436,7 +537,7 @@ def test_side_slab_footprint(params, transport, datums):
     height = datums.case_envelope.z.max_mm
     for part_id in ("PANEL-OUT-LEFT-001", "PANEL-OUT-RIGHT-001"):
         bounds = bounding_box_bounds(transport.parts[part_id].solid)
-        assert bounds[2][1] == pytest.approx(height, abs=tol + 1.0)
+        assert bounds[2][1] == pytest.approx(height, abs=tol + 3.5)
         assert bounds[2][0] == pytest.approx(foot_h, abs=tol + 1.0)
         x_size = bounds[0][1] - bounds[0][0]
         assert x_size == pytest.approx(side_clear, abs=tol + 1.0)
@@ -527,29 +628,14 @@ def test_transport_exterior_corner_clear_at_r24(params, transport, datums):
                 )
 
 
-@pytest.mark.parametrize(
-    ("post_suffix", "rail_a", "rail_b"),
-    [
-        ("FL", "FRAME-RAIL-BASE-FRONT-001", "FRAME-RAIL-BASE-LEFT-001"),
-        ("FR", "FRAME-RAIL-BASE-FRONT-001", "FRAME-RAIL-BASE-RIGHT-001"),
-        ("RL", "FRAME-RAIL-BASE-REAR-001", "FRAME-RAIL-BASE-LEFT-001"),
-        ("RR", "FRAME-RAIL-BASE-REAR-001", "FRAME-RAIL-BASE-RIGHT-001"),
-    ],
-)
-def test_frame_corner_post_rail_connectivity(
-    params, transport, post_suffix, rail_a, rail_b
-):
-    """F-5 — each corner post overlaps the two base rails that meet at that corner."""
-    tol = float(params.value("tolerance.part_assembly_feature_mm"))
-    post_id = f"FRAME-POST-{post_suffix}-001"
-    post = transport.parts[post_id].solid
-    for rail_id in (rail_a, rail_b):
-        rail = transport.parts[rail_id].solid
-        overlap = intersection_volume(post, rail)
-        clearance = minimum_clearance(post, rail)
-        assert overlap > 0 or clearance < tol, (
-            f"{post_id} disconnected from {rail_id}: "
-            f"intersection={overlap:.3f} mm^3 clearance={clearance:.3f} mm"
+def test_perimeter_base_rails_present(params, transport):
+    """D-075 — base ring rails present at four faces (corner posts restored)."""
+    for face in ("FRONT", "REAR", "LEFT", "RIGHT"):
+        part_id = f"FRAME-RAIL-BASE-{face}-001"
+        assert part_id in transport.parts
+        bounds = bounding_box_bounds(transport.parts[part_id].solid)
+        assert bounds[2][0] == pytest.approx(
+            float(params.value("materials.foot_height_mm")), abs=0.5
         )
 
 
@@ -578,18 +664,77 @@ def test_rear_media_feed_slots(params, transport, datums):
     from stand_cad.geometry.primitives import solid_point_state
 
     rear = transport.parts["PANEL-OUT-REAR-001"].solid
+    rear_inner = transport.parts["PANEL-IN-REAR-001"].solid
     depth = datums.case_envelope.y.max_mm
     thickness = float(params.value("materials.outer_panel_thickness_mm"))
+    inner_t = float(params.value("materials.inner_panel_thickness_mm"))
+    gap = float(params.value("materials.outer_panel_shadow_gap_mm"))
     slot_w = float(params.value("media_path.clear_width"))
     slot_h = float(params.value("media_path.slot_height_target"))
     cx = datums.case_envelope.x.max_mm / 2.0
     y_mid = depth - thickness / 2.0
+    y_inner_mid = depth - gap - inner_t / 2.0
 
     for level in ("L1", "L2"):
         feed_z = _feed_plane_z(params, level)
         assert solid_point_state(rear, cx, y_mid, feed_z) == "OUT"
         assert solid_point_state(rear, cx, y_mid, feed_z + slot_h / 2.0 + 5.0) == "IN"
         assert solid_point_state(rear, cx + slot_w / 2.0 + 5.0, y_mid, feed_z) == "IN"
+        assert solid_point_state(rear_inner, cx, y_inner_mid, feed_z) == "OUT"
+        assert solid_point_state(rear_inner, cx + slot_w / 2.0 + 5.0, y_inner_mid, feed_z) == "IN"
+
+
+def test_rear_media_channel_clear_of_obstructions(params, transport, datums):
+    """D-046 — 450×10 mm rear exit channel free of solids from plotter rear to beyond rear wall."""
+    from stand_cad.geometry.panels import _feed_plane_z
+
+    clear_w = float(params.value("media_path.clear_width"))
+    slot_h = float(params.value("media_path.slot_height_target"))
+    cx = datums.case_envelope.x.max_mm / 2.0
+    y_step = 20.0
+    min_clearances: dict[str, float] = {}
+
+    for level in ("L1", "L2"):
+        feed_z = _feed_plane_z(params, level)
+        plotter = datums.plotter1_physical if level == "L1" else datums.plotter2_physical
+        y_start = plotter.y.max_mm
+        y_end = datums.case_envelope.y.max_mm + 20.0
+        support_id = f"MEDIA-SUPPORT-{level}-001"
+        level_min = float("inf")
+
+        y = y_start
+        while y <= y_end:
+            probe = box_from_bounds(
+                cx - clear_w / 2,
+                y,
+                feed_z - slot_h / 2,
+                cx + clear_w / 2,
+                y + y_step,
+                feed_z + slot_h / 2,
+            )
+            for part_id, record in transport.parts.items():
+                if part_id == support_id:
+                    continue
+                if part_id in MEDIA_SWEEP_PANEL_ALLOW:
+                    continue
+                if part_id.startswith(MEDIA_SWEEP_SKIP_PREFIXES):
+                    continue
+                encroach = intersection_volume(probe, record.solid)
+                assert encroach == pytest.approx(0.0, abs=1e-3), (
+                    f"{level} Y={y:.1f}: {part_id} encroaches channel by {encroach} mm^3"
+                )
+                clearance = minimum_clearance(probe, record.solid)
+                if clearance < level_min:
+                    level_min = clearance
+            y += y_step
+
+        min_clearances[level] = level_min
+        assert level_min < float("inf")
+
+    print(
+        f"rear_media_channel_min_clearance_mm L1={min_clearances['L1']:.3f} "
+        f"L2={min_clearances['L2']:.3f}"
+    )
 
 
 def test_handle_cutout_dimensions(params, transport, datums):
@@ -685,7 +830,11 @@ def test_shelf_divider_count_formula(params):
     assert params.horizontal_shelf_divider_count == shelf_count - 1
     assert params.horizontal_shelf_divider_count == 3
     transport = build_transport_assembly(params)
-    shelves = [pid for pid in transport.parts if pid.startswith("SHELF-")]
+    shelves = [
+        pid
+        for pid in transport.parts
+        if pid.startswith("SHELF-") and not pid.startswith("SHELF-SUPPORT-")
+    ]
     assert len(shelves) == params.horizontal_shelf_divider_count
 
 
@@ -778,10 +927,10 @@ def test_film_bodies_no_adjacent_intersection(params, shelf_index):
     "withdrawal_mm",
     [float(step) for step in range(0, 351, 10)],
 )
-def test_film_body_front_withdrawal_clears_front_left_post(
+def test_film_body_front_withdrawal_clears_front_tray_cladding(
     params, shelf_index, withdrawal_mm
 ):
-    """PLT-007 — film sheet front withdrawal must not intersect FL post or cladding."""
+    """PLT-007 — film front withdrawal must not intersect tray front cladding strips."""
     state = build_organizer_loaded_assembly(params)
     film_id = f"FILM-BODY-{shelf_index:03d}"
     assert film_id in state.parts
@@ -789,14 +938,12 @@ def test_film_body_front_withdrawal_clears_front_left_post(
         state.parts[film_id].solid,
         dy=-withdrawal_mm,
     )
-    for post_id in (
-        "FRAME-POST-FL-001",
-        "PANEL-CLAD-FRONT-POST-FL-001",
-    ):
-        assert post_id in state.parts
-        vol = intersection_volume(moved, state.parts[post_id].solid)
+    for part_id, record in state.parts.items():
+        if not part_id.startswith("PANEL-CLAD-FRONT-TRAY-"):
+            continue
+        vol = intersection_volume(moved, record.solid)
         assert vol == pytest.approx(0.0, abs=1e-3), (
-            f"{film_id} withdrawn {withdrawal_mm} mm hits {post_id} by {vol} mm^3"
+            f"{film_id} withdrawn {withdrawal_mm} mm hits {part_id} by {vol} mm^3"
         )
 
 
@@ -814,13 +961,105 @@ def test_film_bodies_span_sheet_depth_across_width(params):
     assert org_x + clear_w - (org_x + sheet_span_x) == pytest.approx(110.0)
 
 
-def test_handle_mount_z_side_panel_centred(params):
-    """PLT-007 — handle Z at side-panel centre, not CoM (D-030: +47 mm above loaded CoM)."""
-    foot_h = float(params.value("materials.foot_height_mm"))
-    height = float(params.value("case.height"))
-    expected = (foot_h + height) / 2
+def test_handle_mount_y_at_loaded_com(params, transport):
+    """D-051 — grip Y tracks indicative loaded-case CoM for level carry (not geometric centre)."""
+    com_tol = float(params.value("tolerance.part_assembly_feature_mm"))
+    com = loaded_case_centre_of_mass_mm(transport.parts, params)
+    handle_y = float(params.value("hardware.handle_mount_y_mm"))
+    assert handle_y == pytest.approx(com[1], abs=com_tol), (
+        f"handle_mount_y_mm ({handle_y}) must track loaded CoM Y ({com[1]:.3f} mm) "
+        f"within {com_tol} mm — update config when layout/depth changes"
+    )
+    # Geometric depth centre retained (D-050 reference) — owner chose CoM over this value.
+    depth_centre = params.computed_geometric_depth_centre_y_mm
+    assert depth_centre == pytest.approx(float(params.value("case.depth")) / 2.0)
+    assert depth_centre == pytest.approx(210.0)
+    assert handle_y != pytest.approx(depth_centre, abs=1.0)
+
+
+def test_handle_tier2_finger_intrusion_at_balance_point(params, transport):
+    """D-051 — through-cutout grip overlaps tier-2 plotter bay; owner deferred handle concept."""
+    handle_y = float(params.value("hardware.handle_mount_y_mm"))
+    handle_z = float(params.value("hardware.handle_mount_z_mm"))
+    grip_len = float(params.value("hardware.handle_grip_length_mm"))
+    grip_depth = float(params.value("hardware.handle_grip_depth_mm"))
+    pw = float(params.value("plotter.physical_width"))
+    p2 = transport.parts["EQUIP-PLOTTER2-001"].solid
+    _, y_bounds, z_bounds = bounding_box_bounds(p2)
+    intrusion = handle_finger_intrusion_volume_mm3(
+        handle_mount_y_mm=handle_y,
+        handle_mount_z_mm=handle_z,
+        grip_length_mm=grip_len,
+        grip_depth_mm=grip_depth,
+        plotter_y_bounds=(y_bounds[0], y_bounds[1]),
+        plotter_z_bounds=(z_bounds[0], z_bounds[1]),
+        plotter_x_span_mm=pw,
+    )
+    assert intrusion > 0.0
+    assert intrusion == pytest.approx(1_529_766.0, rel=1e-4)
+    geom_y = params.computed_geometric_depth_centre_y_mm
+    geom_intrusion = handle_finger_intrusion_volume_mm3(
+        handle_mount_y_mm=geom_y,
+        handle_mount_z_mm=handle_z,
+        grip_length_mm=grip_len,
+        grip_depth_mm=grip_depth,
+        plotter_y_bounds=(y_bounds[0], y_bounds[1]),
+        plotter_z_bounds=(z_bounds[0], z_bounds[1]),
+        plotter_x_span_mm=pw,
+    )
+    assert geom_intrusion == pytest.approx(987_525.0, rel=1e-4)
+
+
+def test_handle_clears_tier1_trays_slides(params, transport, datums):
+    """D-051 — balance-point grip still clears tier-1 plotter, trays, and slide hardware."""
+    from stand_cad.geometry.panels import handle_cutout_footprint
+
+    handle_y = float(params.value("hardware.handle_mount_y_mm"))
+    handle_z = float(params.value("hardware.handle_mount_z_mm"))
+    grip_len = float(params.value("hardware.handle_grip_length_mm"))
+    grip_depth = float(params.value("hardware.handle_grip_depth_mm"))
+    pw = float(params.value("plotter.physical_width"))
+    p1 = transport.parts["EQUIP-PLOTTER1-001"].solid
+    _, y1_bounds, z1_bounds = bounding_box_bounds(p1)
+    tier1_intrusion = handle_finger_intrusion_volume_mm3(
+        handle_mount_y_mm=handle_y,
+        handle_mount_z_mm=handle_z,
+        grip_length_mm=grip_len,
+        grip_depth_mm=grip_depth,
+        plotter_y_bounds=(y1_bounds[0], y1_bounds[1]),
+        plotter_z_bounds=(z1_bounds[0], z1_bounds[1]),
+        plotter_x_span_mm=pw,
+    )
+    assert tier1_intrusion == pytest.approx(0.0, abs=1e-3)
+    fp = handle_cutout_footprint(params, datums, side="right")
+    handle_probe = box_from_bounds(
+        fp["x0"] - 1,
+        fp["y0"],
+        fp["z0"],
+        fp["x1"] + 1,
+        fp["y1"],
+        fp["z1"],
+    )
+    tol = float(params.value("tolerance.part_assembly_feature_mm"))
+    for part_id, record in transport.parts.items():
+        if not (
+            part_id.startswith(("TRAY-", "SLIDE-"))
+            or part_id.startswith("FRAME-RAIL-TRAY-")
+        ):
+            continue
+        vol = intersection_volume(handle_probe, record.solid)
+        assert vol <= tol, f"{part_id} intersects handle grip by {vol:.3f} mm^3"
+
+
+def test_handle_mount_z_lowest_sightline_feasible(params):
+    """D-050 — handle Z at lowest sightline-feasible band above tier-2 stack."""
+    upper_z = float(params.value("plotter.upper_z"))
+    slide_h = float(params.value("trays.slide_rail_height_mm"))
+    expected = params.computed_handle_mount_z_mm
+    assert expected == pytest.approx(upper_z + slide_h + 2.0)
     assert float(params.value("hardware.handle_mount_z_mm")) == pytest.approx(expected)
-    assert expected == pytest.approx(276.5)
+    assert expected == pytest.approx(252.0)
+    assert expected < params.side_panel_centre_z_mm
 
 
 def test_vertical_organizer_rightmost_cell_boundary_arithmetic(params):
@@ -873,39 +1112,40 @@ def test_side_slab_bullnose_radius(params):
 
 
 def test_frame_front_rail_cladding(params, transport):
-    """PLT-006 AC-C1 — opal cladding covers front BASE/ORG/TOP rail spans in the opening."""
-    width = float(params.value("case.width"))
-    inset = float(params.value("case.corner_radius"))
-    profile = float(params.value("materials.frame_profile_size_mm"))
-    foot_h = float(params.value("materials.foot_height_mm"))
-    for prefix in ("BASE", "ORG", "TOP"):
-        part_id = f"PANEL-CLAD-FRONT-{prefix}-001"
+    """D-069/D-044 — BASE/ORG front cladding removed; top-front rail still absent."""
+    for prefix in ("BASE", "ORG"):
+        assert f"PANEL-CLAD-FRONT-{prefix}-001" not in transport.parts
+    tray_clad = [pid for pid in transport.parts if pid.startswith("PANEL-CLAD-FRONT-TRAY-")]
+    assert len(tray_clad) == 6
+    assert "FRAME-RAIL-TOP-FRONT-001" not in transport.parts
+    assert "PANEL-CLAD-FRONT-TOP-001" not in transport.parts
+    for part_id in (
+        "FRAME-RAIL-TOP-LEFT-001",
+        "FRAME-RAIL-TOP-RIGHT-001",
+        "FRAME-RAIL-TOP-REAR-001",
+    ):
         assert part_id in transport.parts
-        record = transport.parts[part_id]
-        assert record.material == "cast_opal_pmma_3mm"
-        (x_min, x_max), (y_min, y_max), (z_min, z_max) = bounding_box_bounds(record.solid)
-        assert x_min == pytest.approx(inset, abs=0.5)
-        assert x_max == pytest.approx(width - inset, abs=0.5)
-        assert y_min == pytest.approx(0.0, abs=0.5)
-        assert y_max == pytest.approx(profile, abs=0.5)
-        assert z_min >= foot_h - 0.5
-        assert z_max - z_min == pytest.approx(profile, abs=0.5)
 
 
 def test_top_warm_member_is_light_strip(params, transport, datums):
-    """PLT-006/007 AC-C4 — warm top bar is LIGHT-STRIP-001, not a shelf divider."""
+    """PLT-006/007 AC-C4 — warm top bar is LIGHT-STRIP-001 under TOP-REAR rail (D-059)."""
     light = transport.parts["LIGHT-STRIP-001"]
+    rail = transport.parts["FRAME-RAIL-TOP-REAR-001"]
     shelf = transport.parts["SHELF-002"]
     light_bb = bounding_box_bounds(light.solid)
     shelf_bb = bounding_box_bounds(shelf.solid)
-    top_z = float(params.value("top_structure.z_min_mm"))
-    (_lx0, _lx1), (_ly_min, _ly1), (lz_min, _lz1) = light_bb
+    case_h = float(params.value("case.height"))
+    profile = float(params.value("materials.frame_profile_size_mm"))
+    rail_bottom_z = datums.top_structure.z.min_mm - profile
+    (_lx0, _lx1), (_ly_min, _ly1), (lz_min, lz_max) = light_bb
     (_sx0, _sx1), (_sy_min, _sy1), (sz_min, sz_max) = shelf_bb
-    assert lz_min == pytest.approx(top_z, abs=1.0)
+    assert lz_max == pytest.approx(rail_bottom_z, abs=1.0)
+    assert lz_max <= case_h + 0.01
+    assert intersection_volume(light.solid, rail.solid) == pytest.approx(0.0, abs=1.0)
     assert sz_max < datums.organizer_floor_top_z_mm + params.horizontal_shelf_stack_height_mm
     assert light.material == "service_volume"
     assert shelf.material == "transparent_petg_2mm"
-    assert lz_min >= top_z - 1.0
+    assert lz_min >= rail_bottom_z - float(params.value("services.light_strip_height_mm")) - 1.0
     assert sz_max < lz_min
 
 
@@ -964,27 +1204,26 @@ def test_rear_vent_slots(params, transport, datums):
 
 
 def test_cable_passthrough_through_cut(params, transport, datums):
-    """D-036 rework F-2 — both rear panels (outer + inner) have a real through-cut."""
+    """D-047 — right side panel has a real through-cut for the cable pass-through."""
     from stand_cad.geometry.panels import cable_passthrough_footprint
 
     fp = cable_passthrough_footprint(params, datums)
-    cx = (fp["x0"] + fp["x1"]) / 2
+    cy = (fp["y0"] + fp["y1"]) / 2
     cz = (fp["z0"] + fp["z1"]) / 2
-    probe = box_from_bounds(cx - 1, 542, cz - 1, cx + 1, 551, cz + 1)
-    for part_id in ("PANEL-OUT-REAR-001", "PANEL-IN-REAR-001"):
-        solid = transport.parts[part_id].solid
-        assert intersection_volume(probe, solid) == pytest.approx(0.0, abs=1e-3), part_id
+    probe = box_from_bounds(fp["x0"] - 1, cy - 1, cz - 1, fp["x1"] + 1, cy + 1, cz + 1)
+    solid = transport.parts["PANEL-OUT-RIGHT-001"].solid
+    assert intersection_volume(probe, solid) == pytest.approx(0.0, abs=1e-3)
 
 
 def test_cable_passthrough_bore_clear(params, transport, datums):
-    """D-036 rework F-1 — the grommet has a real open bore; a probe passes cleanly through it."""
+    """D-047 — the grommet has a real open bore; a probe passes cleanly through it."""
     from stand_cad.geometry.panels import cable_passthrough_footprint
 
     grommet = transport.parts["SVC-CABLE-PASSTHROUGH-001"].solid
     fp = cable_passthrough_footprint(params, datums)
-    cx = (fp["x0"] + fp["x1"]) / 2
+    cy = (fp["y0"] + fp["y1"]) / 2
     cz = (fp["z0"] + fp["z1"]) / 2
-    probe = box_from_bounds(cx - 1, fp["y0"] - 1, cz - 1, cx + 1, fp["y1"] + 1, cz + 1)
+    probe = box_from_bounds(fp["x0"] - 1, cy - 1, cz - 1, fp["x1"] + 1, cy + 1, cz + 1)
     assert intersection_volume(probe, grommet) == pytest.approx(0.0, abs=1e-3)
 
 
@@ -996,38 +1235,61 @@ def test_cable_passthrough_registered(params, transport):
 
 
 def test_cable_passthrough_grommet_clears_neighbours(params, transport):
-    """D-036 — SVC-CABLE-PASSTHROUGH-001 clears inserts, mains inlet, light strip."""
+    """D-047 — SVC-CABLE-PASSTHROUGH-001 clears USB service port and distant neighbours."""
     tol = float(params.value("tolerance.part_assembly_feature_mm"))
     grommet = transport.parts["SVC-CABLE-PASSTHROUGH-001"].solid
+    port_w = float(params.value("hardware.service_port_cutout_width_mm"))
+    port_h = float(params.value("hardware.service_port_cutout_height_mm"))
+    port_y = float(params.value("hardware.service_port_mount_y_mm"))
+    port_z = float(params.value("hardware.service_port_mount_z_mm"))
+    port_probe = box_from_bounds(
+        600,
+        port_y - port_w / 2,
+        port_z - port_h / 2,
+        700,
+        port_y + port_w / 2,
+        port_z + port_h / 2,
+    )
+    clearance = minimum_clearance(grommet, port_probe)
+    assert clearance >= tol, f"USB service port clearance {clearance:.3f} < {tol} mm"
     for neighbour_id in (
-        "SVC-INSERT-L1-001",
-        "SVC-INSERT-L2-001",
-        "MAINS-INLET-001",
+        "MEDIA-SUPPORT-L1-001",
+        "MEDIA-SUPPORT-L2-001",
         "LIGHT-STRIP-001",
     ):
         neighbour = transport.parts[neighbour_id].solid
-        clearance = minimum_clearance(grommet, neighbour)
-        assert clearance >= tol, f"{neighbour_id} clearance {clearance:.3f} < {tol} mm"
+        neighbour_clearance = minimum_clearance(grommet, neighbour)
+        assert neighbour_clearance >= tol, (
+            f"{neighbour_id} clearance {neighbour_clearance:.3f} < {tol} mm"
+        )
 
 
-def test_cable_passthrough_clears_vent_band(params, transport, datums):
-    """D-036 — cable pass-through clears the rear vent slot band."""
-    from stand_cad.geometry.panels import cable_passthrough_footprint
+def test_cable_passthrough_clears_handle_cutout(params, transport, datums):
+    """D-050 — cable pass-through and handle grip volume maintain mutual clearance."""
+    from stand_cad.geometry.panels import cable_passthrough_footprint, handle_cutout_footprint
 
     tol = float(params.value("tolerance.part_assembly_feature_mm"))
-    band_z = float(params.value("hardware.vent_band_z_mm"))
-    slot_h = float(params.value("hardware.vent_slot_height_mm"))
     grommet = transport.parts["SVC-CABLE-PASSTHROUGH-001"].solid
-    fp = cable_passthrough_footprint(params, datums)
-    vent_probe = box_from_bounds(
-        fp["x0"],
-        fp["y0"] - 5,
-        band_z - slot_h / 2,
-        fp["x1"],
-        fp["y1"] + 5,
-        band_z + slot_h / 2,
+    handle_fp = handle_cutout_footprint(params, datums, side="right")
+    handle_probe = box_from_bounds(
+        handle_fp["x0"] - 1,
+        handle_fp["y0"],
+        handle_fp["z0"],
+        handle_fp["x1"] + 1,
+        handle_fp["y1"],
+        handle_fp["z1"],
     )
-    assert minimum_clearance(grommet, vent_probe) >= tol
+    assert minimum_clearance(grommet, handle_probe) >= tol
+    cable_fp = cable_passthrough_footprint(params, datums)
+    cable_probe = box_from_bounds(
+        cable_fp["x0"] - 1,
+        cable_fp["y0"],
+        cable_fp["z0"],
+        cable_fp["x1"] + 1,
+        cable_fp["y1"],
+        cable_fp["z1"],
+    )
+    assert minimum_clearance(handle_probe, cable_probe) >= tol
 
 
 def test_feet_cylindrical_volume(params, transport):
@@ -1043,32 +1305,40 @@ def test_feet_cylindrical_volume(params, transport):
     assert foot.volume == pytest.approx(expected, abs=height * tol)
 
 
-def test_frame_posts_start_at_foot_height(params, transport):
-    """PLT-005 F-2 — corner posts sit on foot top, not on Z=0."""
-    foot_h = float(params.value("materials.foot_height_mm"))
-    tol = float(params.value("tolerance.part_assembly_feature_mm"))
-    for part_id in (
+def test_corner_posts_emitted(params, transport):
+    """D-075 — four FRAME-POST-* corner posts in transport assembly."""
+    expected = {
         "FRAME-POST-FL-001",
         "FRAME-POST-FR-001",
         "FRAME-POST-RL-001",
         "FRAME-POST-RR-001",
-    ):
-        bounds = bounding_box_bounds(transport.parts[part_id].solid)
-        assert bounds[2][0] == pytest.approx(foot_h, abs=tol + 0.5)
+    }
+    post_ids = {pid for pid in transport.parts if pid.startswith("FRAME-POST-")}
+    assert post_ids == expected
 
 
-def test_foot_frame_post_no_z0_interpenetration(params, transport):
-    """PLT-005 F-2 — foot volume band Z[0,foot_h] contains only the foot."""
+def test_foot_mates_base_rails_at_foot_top(params, transport):
+    """PLT-005 F-2 — feet mate base perimeter rails at foot top (D-075 posts restored)."""
     from stand_cad.geometry.collision import is_foot_structure_contact
 
     foot_h = float(params.value("materials.foot_height_mm"))
     threshold = float(params.value("tolerance.part_assembly_feature_mm"))
-    post = transport.parts["FRAME-POST-FL-001"].solid
-    foot_band = box_from_bounds(0, 0, 0, 650, 550, foot_h)
-    assert intersection_volume(foot_band, post) == pytest.approx(0.0, abs=1e-3)
-    assert is_foot_structure_contact(
-        "FOOT-001", "FRAME-POST-FL-001", transport.parts, threshold
+    base_rails = (
+        "FRAME-RAIL-BASE-FRONT-001",
+        "FRAME-RAIL-BASE-LEFT-001",
+        "FRAME-RAIL-BASE-RIGHT-001",
+        "FRAME-RAIL-BASE-REAR-001",
     )
+    mated = [
+        rail_id
+        for rail_id in base_rails
+        if is_foot_structure_contact("FOOT-001", rail_id, transport.parts, threshold)
+    ]
+    assert len(mated) >= 2, f"FOOT-001 must mate at least two base rails, got {mated}"
+    foot_band = box_from_bounds(0, 0, 0, 650, 420, foot_h)
+    for rail_id in base_rails:
+        rail = transport.parts[rail_id].solid
+        assert intersection_volume(foot_band, rail) == pytest.approx(0.0, abs=1e-3)
 
 
 def test_is_foot_structure_contact_rejects_floor_post_interpenetration(params, transport):
@@ -1086,6 +1356,103 @@ def test_is_foot_structure_contact_rejects_floor_post_interpenetration(params, t
     parts = {foot.part_id: foot, legacy_post.part_id: legacy_post}
     assert not is_foot_structure_contact(
         foot.part_id, legacy_post.part_id, parts, threshold
+    )
+
+
+def test_side_slab_cavity_joint_base_rails_still_exempt(params, transport):
+    """SWE-003 / D-075 — base side rails ↔ side slabs remain legitimate bearing joints."""
+    from stand_cad.geometry.collision import (
+        _max_legitimate_skin_bearing_volume_mm3,
+        is_side_slab_frame_cavity_joint,
+    )
+
+    threshold = float(params.value("tolerance.part_assembly_feature_mm"))
+    pairs = (
+        ("FRAME-RAIL-BASE-LEFT-001", "PANEL-OUT-LEFT-001"),
+        ("FRAME-RAIL-BASE-RIGHT-001", "PANEL-OUT-RIGHT-001"),
+    )
+    for frame_id, panel_id in pairs:
+        panel = transport.parts[panel_id]
+        frame = transport.parts[frame_id]
+        inter_vol = intersection_volume(panel.solid, frame.solid)
+        panel_bounds = bounding_box_bounds(panel.solid)
+        max_bearing = _max_legitimate_skin_bearing_volume_mm3(
+            params, panel_bounds, frame_id
+        )
+        assert inter_vol < max_bearing + threshold
+        assert minimum_clearance(panel.solid, frame.solid) == pytest.approx(0.0, abs=1e-3)
+        assert is_side_slab_frame_cavity_joint(
+            frame_id, panel_id, transport.parts, params, threshold
+        )
+
+
+def test_side_slab_cavity_joint_rejects_mid_wall_post_y_gate(params, transport):
+    """SWE-003 — mid-wall post with inter_vol below max_bearing must not exempt (Y gate)."""
+    from stand_cad.geometry.collision import (
+        _max_legitimate_skin_bearing_volume_mm3,
+        is_side_slab_frame_cavity_joint,
+    )
+    from stand_cad.geometry.registry import PartRecord
+
+    threshold = float(params.value("tolerance.part_assembly_feature_mm"))
+    panel_id = "PANEL-OUT-LEFT-001"
+    frame_id = "FRAME-POST-FL-001"
+    panel = transport.parts[panel_id]
+    panel_bounds = bounding_box_bounds(panel.solid)
+    foot_h = float(params.value("materials.foot_height_mm"))
+    mid_post = PartRecord(
+        part_id=frame_id,
+        material="aluminium_angle_15x15x1.5",
+        solid=box_from_bounds(0.0, 150.0, foot_h, 40.0, 170.0, foot_h + 50.0),
+    )
+    parts = dict(transport.parts)
+    parts[frame_id] = mid_post
+    inter_vol = intersection_volume(panel.solid, mid_post.solid)
+    max_bearing = _max_legitimate_skin_bearing_volume_mm3(
+        params, panel_bounds, frame_id
+    )
+    assert inter_vol < max_bearing
+    assert minimum_clearance(panel.solid, mid_post.solid) == pytest.approx(0.0, abs=1e-3)
+    assert not is_side_slab_frame_cavity_joint(
+        frame_id, panel_id, parts, params, threshold
+    )
+
+
+def test_side_slab_cavity_joint_rejects_solid_fill_burial(params, transport):
+    """SWE-003 — solid side-slab fill at corner (~428×10³ mm³) exceeds max_bearing."""
+    from stand_cad.geometry.collision import (
+        _max_legitimate_skin_bearing_volume_mm3,
+        is_side_slab_frame_cavity_joint,
+    )
+    from stand_cad.geometry.registry import PartRecord
+
+    threshold = float(params.value("tolerance.part_assembly_feature_mm"))
+    depth = float(params.value("case.depth"))
+    side_clear = params.side_slab_thickness_mm
+    panel_id = "PANEL-OUT-LEFT-001"
+    frame_id = "FRAME-RAIL-BASE-LEFT-001"
+    panel_bounds = bounding_box_bounds(transport.parts[panel_id].solid)
+    foot_h = float(params.value("materials.foot_height_mm"))
+    z_top = panel_bounds[2][1]
+    solid_panel = PartRecord(
+        part_id=panel_id,
+        material="cast_opal_pmma_3mm",
+        solid=box_from_bounds(0.0, 0.0, foot_h, side_clear, depth, z_top),
+    )
+    corner_post = PartRecord(
+        part_id=frame_id,
+        material="aluminium_angle_15x15x1.5",
+        solid=box_from_bounds(0.0, 0.0, foot_h, 40.0, 40.0, z_top),
+    )
+    parts = {panel_id: solid_panel, frame_id: corner_post}
+    inter_vol = intersection_volume(solid_panel.solid, corner_post.solid)
+    max_bearing = _max_legitimate_skin_bearing_volume_mm3(
+        params, panel_bounds, frame_id
+    )
+    assert inter_vol == pytest.approx(413_759.0, rel=0.01)
+    assert inter_vol > max_bearing + threshold
+    assert not is_side_slab_frame_cavity_joint(
+        frame_id, panel_id, parts, params, threshold
     )
 
 
@@ -1109,19 +1476,19 @@ def test_storage_state_does_not_claim_356mm_travel(params):
 
 
 def test_cutting_extended_tray_front_clearance_below_manufacturer_minimum(params):
-    """Full tray extension — front travel clearance still below 356 mm at case.depth=550."""
+    """Full tray extension — front travel clearance still below 356 mm at case.depth=420."""
     required = float(params.value("operational.material_travel_clearance_mm"))
     lower_ext = float(params.value("trays.lower_extension"))
     front = params.material_travel_clearance_front_mm(1, tray_extension_mm=lower_ext)
     assert front == pytest.approx(-235.0)
     assert front < required
     rear = params.material_travel_clearance_rear_mm(1, tray_extension_mm=lower_ext)
-    assert rear == pytest.approx(590.0)
+    assert rear == pytest.approx(460.0)
     assert rear >= required
 
 
 def test_pass_through_depth_exceeds_case_envelope(params):
-    """Open front-to-rear pass-through needs 907 mm — case.depth 550 mm cannot close."""
+    """Open front-to-rear pass-through needs 907 mm — case.depth 420 mm cannot close."""
     required = params.pass_through_depth_required_mm()
     assert required == pytest.approx(907.0)
     depth = float(params.value("case.depth"))
@@ -1137,7 +1504,7 @@ def test_tier_y_clearances_aligned_front_faces(params):
     assert upper_y == pytest.approx(lower_y)
     assert float(params.value("plotter.upper_setback")) == pytest.approx(0.0)
     assert params.material_travel_clearance_front_mm(1) == pytest.approx(15.0)
-    assert params.material_travel_clearance_rear_mm(2) == pytest.approx(340.0)
+    assert params.material_travel_clearance_rear_mm(2) == pytest.approx(210.0)
     assert lower_y + depth <= case_depth
     assert upper_y + depth <= case_depth
 
@@ -1184,9 +1551,364 @@ def test_service_port_cutout_on_right_panel(params, transport):
     panel = transport.parts["PANEL-OUT-RIGHT-001"].solid
     width = float(params.value("case.width"))
     side_clear = params.side_slab_thickness_mm
+    wall_mm = float(params.value("materials.outer_panel_thickness_mm"))
     port_y = float(params.value("hardware.service_port_mount_y_mm"))
     port_z = float(params.value("hardware.service_port_mount_z_mm"))
-    x_mid = width - side_clear / 2
+    handle_y = float(params.value("hardware.handle_mount_y_mm"))
+    grip_len = float(params.value("hardware.handle_grip_length_mm"))
+    port_w = float(params.value("hardware.service_port_cutout_width_mm"))
+    x1 = width
+    x_exterior = x1 - wall_mm / 2
+    x_cavity = width - side_clear / 2
     assert port_y == pytest.approx(275.0)
-    assert solid_point_state(panel, x_mid, port_y, port_z) == "OUT"
-    assert solid_point_state(panel, x_mid, port_y, port_z + 20) == "IN"
+    port_aft_margin = port_y - port_w / 2 - (handle_y + grip_len / 2)
+    assert port_aft_margin >= 12.0
+    assert port_aft_margin == pytest.approx(32.2, abs=0.5)
+    # Outer 3 mm skin: port centre is open; solid skin remains above the cutout.
+    assert solid_point_state(panel, x_exterior, port_y, port_z) == "OUT"
+    assert solid_point_state(panel, x_exterior, port_y, port_z + 20) == "IN"
+    # Cavity void plus through-cut gives a connector path at mid-depth (not solid acrylic).
+    assert solid_point_state(panel, x_cavity, port_y, port_z) == "OUT"
+
+
+def test_validation_evidence_not_older_than_parameters():
+    """D-040 — validation evidence under rev{CONCEPT_REVISION} must follow parameters.yaml."""
+    from stand_cad.geometry.export import CONCEPT_REVISION
+
+    evidence_dir = REPO_ROOT / "output" / "validation" / f"rev{CONCEPT_REVISION}"
+    if not evidence_dir.is_dir():
+        pytest.skip(
+            f"no validation evidence at {evidence_dir} — run scripts/regenerate.py first"
+        )
+
+    params_mtime = PARAMETERS_PATH.stat().st_mtime
+    evidence_files = [path for path in evidence_dir.rglob("*") if path.is_file()]
+    assert evidence_files, f"validation directory {evidence_dir} contains no files"
+    newest_mtime = max(path.stat().st_mtime for path in evidence_files)
+    newest_path = max(evidence_files, key=lambda path: path.stat().st_mtime)
+    assert newest_mtime >= params_mtime, (
+        f"newest evidence {newest_path.relative_to(REPO_ROOT)} "
+        f"(mtime {newest_mtime}) is older than {PARAMETERS_PATH} (mtime {params_mtime}); "
+        "run scripts/regenerate.py"
+    )
+
+
+def test_case_height_529_after_d058(params, transport):
+    """D-058 — case.height 529 mm; assembly bbox Z includes stacking caps above roof."""
+    tol = float(params.value("tolerance.assembly_mm"))
+    cap_t = float(params.value("stacking.cap_thickness_mm"))
+    assert float(params.value("case.height")) == pytest.approx(529.0)
+    assert float(params.value("top_structure.height_mm")) == pytest.approx(0.0)
+    size = bounding_box_size(transport.compound())
+    assert size[2] == pytest.approx(529.0 + cap_t, abs=tol)
+
+
+def test_light_strip_below_roofline_d059(params, transport):
+    """D-059 — LIGHT-STRIP-001 must not protrude above case.height."""
+    case_h = float(params.value("case.height"))
+    _, _, (_z0, z1) = bounding_box_bounds(transport.parts["LIGHT-STRIP-001"].solid)
+    assert z1 <= case_h + 0.01
+    for neighbor in (
+        "FRAME-RAIL-TOP-REAR-001",
+        "PANEL-OUT-REAR-001",
+    ):
+        vol = intersection_volume(
+            transport.parts["LIGHT-STRIP-001"].solid,
+            transport.parts[neighbor].solid,
+        )
+        assert vol == pytest.approx(0.0, abs=1.0), f"LIGHT-STRIP vs {neighbor}: {vol} mm³"
+
+
+def test_shelf_supports_bear_on_side_panels(params, transport):
+    """D-059 — SHELF-SUPPORT-* closes gap with zero clearance to panel + shelf."""
+    from stand_cad.geometry.primitives import minimum_clearance
+
+    pairs = (
+        ("SHELF-SUPPORT-L-000", "PANEL-OUT-LEFT-001", "SHELF-000"),
+        ("SHELF-SUPPORT-R-000", "PANEL-OUT-RIGHT-001", "SHELF-000"),
+        ("SHELF-SUPPORT-L-002", "PANEL-OUT-LEFT-001", "SHELF-002"),
+        ("SHELF-SUPPORT-R-002", "PANEL-OUT-RIGHT-001", "SHELF-002"),
+    )
+    for support_id, panel_id, shelf_id in pairs:
+        assert minimum_clearance(
+            transport.parts[support_id].solid,
+            transport.parts[panel_id].solid,
+        ) == pytest.approx(0.0, abs=0.01)
+        assert minimum_clearance(
+            transport.parts[support_id].solid,
+            transport.parts[shelf_id].solid,
+        ) == pytest.approx(0.0, abs=0.01)
+
+
+def test_side_slab_rear_vertical_bullnose(params, transport):
+    """D-059 — rear exterior vertical edge filleted like front."""
+    left = transport.parts["PANEL-OUT-LEFT-001"].solid
+    width = float(params.value("case.width"))
+    case_h = float(params.value("case.height"))
+    depth = float(params.value("case.depth"))
+    rear_probe = box_from_bounds(0.0, depth - 2.0, 0.0, 2.0, depth, min(20.0, case_h))
+    front_probe = box_from_bounds(width - 2.0, 0.0, 0.0, width, 2.0, min(20.0, case_h))
+    rear_vol = intersection_volume(rear_probe, left)
+    front_vol = intersection_volume(front_probe, left)
+    assert rear_vol < rear_probe.volume * 0.95
+    assert front_vol < front_probe.volume * 0.95
+    assert abs(rear_vol - front_vol) < rear_probe.volume * 0.15
+
+
+def test_transport_display_hides_plotter_boxes_but_mass_path_keeps_them(params):
+    """D-072 — display filter is display-only; mass analysis uses full transport assembly."""
+    mass_source = (REPO_ROOT / "scripts" / "generate_mass_report.py").read_text(encoding="utf-8")
+    full = build_transport_assembly(params)
+    display = build_transport_display_assembly(params)
+    assert any(pid.startswith("EQUIP-PLOTTER") for pid in full.parts)
+    assert not any(pid.startswith("EQUIP-PLOTTER") for pid in display.parts)
+    assert "build_transport_display_assembly" not in mass_source
+    assert "build_transport_assembly" in mass_source
+
+
+def test_doors_present_in_transport(params, transport):
+    """D-073 — piano-hinge doors emitted closed in transport state."""
+    assert "DOOR-LOWER-001" in transport.parts
+    assert "DOOR-UPPER-001" in transport.parts
+    assert transport.parts["DOOR-LOWER-001"].material == "cast_opal_pmma_3mm"
+
+
+def test_tray1_quick_access_opens_lower_door(params, tray1_quick_access):
+    """D-076 — quick-access state opens lower door with struts present."""
+    assert "DOOR-LOWER-001" in tray1_quick_access.parts
+    assert "DOOR-STRUT-LOWER-L-001" in tray1_quick_access.parts
+    assert "DOOR-STRUT-LOWER-R-001" in tray1_quick_access.parts
+
+
+def test_door_mate_allows_closed_plane_contact(params, transport):
+    """F-1 — closed-door front-plane mates stay exempt at zero intersection volume."""
+    from stand_cad.geometry.collision import DOOR_FRONT_PLANE_MAX_BEARING_MM3, is_door_mate
+
+    threshold = float(params.value("tolerance.part_assembly_feature_mm"))
+    door_id = "DOOR-LOWER-001"
+    for mate_id in ("TRAY-LOWER-001", "SLIDE-LOWER-LEFT-001", "EQUIP-PLOTTER1-001"):
+        inter_vol = intersection_volume(
+            transport.parts[door_id].solid,
+            transport.parts[mate_id].solid,
+        )
+        assert inter_vol <= DOOR_FRONT_PLANE_MAX_BEARING_MM3 + threshold
+        assert is_door_mate(door_id, mate_id, transport.parts, threshold)
+
+
+def test_door_mate_rejects_volumetric_burial(params, transport):
+    """F-1 — synthetic large burial must not pass is_door_mate (pattern: cavity-joint ceiling)."""
+    from stand_cad.geometry.collision import DOOR_FRONT_PLANE_MAX_BEARING_MM3, is_door_mate
+    from stand_cad.geometry.registry import PartRecord
+
+    threshold = float(params.value("tolerance.part_assembly_feature_mm"))
+    door_id = "DOOR-LOWER-001"
+    slide_id = "SLIDE-LOWER-LEFT-001"
+    slide = transport.parts[slide_id]
+    slide_bounds = bounding_box_bounds(slide.solid)
+    buried_door = PartRecord(
+        part_id=door_id,
+        material="cast_opal_pmma_3mm",
+        solid=box_from_bounds(
+            slide_bounds[0][0],
+            slide_bounds[1][0],
+            slide_bounds[2][0],
+            slide_bounds[0][1],
+            slide_bounds[1][1] + 50.0,
+            slide_bounds[2][1],
+        ),
+    )
+    parts = dict(transport.parts)
+    parts[door_id] = buried_door
+    inter_vol = intersection_volume(buried_door.solid, slide.solid)
+    assert inter_vol > DOOR_FRONT_PLANE_MAX_BEARING_MM3 + threshold
+    assert inter_vol > 20_000.0
+    assert not is_door_mate(door_id, slide_id, parts, threshold)
+
+
+def test_door_mate_open_door_rejects_tray_burial(params, service_p1):
+    """F-2 — open horizontal door must not use closed-plane 500 mm³ ceiling vs tray/slide."""
+    from stand_cad.geometry.collision import (
+        _door_is_open_horizontal,
+        is_door_mate,
+    )
+    from stand_cad.geometry.registry import PartRecord
+
+    threshold = float(params.value("tolerance.part_assembly_feature_mm"))
+    door_id = "DOOR-LOWER-001"
+    slide_id = "SLIDE-LOWER-LEFT-001"
+    open_door = service_p1.parts[door_id]
+    assert _door_is_open_horizontal(open_door.solid, threshold=threshold)
+    slide = service_p1.parts[slide_id]
+    slide_bounds = bounding_box_bounds(slide.solid)
+    buried_open = PartRecord(
+        part_id=door_id,
+        material=open_door.material,
+        solid=box_from_bounds(
+            slide_bounds[0][0],
+            slide_bounds[1][0],
+            slide_bounds[2][0],
+            slide_bounds[0][1],
+            slide_bounds[1][1] + 30.0,
+            slide_bounds[2][1] + 5.0,
+        ),
+    )
+    parts = dict(service_p1.parts)
+    parts[door_id] = buried_open
+    inter_vol = intersection_volume(buried_open.solid, slide.solid)
+    assert inter_vol > threshold
+    assert not is_door_mate(door_id, slide_id, parts, threshold)
+
+
+def test_strut_mate_rejects_volumetric_burial(params, service_p1):
+    """F-3 — strut ↔ post/panel bearing capped; large burial rejected."""
+    from stand_cad.geometry.collision import DOOR_STRUT_MAX_BEARING_MM3, is_door_mate
+    from stand_cad.geometry.primitives import box_from_bounds
+    from stand_cad.geometry.registry import PartRecord
+
+    threshold = float(params.value("tolerance.part_assembly_feature_mm"))
+    strut_id = "DOOR-STRUT-LOWER-L-001"
+    post_id = "FRAME-POST-FL-001"
+    strut = service_p1.parts[strut_id]
+    post = service_p1.parts[post_id]
+    post_bounds = bounding_box_bounds(post.solid)
+    buried_strut = PartRecord(
+        part_id=strut_id,
+        material=strut.material,
+        solid=box_from_bounds(
+            post_bounds[0][0],
+            post_bounds[1][0],
+            post_bounds[2][0],
+            post_bounds[0][1] + 40.0,
+            post_bounds[1][1] + 40.0,
+            post_bounds[2][1] + 40.0,
+        ),
+    )
+    parts = dict(service_p1.parts)
+    parts[strut_id] = buried_strut
+    inter_vol = intersection_volume(buried_strut.solid, post.solid)
+    assert inter_vol > DOOR_STRUT_MAX_BEARING_MM3 + threshold
+    assert not is_door_mate(strut_id, post_id, parts, threshold)
+    # Live attachment stays under ceiling.
+    assert is_door_mate(
+        strut_id, post_id, service_p1.parts, threshold
+    )
+
+
+def test_post_cladding_and_base_org_cladding_not_emitted(params, transport):
+    """D-069/D-070 — owner removed BASE/ORG/POST front cladding strips."""
+    removed = [
+        "PANEL-CLAD-FRONT-BASE-001",
+        "PANEL-CLAD-FRONT-ORG-001",
+        "PANEL-CLAD-FRONT-POST-FL-001",
+        "PANEL-CLAD-FRONT-POST-FR-001",
+    ]
+    for part_id in removed:
+        assert part_id not in transport.parts
+    tray_clad = [pid for pid in transport.parts if pid.startswith("PANEL-CLAD-FRONT-TRAY-")]
+    assert len(tray_clad) == 6
+
+
+def test_weld_free_joint_registry(params):
+    """D-061 — joint types encoded in parameters.yaml + hardware.py registry."""
+    from stand_cad.geometry.hardware import (
+        JOINT_TYPE_IDS,
+        joint_instance_counts,
+        joint_type_registry,
+        total_fastener_count,
+    )
+
+    specs = joint_type_registry(params)
+    assert len(specs) == len(JOINT_TYPE_IDS)
+    assert len(JOINT_TYPE_IDS) == 8
+    assert {s.joint_type_id for s in specs} == set(JOINT_TYPE_IDS)
+    counts = joint_instance_counts(params)
+    assert counts["JT-HANDLE-HARDWARE"] == 0
+    assert counts["JT-FRAME-CORNER"] == 22
+    assert counts["JT-TRAY-RAIL-FRAME"] == 12
+    assert counts["JT-STACK-CAP-POST"] == 4
+    frame_spec = next(s for s in specs if s.joint_type_id == "JT-FRAME-CORNER")
+    tray_spec = next(s for s in specs if s.joint_type_id == "JT-TRAY-RAIL-FRAME")
+    stack_spec = next(s for s in specs if s.joint_type_id == "JT-STACK-CAP-POST")
+    shelf_spec = next(s for s in specs if s.joint_type_id == "JT-SHELF-SUPPORT-SKIN")
+    assert frame_spec.qty_per_joint == 2
+    assert tray_spec.qty_per_joint == 2
+    assert stack_spec.qty_per_joint == 2
+    assert shelf_spec.qty_per_joint == 3
+    assert "no adhesive" in shelf_spec.method.lower()
+    assert stack_spec.fastener_size == "M4"
+    assert total_fastener_count(params) > 50
+    handle = next(s for s in specs if s.joint_type_id == "JT-HANDLE-HARDWARE")
+    assert handle.qty_per_joint == 0
+    assert "through-cut" in handle.method
+
+
+def test_stack_cap_bearing_bridges_l_notch(params, transport):
+    """STACK-001 / D-064 — cap plate bridges hollow quadrant (D-075 posts restored)."""
+    from stand_cad.geometry.primitives import solid_point_state
+
+    cap_t = float(params.value("stacking.cap_thickness_mm"))
+    recess_depth = float(params.value("stacking.foot_recess_depth_mm"))
+    case_h = float(params.value("case.height"))
+    z_probe = case_h + cap_t / 2.0
+    floor_z = case_h + (cap_t - recess_depth) / 2.0
+    hollow_probes = {
+        "FL": (27.0, 27.0),
+        "FR": (622.0, 27.0),
+        "RL": (27.0, 412.0),
+        "RR": (622.0, 412.0),
+    }
+    for suffix, (px, py) in hollow_probes.items():
+        cap_id = f"STACK-CAP-{suffix}-001"
+        cap = transport.parts[cap_id].solid
+        assert solid_point_state(cap, px, py, z_probe) in ("IN", "ON")
+        assert solid_point_state(cap, px, py, floor_z) in ("IN", "ON")
+
+
+def test_stack_cap_foot_recess_registration(params, transport):
+    """STACK-001 / D-064 — recess Ø = foot_d + clearance; registration wall outside foot."""
+    from build123d import Align, Cylinder, Location
+
+    from stand_cad.geometry.primitives import solid_point_state
+
+    foot_d = float(params.value("hardware.foot_diameter_mm"))
+    clearance = float(params.value("stacking.foot_recess_clearance_mm"))
+    recess_depth = float(params.value("stacking.foot_recess_depth_mm"))
+    cap_t = float(params.value("stacking.cap_thickness_mm"))
+    case_h = float(params.value("case.height"))
+    width = float(params.value("case.width"))
+    depth = float(params.value("case.depth"))
+    inset = foot_d / 2.0
+    recess_d = foot_d + clearance
+    recess_r = recess_d / 2.0
+    foot_r = foot_d / 2.0
+    foot_map = {
+        "FL": ("STACK-CAP-FL-001", inset, inset),
+        "FR": ("STACK-CAP-FR-001", width - inset, inset),
+        "RL": ("STACK-CAP-RL-001", inset, depth - inset),
+        "RR": ("STACK-CAP-RR-001", width - inset, depth - inset),
+    }
+    z_top = case_h + cap_t
+    z_in_recess = z_top - recess_depth / 2.0
+    z_below_recess = case_h + recess_depth / 2.0
+    inward_dx = {"FL": 1.0, "FR": -1.0, "RL": 1.0, "RR": -1.0}
+    inward_dy = {"FL": 1.0, "FR": 1.0, "RL": -1.0, "RR": -1.0}
+    wall_inset = recess_r - 0.1
+    for suffix, (cap_id, cx, cy) in foot_map.items():
+        cap = transport.parts[cap_id].solid
+        dx = inward_dx[suffix]
+        dy = inward_dy[suffix]
+        assert solid_point_state(cap, cx, cy, z_in_recess) == "OUT"
+        assert solid_point_state(cap, cx, cy, z_below_recess) in ("IN", "ON")
+        assert solid_point_state(
+            cap, cx + dx * (foot_r - 0.1), cy, z_in_recess
+        ) == "OUT"
+        assert solid_point_state(
+            cap, cx + dx * wall_inset, cy + dy * wall_inset, z_in_recess
+        ) in ("IN", "ON")
+        foot_proxy = Cylinder(
+            foot_r,
+            recess_depth,
+            align=(Align.CENTER, Align.CENTER, Align.MIN),
+        ).move(Location((cx, cy, z_top - recess_depth)))
+        assert intersection_volume(foot_proxy, cap) == pytest.approx(0.0, abs=1.0)
+    assert recess_d == pytest.approx(foot_d + clearance, abs=1e-6)

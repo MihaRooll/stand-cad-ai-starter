@@ -16,12 +16,12 @@ The Light Plotter Tower technical specification (`ИИ советы/Cursor_Opus5
 | `README.md` / `STATUS.md` | `README.md` / `state/PROJECT_STATE.md` |
 | `parameters.yaml` | `config/parameters.yaml` |
 | `measurements_to_verify.md` | `docs/10_USER_INPUT_REQUIRED.md` |
-| `BOM.csv` / `mass_report.csv` | `output/<revision>/BOM.csv` / `mass_report.csv` |
-| `generate_model.py` | future `scripts/generate_model.py` |
-| `cad/*.FCStd` / `cad/*.step` | `output/<revision>/cad/` (STEP only; no `.FCStd`) |
-| `drawings/*.pdf` | `output/<revision>/drawings/` |
-| `dxf/**` | `output/<revision>/dxf/**` (same acrylic / structural_panels / dividers / test_coupons split) |
-| `renders/*.png` and `checks/*.md` | `output/validation/<revision>/` per `AGENTS.md` CAD workflow |
+| `BOM.csv` / `mass_report.csv` | BOM as **BOM-001** sheet inside `output/validation/<revision>/drawings/*.pdf` via `scripts/generate_drawings.py` (no standalone `BOM.csv`); `output/validation/<revision>/mass_report.csv` (+ `stability_report.md`, `deflection_report.md`) via `scripts/generate_mass_report.py` |
+| `generate_model.py` | `scripts/generate_model.py` (CONCEPT STEP/STL/GLB export via `generate_concept_model()` → `output/concept/`) |
+| `cad/*.FCStd` / `cad/*.step` | `output/concept/` (STEP/STL/GLB/manifest; no `.FCStd`) |
+| `drawings/*.pdf` | `output/validation/<revision>/drawings/` via `scripts/generate_drawings.py` |
+| `dxf/**` | `output/validation/<revision>/dxf/` (flat-panel `*_REFERENCE_ONLY_rev<revision>.dxf`; no TZ subfolder split) via `scripts/generate_drawings.py` |
+| `renders/*.png` and `checks/*.md` | `output/validation/<revision>/views/` (PNG via `scripts/render_validation_views.py`); reports at `output/validation/<revision>/` per `AGENTS.md` CAD workflow |
 
 ## Rationale
 

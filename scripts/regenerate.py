@@ -35,8 +35,31 @@ def main() -> None:
     if proc.returncode != 0:
         raise SystemExit(proc.returncode)
 
+    mass_script = REPO_ROOT / "scripts" / "generate_mass_report.py"
+    mass_proc = subprocess.run(
+        [sys.executable, str(mass_script)],
+        cwd=str(REPO_ROOT),
+        check=False,
+    )
+    if mass_proc.returncode != 0:
+        raise SystemExit(mass_proc.returncode)
+
+    drawings_script = REPO_ROOT / "scripts" / "generate_drawings.py"
+    drawings_proc = subprocess.run(
+        [sys.executable, str(drawings_script)],
+        cwd=str(REPO_ROOT),
+        check=False,
+    )
+    if drawings_proc.returncode != 0:
+        raise SystemExit(drawings_proc.returncode)
+
     # Collect written paths for handoff output.
     view_paths = sorted(DEFAULT_OUTPUT_DIR.glob("*"))
+    drawings_dir = REPO_ROOT / "output" / "validation" / f"rev{CONCEPT_REVISION}" / "drawings"
+    dxf_dir = REPO_ROOT / "output" / "validation" / f"rev{CONCEPT_REVISION}" / "dxf"
+    pdf_path = drawings_dir / (
+        f"light_plotter_tower_DRAWINGS_PRELIMINARY_CONCEPT_NOT_FOR_PRODUCTION_rev{CONCEPT_REVISION}.pdf"
+    )
     mesh_paths = {
         "stl": DEFAULT_CONCEPT_DIR / f"{CONCEPT_STEM}.stl",
         "glb": DEFAULT_CONCEPT_DIR / f"{CONCEPT_STEM}.glb",
@@ -51,6 +74,10 @@ def main() -> None:
     for label, path in mesh_paths.items():
         if path.is_file():
             print(f"{label}: {path}")
+    if pdf_path.is_file():
+        print(pdf_path)
+    if dxf_dir.is_dir():
+        print(f"dxf_dir: {dxf_dir} ({len(list(dxf_dir.glob('*.dxf')))} files)")
 
 
 if __name__ == "__main__":

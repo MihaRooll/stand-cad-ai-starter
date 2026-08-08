@@ -4,16 +4,61 @@ from __future__ import annotations
 
 import importlib.util
 import sys
+from collections.abc import Callable
 from pathlib import Path
 
 import numpy as np
 
-from stand_cad.geometry.assembly import AssemblyState
+from stand_cad.geometry.assembly import (
+    AssemblyState,
+    build_operating_with_test_bodies_assembly,
+    build_organizer_loaded_assembly,
+    build_panels_hidden_assembly,
+    build_service_plotter_1_assembly,
+    build_service_plotter_2_assembly,
+    build_transport_assembly,
+    build_tray1_quick_access_assembly,
+)
 from stand_cad.geometry.primitives import box_from_bounds
 from stand_cad.geometry.registry import PartRecord
+from stand_cad.parameters import Parameters, load_parameters
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 _RENDER_MODULE_PATH = REPO_ROOT / "scripts" / "render_validation_views.py"
+_PARAMETERS_PATH = REPO_ROOT / "config" / "parameters.yaml"
+
+# Approach (b): structural / reference materials intentionally default to render priority 0.
+# Cladding keys must appear in MATERIAL_RENDER_PRIORITY with priority 1 (D-040).
+# Follow-up: register every key explicitly in scripts/render_validation_views.py.
+KNOWN_PRIORITY_ZERO_MATERIALS: frozenset[str] = frozenset({
+    "aluminium_angle_15x15x1.5",  # frame rails and tray structure
+    "sandwich_panel_10_12mm",  # tray and organizer floor panels
+    "hdpe_insert_thin",  # organizer inserts
+    "full_extension_slide_hardware",  # slide rails
+    "elastomer_soft_stop",  # rear soft stops
+    "elastomer_vibration_mount",  # plotter vibration mounts
+    "interlock_shuttle_hardware",  # tray interlock shuttle
+    "interlock_tab_hardware",  # tray interlock tabs
+    "silicone_foot",  # transport feet
+    "aluminium_stack_cap",  # STACK-001 corner stacking caps (D-064)
+    "soft_trim_brush",  # cable grommet trim (GROMMET_MATERIAL)
+    "hardware_mains_inlet",  # mains inlet placeholder
+    "service_volume",  # service-zone collision volumes
+    "equipment_reference",  # plotter body placeholders
+    "reference_envelope",  # design envelopes and lid envelopes
+    "film_sheet_reference",  # organizer film bodies
+    "media_path_test_body",  # operating-state media-path probes
+})
+
+_ASSEMBLY_BUILDERS: tuple[tuple[str, Callable[[Parameters], AssemblyState]], ...] = (
+    ("transport", build_transport_assembly),
+    ("organizer_loaded", build_organizer_loaded_assembly),
+    ("operating_with_test_bodies", build_operating_with_test_bodies_assembly),
+    ("service_plotter_1", build_service_plotter_1_assembly),
+    ("service_plotter_2", build_service_plotter_2_assembly),
+    ("tray1_quick_access", build_tray1_quick_access_assembly),
+    ("panels_hidden", build_panels_hidden_assembly),
+)
 
 
 def _load_render_module():
@@ -87,3 +132,28 @@ def test_coplanar_cladding_wins_material_priority_tiebreak_reverse_insertion_ord
         },
     )
     _assert_cladding_wins_coplanar_tiebreak(render, state)
+
+
+def test_all_assembly_materials_registered_or_documented_priority_zero():
+    """Every assembly material must be in MATERIAL_RENDER_PRIORITY or KNOWN_PRIORITY_ZERO."""
+    render = _load_render_module()
+    params = load_parameters(_PARAMETERS_PATH)
+    materials: set[str] = set()
+    for _name, builder in _ASSEMBLY_BUILDERS:
+        for record in builder(params).parts.values():
+            materials.add(record.material)
+
+    registered = set(render.MATERIAL_RENDER_PRIORITY)
+    allowed = registered | KNOWN_PRIORITY_ZERO_MATERIALS
+    unknown = sorted(materials - allowed)
+    assert unknown == [], (
+        "materials missing from MATERIAL_RENDER_PRIORITY and KNOWN_PRIORITY_ZERO_MATERIALS: "
+        + ", ".join(unknown)
+    )
+    missing_from_dict = sorted(materials - registered)
+    assert missing_from_dict, "expected some priority-0 materials not yet in dict"
+    assert missing_from_dict == sorted(KNOWN_PRIORITY_ZERO_MATERIALS & materials), (
+        "KNOWN_PRIORITY_ZERO_MATERIALS must match materials absent from "
+        "MATERIAL_RENDER_PRIORITY; follow-up should add explicit priority-0 keys to "
+        "scripts/render_validation_views.py"
+    )

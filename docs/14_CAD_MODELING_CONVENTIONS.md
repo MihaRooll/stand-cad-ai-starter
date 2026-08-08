@@ -2,9 +2,15 @@
 
 Mechanical, evidence-based rules from real defects found and fixed in this repository. Not generic CAD advice — every rule cites the file/line or decision that motivated it. Read this before re-deriving a fix that already has a documented precedent.
 
-## 1. Cladding must share the covered rail's exact bounds
+## 1. Cladding must share the covered rail's X/Z span (thin 3 mm front face)
 
-A cosmetic cladding part covering a structural frame/rail member must be built from the **same bounds-computing call** as the member it covers, not an offset strip placed in front of it. `build_frame_cladding()` (`src/stand_cad/geometry/frame.py:237`) follows this: perimeter cladding reuses the `z_base`/`z_top` and `[inset, width-inset]` X span used by `_perimeter_rail()` (`frame.py:182`); tray-rail cladding calls `box_from_bounds(*_tray_frame_rail_bounds(params, tray_b, side=side))` (`frame.py:300-301`) — the identical bounds helper the rail itself uses, from `src/stand_cad/geometry/trays.py::_tray_frame_rail_bounds`. An offset strip has zero geometric overlap with what it should conceal (D-026, D-039).
+Cosmetic opal cladding (`PANEL-CLAD-FRONT-*`, D-026) is a **3 mm-thick front-face strip** flush-mounted on the visible side of each covered rail/post, not a full-profile-depth block. It must reuse the **same X span and Z span** as the structural member it covers:
+
+- Perimeter BASE/ORG rails: same `[inset, width-inset]` X and `z_base`/`z_top` as `_perimeter_rail()` (`frame.py`), with **Y depth = `materials.outer_panel_thickness_mm` (3 mm)** at the open front (Y=0).
+- Tray-rail cladding: same X/Z bounds from `_tray_frame_rail_bounds()` (`trays.py`), with **Y from rail `y0` to `y0 + outer_panel_thickness_mm`**.
+- Post cladding: same X/Z post cover spans as before, **Y depth 3 mm** at the front face.
+
+Do not revert to a 15 mm profile-depth block — that contradicted D-026 "thin opal cosmetic covers" and overstated mass. Render tie-break (§2) still applies where the 3 mm strip overlaps the rail front face in Y.
 
 ## 2. Render depth tie-break: material priority, not draw order
 
@@ -25,3 +31,21 @@ Reading the generator code and assuming a fix worked is not evidence. Two real e
 ## 6. One dimension, one place, with a provenance tag
 
 Every dimension in `src/stand_cad/geometry/**` must come from `config/parameters.yaml` via `Parameters.value(...)`, and every leaf carries exactly one provenance tag — `verified`, `derived`, or `to_measure` (`src/stand_cad/parameters.py:21`, `config/parameters.yaml:22-28` shows the `{value, provenance, note}` pattern). Commit `9e38f98` ("QA sweep cycle 1: wire remaining hardcoded dimensions to config/parameters.yaml") is the concrete precedent for what happens when this lapses: `src/stand_cad/parameters.py` had accumulated dead duplicate constants `CASE_DEPTH_TOLERANCE_MM` and `TIER_CLEARANCE_MIN_MM = 170` that duplicated `case.depth_tolerance_mm` and `plotter.tier_clearance_min_mm` (`config/parameters.yaml:42`) — two sources of truth for the same number is a drift risk even before they actually diverge. Never add a Python constant that duplicates a config leaf; add the leaf and read it.
+
+## 7. Side-slab cavity bearing joints: X overlap, not full confinement
+
+Corner posts (`FRAME-POST-FL/FR/RL/RR-001`) span the **20 mm wall pocket plus an inward leg (~40 mm X)** after the D-055 cavity-wall rebuild. `is_side_slab_frame_cavity_joint()` (`collision.py`) must classify **zero-clearance bearing** on the 3 mm opal skin as legitimate mating, but reject solid-acrylic burial (~428×10³ mm³ synthetic at a corner post — far above `max_bearing`≈56×10³; the old ~50–85×10³ band overlapped `max_bearing` and was not a reliable rejection oracle).
+
+The X-band gate tests **overlap with the pocket band** `[0, side_clear]` (left) or `[width − side_clear, width]` (right), **not** confinement of the entire frame bbox inside `side_clear`. For `FRAME-POST-*`, a **Y-band gate** also requires overlap with the front return `[0, side_clear]` or rear return `[depth − side_clear, depth]` so mid-wall skin burial cannot exempt on X overlap alone. Measured transport (2026-08-06): `FRAME-POST-FL-001` X=(0, 40), Y=(0, 40), `inter_vol`≈47 830 mm³, `max_bearing`≈56 175 mm³, clearance 0.000 mm — all four post↔side-slab pairs pass `test_numeric_collision_clearance` at 0.000 mm clearance; volumes above `_max_legitimate_skin_bearing_volume_mm3` and mid-wall posts still reject.
+
+## 8. Assembly cache must return copied solids, not shared OCCT children
+
+`_STATIC_PARTS_CACHE` / `_STATE_CACHE` (`assembly.py`) store canonical `PartRecord` solids for performance. Every cache hit must return **`_copy_parts()`** — shallow `PartRecord` copies with `copy(solid)` per part (same pattern as `translate_solid()` in `primitives.py`). Without this, two successive `AssemblyState.compound()` calls share OCCT topology: the first compound's bbox collapses to `(3, 3, 12)` mm (= `INTERLOCK-TAB` size) while the second reads `(650, 420, 544)` mm — `test_idempotent_rebuild_matching_metrics` fails even though the builder is deterministic.
+
+## 9. Drop-front doors — closed-plane mating and strut routing (D-073 / D-076)
+
+`DOOR-LOWER/UPPER-001` sit on the tray front plane (Y = datum.y.min). Zero clearance vs trays, slides, plotters, tray cladding, org-front rail, and tier divider is **expected closed-front contact** — classify via `collision.py::is_door_mate`, not as a defect. Media-path front sweeps must **exclude `DOOR-*`** (intentional closed barrier) while keeping rear-channel checks honest.
+
+**Open-door settle (D-076):** after 90° hinge swing, door translates down so top face ≤ `slide_bottom_z − tolerance.assembly_mm`. Slides travel **over** the horizontal door in Z even when Y ranges overlap.
+
+**Open-door struts (`DOOR-STRUT-*`):** route along **corner-post outer faces** at settled door Z — outside tray X-span. Struts **always emitted** when door is open. Strut ↔ post/panel attachment capped at **`DOOR_STRUT_MAX_BEARING_MM3`** (350 mm³); TRAY/SLIDE/EQUIP kinematic targets require vol≈0 (`test_lower_open_door_kinematic_clearance_sweep`). Open horizontal doors detected via **`_door_is_open_horizontal()`** — closed-plane 500 mm³ ceiling applies to **closed posture only**.

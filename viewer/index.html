@@ -683,19 +683,38 @@
       }
     }
 
-    function registerMesh(mesh, partId) {
-      cloneMeshMaterial(mesh);
-      partEntries.set(partId, { mesh, partId, visible: true });
+    function registerMesh(container, partId) {
+      // `container` is the named node for this part — a direct Mesh when build123d
+      // exported a single-primitive glTF mesh, or a Group when OCP's tessellation
+      // split the part into multiple primitives (common: one part can explode into
+      // dozens of primitives, one per face). `.traverse()` visits `container` itself
+      // first, so this handles both cases uniformly.
+      const meshes = [];
+      container.traverse((obj) => {
+        if (obj.isMesh) {
+          cloneMeshMaterial(obj);
+          meshes.push(obj);
+        }
+      });
+      partEntries.set(partId, { mesh: container, meshes, partId, visible: true });
     }
 
     function collectMeshesByName(root, manifestParts) {
+      const wantedIds = new Set(manifestParts.map((p) => p.part_id));
       const byName = new Map();
       root.traverse((obj) => {
-        if (obj.isMesh && obj.name) byName.set(obj.name, obj);
+        // Match on ANY named node (Group or Mesh), not just direct Mesh objects —
+        // a part with multiple tessellated primitives surfaces as a Group whose own
+        // Mesh children are unnamed/auto-numbered by GLTFLoader, so requiring
+        // `obj.isMesh` here previously matched zero parts whenever a part had more
+        // than one primitive (near-universal for this exporter's CAD output).
+        if (obj.name && wantedIds.has(obj.name) && !byName.has(obj.name)) {
+          byName.set(obj.name, obj);
+        }
       });
       for (const part of manifestParts) {
-        const mesh = byName.get(part.part_id);
-        if (mesh) registerMesh(mesh, part.part_id);
+        const container = byName.get(part.part_id);
+        if (container) registerMesh(container, part.part_id);
       }
       const missing = manifestParts.filter((p) => !byName.has(p.part_id));
       if (missing.length) {

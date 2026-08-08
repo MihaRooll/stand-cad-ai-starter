@@ -48,16 +48,14 @@ def _side_clearance_mm(params: Parameters) -> float:
 
 
 def _handle_mount_z_fallback(params: Parameters) -> float:
-    """Provisional Z in upper plotter bay — clear of org rails (VERIFY ON REAL MACHINE)."""
-    upper_z = float(params.value("plotter.upper_z"))
-    plotter_h = float(params.value("plotter.physical_height"))
-    return upper_z + plotter_h / 2.0
+    """Derived lowest sightline-feasible Z at depth-centred Y (D-050)."""
+    return params.computed_handle_mount_z_mm
 
 
 def _handle_mount_y_fallback(params: Parameters, datums: Datums) -> float:
-    """Provisional Y toward open front — clears mid-depth bands (VERIFY ON REAL MACHINE)."""
-    depth = datums.case_envelope.y.max_mm
-    return depth * 0.15
+    """Derived loaded-case CoM Y balance point (D-051)."""
+    del datums
+    return params.computed_handle_mount_y_mm
 
 
 def _handle_mount_z(params: Parameters) -> float:
@@ -127,6 +125,25 @@ def _apply_top_front_bullnose(solid: Part, radius: float) -> Part:
         return solid
 
 
+def _apply_top_rear_bullnose(solid: Part, radius: float) -> Part:
+    """Fillet the slab top-rear horizontal edge — companion to the top-front bullnose above."""
+    try:
+        top_z = solid.bounding_box().max.Z
+        max_y = solid.bounding_box().max.Y
+        edges = [
+            edge
+            for edge in solid.edges()
+            if abs(edge.center().Z - top_z) < 0.5
+            and abs(edge.center().Y - max_y) < 0.5
+            and edge.length > radius
+        ]
+        if not edges:
+            return solid
+        return fillet(edges[:4], radius=radius)
+    except Exception:  # noqa: BLE001 — build123d fillet stability varies by kernel
+        return solid
+
+
 def _extrude_side_slab(
     *,
     x_min: float,
@@ -139,8 +156,13 @@ def _extrude_side_slab(
     bullnose_radius: float,
     wall_mm: float,
 ) -> Part:
-    """Full-height solid side slab with exterior front-corner bullnose (single connected volume)."""
-    del wall_mm  # retained for call-site compatibility; slab is solid not hollow-shell
+    """Cavity-wall side slab: 3 mm opal skin on exterior + front/rear returns, air pocket behind.
+
+    Preserves the full 20 mm outer profile depth (``side_clear``) so R10 bullnose fillets on the
+    unchanged exterior 2D profile continue to work.  The outer X face and front Y return carry the
+    opal PMMA skin; the remaining pocket is air for light-strip clearance and aluminium frame
+    members (TZ lines 218–219, 212).
+    """
     height = z_max - z_min
     width = x_max - x_min
     depth = y_max - y_min
@@ -150,16 +172,40 @@ def _extrude_side_slab(
     with BuildPart() as outer_builder:
         with BuildSketch(Plane.XY) as sketch:
             Rectangle(width, depth, align=(Align.MIN, Align.MIN))
-            front_vertices = [vertex for vertex in sketch.vertices() if abs(vertex.Y) < 0.01]
-            if front_vertices:
-                if side == "left":
-                    exterior = min(front_vertices, key=lambda vertex: vertex.X)
-                else:
-                    exterior = max(front_vertices, key=lambda vertex: vertex.X)
-                fillet([exterior], radius=max_r)
+            # Round both exterior vertical edges (front AND rear), not just front — an unrounded
+            # rear corner is a sharp 90 deg edge at full case height (owner 2026-08-06 safety
+            # request: no exposed sharp cube edges that could cut/bruise on contact). Same
+            # bullnose radius as the front (D-025) for a consistent all-round profile; select
+            # both vertices from the pristine rectangle before any fillet so vertex references
+            # stay valid for a single combined fillet call.
+            front_candidates = [v for v in sketch.vertices() if abs(v.Y) < 0.01]
+            rear_candidates = [v for v in sketch.vertices() if abs(v.Y - depth) < 0.01]
+            exterior_key = min if side == "left" else max
+            corner_vertices = []
+            if front_candidates:
+                corner_vertices.append(exterior_key(front_candidates, key=lambda v: v.X))
+            if rear_candidates:
+                corner_vertices.append(exterior_key(rear_candidates, key=lambda v: v.X))
+            if corner_vertices:
+                fillet(corner_vertices, radius=max_r)
         extrude(amount=height)
     solid = outer_builder.part.move(Location((x_min, y_min, z_min)))
-    return _apply_top_front_bullnose(solid, max_r)
+    solid = _apply_top_front_bullnose(solid, max_r)
+    solid = _apply_top_rear_bullnose(solid, max_r)
+
+    # Cavity pocket: exterior skin on outer X face; front/rear Y returns for edge stiffness.
+    if side == "left":
+        cavity_x0 = x_min + wall_mm
+        cavity_x1 = x_max
+    else:
+        cavity_x0 = x_min
+        cavity_x1 = x_max - wall_mm
+    cavity_y0 = y_min + wall_mm
+    cavity_y1 = y_max - wall_mm
+    if cavity_x1 > cavity_x0 and cavity_y1 > cavity_y0:
+        solid = _subtract_box(solid, cavity_x0, cavity_y0, z_min, cavity_x1, cavity_y1, z_max)
+
+    return solid
 
 
 def _subtract_rounded_through_x(
@@ -182,6 +228,30 @@ def _subtract_rounded_through_x(
             RectangleRounded(span_y, span_z, edge_radius, align=(Align.MIN, Align.MIN))
         extrude(amount=(x1 - x0) + 2 * eps)
     cutter = builder.part.move(Location((x0 - eps, y0, z0)))
+    return solid - cutter
+
+
+def _subtract_rounded_through_y(
+    solid: Part,
+    *,
+    x0: float,
+    x1: float,
+    y0: float,
+    y1: float,
+    z0: float,
+    z1: float,
+    edge_radius: float,
+) -> Part:
+    """Through-cut along Y with rounded X-Z footprint (edge break on the aperture rim)."""
+    eps = 0.5
+    span_x = x1 - x0
+    span_z = z1 - z0
+    with BuildPart() as builder:
+        with BuildSketch(Plane.XZ):
+            RectangleRounded(span_x, span_z, edge_radius, align=(Align.MIN, Align.MIN))
+        # Plane.XZ extrude +Y is opposite sketch normal; negative amount cuts +Y through panel.
+        extrude(amount=-((y1 - y0) + 2 * eps))
+    cutter = builder.part.move(Location((x0, y0 - eps, z0)))
     return solid - cutter
 
 
@@ -251,30 +321,21 @@ def _subtract_vent_slots_z(
     return result
 
 
-def _cable_passthrough_mount_z(params: Parameters) -> float:
-    """Midpoint between L1 media-feed-slot top and L2 media-feed-slot bottom (D-036)."""
-    slot_h = float(params.value("media_path.slot_height_target"))
-    feed_top_l1 = _feed_plane_z(params, "L1") + slot_h / 2
-    feed_bottom_l2 = _feed_plane_z(params, "L2") - slot_h / 2
-    return (feed_top_l1 + feed_bottom_l2) / 2.0
-
-
-def _subtract_cable_passthrough(
-    solid: Part, params: Parameters, datums: Datums, *, y0: float, y1: float
+def _subtract_cable_passthrough_x(
+    solid: Part, params: Parameters, *, x0: float, x1: float
 ) -> Part:
-    """Round cable pass-through through rear panel thickness (owner override, D-036)."""
+    """Round cable pass-through cut through right side-panel X-thickness (D-047)."""
     diameter = float(params.value("hardware.cable_passthrough_diameter_mm"))
     radius = diameter / 2.0
-    width = datums.case_envelope.x.max_mm
-    cx = width / 2.0
-    z_center = _cable_passthrough_mount_z(params)
+    y_center = float(params.value("hardware.cable_passthrough_mount_y_mm"))
+    z_center = float(params.value("hardware.cable_passthrough_mount_z_mm"))
     eps = 0.5
-    span_y = (y1 - y0) + 2 * eps
+    span_x = (x1 - x0) + 2 * eps
     with BuildPart() as builder:
-        with BuildSketch(Plane.XZ):
+        with BuildSketch(Plane.YZ):
             Circle(radius)
-        extrude(amount=span_y)
-    cutter = builder.part.move(Location((cx, y1 + eps, z_center)))
+        extrude(amount=span_x)
+    cutter = builder.part.move(Location((x0 - eps, y_center, z_center)))
     return solid - cutter
 
 
@@ -325,6 +386,7 @@ def _build_rear_panel(params: Parameters, datums: Datums) -> PartRecord:
     panel_height = height - foot_h
     slot_w = float(params.value("media_path.clear_width"))
     slot_h = float(params.value("media_path.slot_height_target"))
+    edge_radius = float(params.value("media_path.rear_channel_edge_break_radius_mm"))
     cx = width / 2.0
 
     solid = box_from_bounds(gap, depth - thickness, foot_h, width - gap, depth, height)
@@ -333,18 +395,18 @@ def _build_rear_panel(params: Parameters, datums: Datums) -> PartRecord:
     y1 = depth + eps
     for level in ("L1", "L2"):
         feed_z = _feed_plane_z(params, level)
-        solid = _subtract_box(
+        solid = _subtract_rounded_through_y(
             solid,
-            cx - slot_w / 2,
-            y0,
-            feed_z - slot_h / 2,
-            cx + slot_w / 2,
-            y1,
-            feed_z + slot_h / 2,
+            x0=cx - slot_w / 2,
+            x1=cx + slot_w / 2,
+            y0=y0,
+            y1=y1,
+            z0=feed_z - slot_h / 2,
+            z1=feed_z + slot_h / 2,
+            edge_radius=edge_radius,
         )
 
     solid = _subtract_vent_slots_x(solid, params, datums, y0=y0, y1=y1)
-    solid = _subtract_cable_passthrough(solid, params, datums, y0=y0, y1=y1)
 
     corner_centers = [
         _physical_corner_center(c, corner_r, width, depth)
@@ -409,15 +471,18 @@ def _build_side_slab_with_handle(
         port_h = float(params.value("hardware.service_port_cutout_height_mm"))
         port_y = float(params.value("hardware.service_port_mount_y_mm"))
         port_z = float(params.value("hardware.service_port_mount_z_mm"))
-        solid = _subtract_box(
+        port_edge_r = float(params.value("services.service_port_edge_break_radius_mm"))
+        solid = _subtract_rounded_through_x(
             solid,
-            x0 - 1.0,
-            port_y - port_w / 2,
-            port_z - port_h / 2,
-            x1 + 1.0,
-            port_y + port_w / 2,
-            port_z + port_h / 2,
+            x0=x0 - 1.0,
+            x1=x1 + 1.0,
+            y0=port_y - port_w / 2,
+            y1=port_y + port_w / 2,
+            z0=port_z - port_h / 2,
+            z1=port_z + port_h / 2,
+            edge_radius=port_edge_r,
         )
+        solid = _subtract_cable_passthrough_x(solid, params, x0=x0, x1=x1)
     return PartRecord(part_id=part_id, material=OUTER_PANEL_MATERIAL, solid=solid)
 
 
@@ -431,6 +496,14 @@ def build_outer_panels(params: Parameters, datums: Datums) -> list[PartRecord]:
 
 
 def build_inner_panels(params: Parameters, datums: Datums) -> list[PartRecord]:
+    return [
+        _build_inner_bottom_panel(params, datums),
+        _build_inner_rear_panel(params, datums),
+        _build_inner_mid_panel(params, datums),
+    ]
+
+
+def _build_inner_bottom_panel(params: Parameters, datums: Datums) -> PartRecord:
     thickness = float(params.value("materials.inner_panel_thickness_mm"))
     foot_h = float(params.value("materials.foot_height_mm"))
     width = datums.case_envelope.x.max_mm
@@ -450,13 +523,25 @@ def build_inner_panels(params: Parameters, datums: Datums) -> list[PartRecord]:
         z0=foot_h,
         z1=bottom_z,
     )
-    bottom = PartRecord(
+    return PartRecord(
         part_id="PANEL-IN-BOTTOM-001",
         material=INNER_PANEL_MATERIAL,
         solid=bottom_solid,
     )
+
+
+def _build_inner_rear_panel(params: Parameters, datums: Datums) -> PartRecord:
+    thickness = float(params.value("materials.inner_panel_thickness_mm"))
+    foot_h = float(params.value("materials.foot_height_mm"))
+    width = datums.case_envelope.x.max_mm
+    depth = datums.case_envelope.y.max_mm
+    gap = float(params.value("materials.outer_panel_shadow_gap_mm"))
     rear_inner_y0 = depth - thickness - gap
     rear_inner_y1 = depth - gap
+    slot_w = float(params.value("media_path.clear_width"))
+    slot_h = float(params.value("media_path.slot_height_target"))
+    edge_radius = float(params.value("media_path.rear_channel_edge_break_radius_mm"))
+    cx = width / 2.0
     rear_solid = box_from_bounds(
         gap,
         rear_inner_y0,
@@ -465,16 +550,35 @@ def build_inner_panels(params: Parameters, datums: Datums) -> list[PartRecord]:
         rear_inner_y1,
         datums.top_structure.z.min_mm,
     )
-    rear_solid = _subtract_cable_passthrough(
-        rear_solid, params, datums, y0=rear_inner_y0, y1=rear_inner_y1
-    )
-    rear = PartRecord(
+    eps = 0.5
+    y_cut0 = rear_inner_y0 - eps
+    y_cut1 = rear_inner_y1 + eps
+    for level in ("L1", "L2"):
+        feed_z = _feed_plane_z(params, level)
+        rear_solid = _subtract_rounded_through_y(
+            rear_solid,
+            x0=cx - slot_w / 2,
+            x1=cx + slot_w / 2,
+            y0=y_cut0,
+            y1=y_cut1,
+            z0=feed_z - slot_h / 2,
+            z1=feed_z + slot_h / 2,
+            edge_radius=edge_radius,
+        )
+    return PartRecord(
         part_id="PANEL-IN-REAR-001",
         material=INNER_PANEL_MATERIAL,
         solid=rear_solid,
     )
+
+
+def _build_inner_mid_panel(params: Parameters, datums: Datums) -> PartRecord:
+    thickness = float(params.value("materials.inner_panel_thickness_mm"))
+    width = datums.case_envelope.x.max_mm
+    depth = datums.case_envelope.y.max_mm
+    gap = float(params.value("materials.outer_panel_shadow_gap_mm"))
     mid_z = (datums.plotter1_physical.z.max_mm + datums.plotter2_physical.z.min_mm) / 2
-    mid = PartRecord(
+    return PartRecord(
         part_id="PANEL-IN-MID-001",
         material=INNER_PANEL_MATERIAL,
         solid=box_from_bounds(
@@ -486,7 +590,6 @@ def build_inner_panels(params: Parameters, datums: Datums) -> list[PartRecord]:
             mid_z + thickness / 2,
         ),
     )
-    return [bottom, rear, mid]
 
 
 def build_panel_parts(params: Parameters, datums: Datums) -> list[PartRecord]:
@@ -529,15 +632,14 @@ def cable_passthrough_footprint(params: Parameters, datums: Datums) -> dict[str,
     diameter = float(params.value("hardware.cable_passthrough_diameter_mm"))
     radius = diameter / 2.0
     width = datums.case_envelope.x.max_mm
-    depth = datums.case_envelope.y.max_mm
-    thickness = float(params.value("materials.outer_panel_thickness_mm"))
-    cx = width / 2.0
-    z_center = _cable_passthrough_mount_z(params)
+    side_clear = _side_clearance_mm(params)
+    y_center = float(params.value("hardware.cable_passthrough_mount_y_mm"))
+    z_center = float(params.value("hardware.cable_passthrough_mount_z_mm"))
     return {
-        "x0": cx - radius,
-        "x1": cx + radius,
-        "y0": depth - thickness,
-        "y1": depth,
+        "x0": width - side_clear,
+        "x1": width,
+        "y0": y_center - radius,
+        "y1": y_center + radius,
         "z0": z_center - radius,
         "z1": z_center + radius,
     }

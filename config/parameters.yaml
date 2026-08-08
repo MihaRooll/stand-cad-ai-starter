@@ -20,8 +20,8 @@ units: mm
 
 case:
   width: {value: 650, provenance: verified, note: "TZ section 4 — overall envelope; owner 2026-08-04 confirmed not flexible"}
-  depth: {value: 550, provenance: verified, note: "TZ section 4 target; owner 2026-08-04 allows small deviation if geometry requires (PARAM-006 depth tolerance ±5 mm)"}
-  height: {value: 544, provenance: derived, note: "film_storage_horizontal.z + shelf_stack_height_mm + top_structure.height_mm = 423 + 106 + 15; formula in Parameters.computed_case_height_mm"}
+  depth: {value: 420, provenance: verified, note: "TZ section 4 original target 550 mm; owner 2026-08-05 override reduces to 420 mm (within owner's stated 350-450 mm range) — see D-045. Owner 2026-08-06 confirmed keep 420 mm — pull-out drawer mechanism stays, this is not a fixed-shelf design."}
+  height: {value: 529, provenance: derived, note: "film_storage_horizontal.z + shelf_stack_height_mm + top_structure.height_mm = 423 + 106 + 0; formula in Parameters.computed_case_height_mm. Owner 2026-08-06: was 544 (top_structure.height_mm=15) — that 15 mm band above the top rail line was unfilled by any part (no lid/cover was ever modeled there), so it read as a bare unsupported skin lip / awkward corner-post nub in every top-down view; owner asked to remove it for event-display aesthetics. Reducing to 0 makes posts, rails, and outer panels all terminate flush at the same Z with no code change needed elsewhere (frame.py's corner-post cap logic already no-ops when the band height is 0). Independent of D-038's +27 mm (517→544 was upper_z/tray-hardware clearance, untouched here)."}
   internal_width: {value: 610, provenance: verified, note: "TZ section 4 — 650−2×20 mm side slabs; Main PLT-007 ruling 2026-08-04 rejects widening to 620/630 (R10 at 20 mm wall beats R7.5/R5 at narrower walls)"}
   depth_tolerance_mm: {value: 5, provenance: verified, note: "Owner 2026-08-04 allowance for case.depth deviation from 550 mm target; used by PARAM-006"}
   corner_radius: {value: 25, provenance: verified, note: "TZ section 8 line 230 — R20-R30 outer shell corner radius; consumed by PANEL-OUT-REAR-* corner trims only (side slabs use side_slab_bullnose_radius_mm)"}
@@ -41,7 +41,7 @@ plotter:
   design_height: {value: 178, provenance: derived, note: "physical_height + 2×envelope_offset_z_mm = 170 + 8; offset +4 each side (TZ formula); tier niches use max(178, tier_clearance_min 170)"}
   tier_clearance_min_mm: {value: 170, provenance: verified, note: "Owner 2026-08-04 — minimum clear height per plotter tier; equals Cameo 4 physical height"}
   x: {value: 40, provenance: derived, note: "side_clear + (internal_width − physical_width)/2 = 20 + (610−570)/2 = 40 mm"}
-  lower_y: {value: 15, provenance: derived, note: "PLT-007 — reduced from TZ 20 mm so lower tray full extension (250 mm) clears front_overhang_min 40 mm with 195 mm Cameo 4 depth: 15+195−250=−40; front storage clearance 15 mm"}
+  lower_y: {value: 15, provenance: derived, note: "PLT-007 — reduced from TZ 20 mm for front storage clearance 15 mm. D-029 arithmetic: TZ rear-face overhang (front_overhang_min 40 mm) needs extension ≥ lower_y+physical_depth+40 = 250 mm; owner D-049 restores full-service extension to 250 mm on both tiers — at 250 mm plotter rear Y=−40 mm (exact TZ margin), front Y=−235 mm"}
   lower_z: {value: 30, provenance: verified, note: "TZ section 5 — lower tray / plotter 1 datum Z"}
   upper_y: {value: 15, provenance: derived, note: "lower_y + upper_setback = 15 + 0 (D-033, owner 2026-08-04); supersedes TZ section 5 Y=170, interim 150@lower_y=20, and 145@setback130 (D-029)"}
   upper_z: {value: 238, provenance: derived, note: "lower_z + tier_clearance_min_mm + slide_rail_height_mm + frame_profile_size_mm + tray_panel_thickness_mm = 30 + 170 + 12 + 15 + 11"}
@@ -66,13 +66,13 @@ plotter_cameo5:
   mass_kg: {value: 5.2, provenance: verified, note: "TZ section 3 conservative mass; owner 2026-08-04 confirms ~5.1-5.2 kg — https://silhouetteamerica.freshdesk.com/support/solutions/articles/35000208584-cameo-machine-measurements"}
 
 trays:
-  lower_extension: {value: 250, provenance: verified, note: "TZ section 7 — minimum full extension, lower tray"}
-  lower_quick_access_extension_mm: {value: 130, provenance: verified, note: "Owner 2026-08-04 (D-033) — minimum tier-1 forward slide for quick access to load/unload film now that tier 2 is aligned directly above; distinct from and strictly less than full-service lower_extension (250 mm)"}
-  upper_extension: {value: 400, provenance: verified, note: "TZ section 7 — minimum full extension, upper tray"}
+  lower_extension: {value: 250, provenance: verified, note: "Owner D-049 — full-service extension restored to 250 mm on both tiers so plotter rear clears case front by the TZ 40 mm margin. Owner 2026-08-06 reconfirmed: keep the pull-out drawer, this value stays."}
+  lower_quick_access_extension_mm: {value: 130, provenance: verified, note: "Owner 2026-08-04 (D-033) — minimum tier-1 forward slide for quick access to load/unload film now that tier 2 is aligned directly above; distinct from and strictly less than full-service lower_extension (250 mm per D-049)"}
+  upper_extension: {value: 0, provenance: verified, note: "D-076, owner-confirmed 2026-08-07 (\"Да, все верно\") — upper tier fixed; access via DOOR-UPPER-001 open only (no slide-out). lower_extension stays 250 mm."}
   rated_load_kg: {value: 15, provenance: verified, note: "TZ section 7 — minimum slide rating per pair"}
   rated_load_preferred_kg: {value: 20, provenance: verified, note: "TZ section 7 — preferred slide rating per pair"}
   design_load_kg: {value: 10, provenance: verified, note: "TZ section 7 — design load per tray"}
-  front_overhang_min_mm: {value: 40, provenance: verified, note: "TZ section 7 — minimum protrusion past the front face in service position"}
+  front_overhang_min_mm: {value: 40, provenance: verified, note: "TZ section 7 — minimum rear-face protrusion past case front in full service position: plotter.lower_y+physical_depth−extension ≤ −40. Satisfied at extension=250 mm with lower_y=15 and physical_depth=195 (rear Y=−40 mm). Enforced by PARAM-015; PARAM-016 additionally requires front face ≤ 0."}
   deflection_max_mm: {value: 1.5, provenance: verified, note: "TZ section 7 and 17 — max deflection under design_load_kg"}
   slide_rail_width_mm: {value: 45, provenance: to_measure, note: "TZ section 7 — full-extension slide pair cross-section; hardware not yet selected"}
   slide_rail_height_mm: {value: 12, provenance: to_measure, note: "TZ section 7 — slide rail height; hardware not yet selected"}
@@ -96,9 +96,10 @@ film_storage_horizontal:
   min_stack_height_mm: {value: "TO_MEASURE", provenance: to_measure, note: "Real film stack height per shelf not yet measured on prototype"}
 
 media_path:
-  clear_width: {value: 330, provenance: verified, note: "TZ section 7 — minimum clear width"}
-  clear_height_min: {value: 12, provenance: verified, note: "TZ section 7 — minimum clear slot height"}
-  slot_height_target: {value: 18, provenance: verified, note: "TZ section 7 — target slot height with soft brush"}
+  clear_width: {value: 450, provenance: verified, note: "TZ section 7 minimum 330 mm; owner 2026-08-05 override widens to 450 mm for the rear film-exit channel (also widens both L1/L2 rear-panel through-cuts, which share this same leaf) — see D-046."}
+  clear_height_min: {value: 10, provenance: verified, note: "Reverted to D-046 value 2026-08-06 — owner rejected the 140 mm widened rear opening as too large; back to the original narrow film-exit slot."}
+  slot_height_target: {value: 10, provenance: verified, note: "Reverted to D-046 value 2026-08-06 — owner rejected the 140 mm widened rear opening as too large; back to the original narrow film-exit slot (450x10 mm channel)."}
+  rear_channel_edge_break_radius_mm: {value: 1, provenance: verified, note: "TZ:472 — minimum safe radius R1 on cut edges; applied on the rear film-exit aperture rim (both PANEL-OUT-REAR-001 and PANEL-IN-REAR-001) so the cut edge cannot cut film — preserves the edge-guard's original protective intent without a solid blocking the 10 mm channel. Owner 2026-08-05, D-046."}
   primary_length: {value: 500, provenance: verified, note: "TZ section 7 (matches film_storage_horizontal.sheet_depth_mm)"}
   long_mat_length: {value: 610, provenance: verified, note: "TZ section 7"}
   test_body_primary:
@@ -168,44 +169,139 @@ hardware:
   handle_grip_length_mm: {value: 110, provenance: verified, note: "TZ:304 — minimum grip length"}
   handle_grip_depth_mm: {value: 35, provenance: verified, note: "TZ:304 — minimum grip depth"}
   handle_cutout_edge_radius_mm: {value: 2.5, provenance: verified, note: "TZ:472 minimum safe cut-edge radius is R1; 2.5 mm chosen for the hand-contact handle cutout edge break (ergonomic margin above the R1 floor)"}
-  handle_mount_y_mm: {value: 100, provenance: derived, note: "Front grip centre Y=100 → band [45,155] mm; clears frame posts Y≤40 and organizer Z≥423; EQUIP-/ENV- bodies are excluded from the handle sightline check by design (test_handle_cutout_sightline_clear); tier 2 front Y moved to 15 mm (D-033) does not change this — the check never depended on plotter Y"}
-  handle_mount_z_mm: {value: 276.5, provenance: derived, note: "Side-panel centre Z=(foot_height_mm+case.height)/2=(9+544)/2=276.5 mm; owner 2026-08-04 override of TZ line 235 CoM placement (D-030). Loaded-case indicative CoM z≈229.5 mm (case+2 plotters, rev9 mass-report model) → handle +47 mm above CoM; empty-case CoM z≈236.9 mm → +40 mm"}
+  handle_mount_y_mm: {value: 179.8, provenance: derived, note: "Indicative loaded-case CoM Y — must track live recomputation within tolerance.part_assembly_feature_mm (test_handle_mount_y_at_loaded_com). D-074 retune after FIX-WAVE-003 post/service-volume/display mass delta (was 185.9 mm at D-063). D-051 balance-point carry intent unchanged."}
+  handle_mount_z_mm: {value: 252, provenance: derived, note: "Lowest sightline-feasible Z=plotter.upper_z+trays.slide_rail_height_mm+2=238+12+2=252 mm → grip band [234.5,269.5] mm; owner 2026-08-05 lowers grip toward service-port/cable Z=120 band (D-050). Z=218–220 mm clears tier-1/tier-2 plotter finger envelopes but fails test_handle_cutout_sightline_clear (PANEL-IN-MID-001 / upper-tray cladding). Loaded-case indicative CoM z≈227.5 mm → handle +24.5 mm above CoM. Supersedes side-panel centre Z=276.5 mm (D-030, TZ line 235)."}
   service_port_cutout_width_mm: {value: 16, provenance: to_measure, note: "PROVISIONAL panel-mount USB-A coupler body cutout width; connector type NOT decided — do not use for production DXF"}
   service_port_cutout_height_mm: {value: 8, provenance: to_measure, note: "PROVISIONAL panel-mount USB-A coupler body cutout height; VERIFY connector selection before production DXF"}
-  service_port_mount_y_mm: {value: 275, provenance: derived, note: "Y from case front (Y=0); mid-depth on exterior right side slab — reachable from operator front-right for USB cable (panels.py reads this for cutout centre)"}
-  service_port_mount_z_mm: {value: 120, provenance: derived, note: "Lower-mid right panel band above feet; clears plotter tier envelopes and handle cutout at Z=276.5"}
+  service_port_mount_y_mm: {value: 275, provenance: derived, note: "Y from case front (Y=0); rear of balance-point handle grip band with ≥12 mm margin to 16×8 mm cutout. D-055 retune: grip at CoM Y=187.6 mm → band [132.6,242.6] mm; port centre 275 → aft margin ≈24.4 mm (supersedes D-051 margin ≈46.3 mm at Y=165.7). Z unchanged at 120 — stays paired with cable entry."}
+  service_port_mount_z_mm: {value: 120, provenance: derived, note: "Lower-mid right panel band above feet; paired with cable_passthrough_mount_z_mm(120). Clears depth-centred handle cutout at Z=252 (D-050); superseded note citing handle Z=276.5."}
+  cable_passthrough_mount_y_mm: {value: 320, provenance: derived, note: "Y from case front (Y=0); offset +45 mm from hardware.service_port_mount_y_mm(275) — reverted from 330 mm with service port after D-051 grip moved to CoM Y=165.7 (D-050 aft-shift no longer needed). Keeps Ø30 cable opening next to USB port per D-047."}
+  cable_passthrough_mount_z_mm: {value: 120, provenance: derived, note: "Same Z band as hardware.service_port_mount_z_mm(120) — lower-mid right panel, paired USB/cable band; clears depth-centred handle at Z=252 (D-050). Owner 2026-08-05, D-047."}
   foot_diameter_mm: {value: 30, provenance: verified, note: "TZ:224,300 — minimum foot diameter"}
   vent_slot_count: {value: 5, provenance: to_measure, note: "TZ line 290 — passive rear ventilation; slot count not specified in TZ"}
   vent_slot_width_mm: {value: 80, provenance: to_measure, note: "TZ line 290 — provisional rear vent slot width; measure on prototype grille"}
   vent_slot_height_mm: {value: 8, provenance: to_measure, note: "TZ line 290 — provisional rear vent slot height; measure on prototype grille"}
   vent_slot_pitch_mm: {value: 12, provenance: to_measure, note: "TZ line 290 — provisional spacing between rear vent slots"}
   vent_band_z_mm: {value: 45, provenance: to_measure, note: "Provisional Z center of rear vent row above feet; TZ mandates rear/bottom ventilation but gives no slot coordinates"}
-  cable_passthrough_diameter_mm: {value: 30, provenance: to_measure, note: "PROVISIONAL cable pass-through opening diameter for a plain extension-cord cable/plug end — owner 2026-08-04 override of TZ section 10's certified rear mains inlet with retention/strain relief (D-036): a simple grommeted hole suffices for the prototype; owner plugs plotters/lighting into an extension cord/power strip inside the case himself. Chosen in the 25-35 mm range, generous enough for a common Schuko/Europlug body; exact cord/plug not measured — VERIFY before production DXF (docs/10_USER_INPUT_REQUIRED.md)."}
+  cable_passthrough_diameter_mm: {value: 30, provenance: to_measure, note: "PROVISIONAL cable pass-through opening diameter for a plain extension-cord cable/plug end — owner 2026-08-04 override of TZ section 10's certified rear mains inlet with retention/strain relief (D-036): a simple grommeted hole suffices for the prototype; owner plugs plotters/lighting into an extension cord/power strip inside the case himself. Chosen in the 25-35 mm range, generous enough for a common Schuko/Europlug body; exact cord/plug not measured — VERIFY before production DXF (docs/10_USER_INPUT_REQUIRED.md). Relocated from rear-centred to right-side placement 2026-08-05 (D-047) — dimensions unchanged."}
+  corner_bracket_leg_mm: {value: 20, provenance: verified, note: "D-061 weld-free campaign — nominal stamped/cut aluminium L-bracket leg length for 15×15×1.5 angle frame (too thin to weld per D-060); manufacturer may counter-propose equivalent gusset stock"}
+  corner_bracket_thickness_mm: {value: 2, provenance: verified, note: "D-061 — bracket plate thickness; 5052-H32 or equivalent"}
+  fastener_m4_nominal_diameter_mm: {value: 4, provenance: verified, note: "D-061 — primary frame/bracket machine-screw size"}
+  fastener_m4_pan_head_length_mm: {value: 12, provenance: to_measure, note: "D-061 — nominal M4×12 pan-head stack through 20×2 bracket + 1.5 mm angle leg; VERIFY grip length on prototype before production DXF"}
+  fastener_m4_install_torque_nm: {value: "TO_MEASURE", provenance: to_measure, note: "D-061 — rivnut/insert torque per manufacturer datasheet after bracket stack-up measured"}
+  fastener_m3_nominal_diameter_mm: {value: 3, provenance: verified, note: "D-061 — inner-panel and light-gauge PMMA screw size where M4 would risk breakout in 3 mm opal skin"}
+  fastener_m3_pan_head_length_mm: {value: 10, provenance: to_measure, note: "D-061 — nominal M3×10 into frame angle from cavity side; VERIFY on prototype"}
+  fastener_m3_install_torque_nm: {value: "TO_MEASURE", provenance: to_measure, note: "D-061 — PMMA breakout limit; measure on scrap before production"}
+  fastener_panel_pitch_mm: {value: 150, provenance: derived, note: "D-061 — nominal screw spacing along panel-to-frame edges (~150 mm); manufacturer DFM may revise"}
+  fastener_slide_mount_pitch_mm: {value: "TO_MEASURE", provenance: to_measure, note: "D-061 — slide-rail manufacturer hole pattern; not selected yet (trays.slide_rail_* still to_measure)"}
+
+stacking:
+  cap_plate_size_mm: {value: 40, provenance: derived, note: "STACK-001 — case.corner_radius(25)+materials.frame_profile_size_mm(15); covers post L envelope and bridges hollow quadrant under stacked FOOT-*"}
+  cap_thickness_mm: {value: 8, provenance: to_measure, note: "STACK-001 — solid Al bearing plate on case top (cycle-2: 6→8 mm for 5.5 mm recess floor over L-notch); VERIFY compressive stack-up on prototype before production DXF"}
+  foot_recess_depth_mm: {value: 2.5, provenance: to_measure, note: "STACK-001 — shallow registration pocket depth for stacked unit FOOT-*; shallow enough to avoid dirt trap"}
+  foot_recess_clearance_mm: {value: 0.75, provenance: to_measure, note: "STACK-001 — diametral clearance ADDED to hardware.foot_diameter_mm(30) → recess Ø30.75 mm so Ø30 FOOT-* seats without bind"}
+  notch_boss_depth_mm: {value: 0, provenance: verified, note: "Disabled cycle-2 — organizer clear volume z extends to case.height(529); downward plug encroaches ~4800 mm³ at FL corner. Bearing via 8 mm plate floor (5.5 mm over recess) instead"}
+
+joints:
+  JT-FRAME-CORNER:
+    joint_type_id: {value: JT-FRAME-CORNER, provenance: verified, note: "FRAME-POST-{FL,FR,RL,RR}-001 ↔ FRAME-RAIL-{BASE,ORG,TOP}-* at corner nodes (D-075 post-primary; rail-to-rail bracket mating remains supplementary valid at same nodes)"}
+    part_a_pattern: {value: "FRAME-POST-*", provenance: verified, note: "Four corner posts restored D-075 — primary vertical load path"}
+    part_b_pattern: {value: "FRAME-RAIL-{BASE,ORG,TOP}-*", provenance: verified, note: "Perimeter ring rails at corner nodes; supplementary rail↔rail bracket pattern may also apply"}
+    method: {value: "20×20×2 mm Al corner bracket + 1×M4 pan-head into M4 rivnut per bracket leg (post leg + rail leg per node)", provenance: to_measure, note: "D-075 restores post-primary JT-FRAME-CORNER; dual post+bracket scheme documented in docs/15. Bracket hole positions to_measure on prototype."}
+    fastener_type: {value: M4_pan_head_machine_screw, provenance: verified, note: "Uses hardware.fastener_m4_* leaves"}
+    fastener_size: {value: M4, provenance: verified, note: "hardware.fastener_m4_nominal_diameter_mm"}
+    qty_per_joint: {value: 2, provenance: to_measure, note: "D-075: 1 M4 bracket-to-post + 1 M4 bracket-to-rail per corner node (supplementary rail↔rail legs may add fasteners at same node)"}
+    length_leaf: {value: hardware.fastener_m4_pan_head_length_mm, provenance: derived, note: "Pointer to nominal length leaf"}
+    torque_leaf: {value: hardware.fastener_m4_install_torque_nm, provenance: derived, note: "Pointer to torque leaf (to_measure)"}
+  JT-TRAY-RAIL-FRAME:
+    joint_type_id: {value: JT-TRAY-RAIL-FRAME, provenance: verified, note: "FRAME-RAIL-TRAY-{LOWER,UPPER}-{L,C,R}-001 rail-end nodes"}
+    part_a_pattern: {value: "FRAME-RAIL-TRAY-*", provenance: verified, note: "Six tray ring rails (lower + upper × L/C/R)"}
+    part_b_pattern: {value: "FRAME-RAIL-BASE-*|FRAME-RAIL-TRAY-*|FRAME-POST-*", provenance: verified, note: "Tray rail ends mate to adjacent tray/base perimeter rails and corner posts (D-075 posts restored)"}
+    method: {value: "20×20×2 mm Al corner bracket + 1×M4 pan-head per leg (same D-063 schedule as JT-FRAME-CORNER)", provenance: to_measure, note: "Separated from JT-FRAME-CORNER for assembly/JOIN-001 clarity; identical bracket/fastener stack. Bracket hole positions to_measure on prototype."}
+    fastener_type: {value: M4_pan_head_machine_screw, provenance: verified, note: "Uses hardware.fastener_m4_* leaves"}
+    fastener_size: {value: M4, provenance: verified, note: "hardware.fastener_m4_nominal_diameter_mm"}
+    qty_per_joint: {value: 2, provenance: to_measure, note: "1 M4 bracket-to-tray-rail + 1 M4 bracket-to-mating rail per node (D-070)"}
+    length_leaf: {value: hardware.fastener_m4_pan_head_length_mm, provenance: derived, note: ""}
+    torque_leaf: {value: hardware.fastener_m4_install_torque_nm, provenance: derived, note: ""}
+  JT-PANEL-OUTER-FRAME:
+    joint_type_id: {value: JT-PANEL-OUTER-FRAME, provenance: verified, note: "PANEL-OUT-{LEFT,RIGHT,REAR}-001 ↔ frame posts/rails"}
+    part_a_pattern: {value: "PANEL-OUT-*", provenance: verified, note: "Outer opal PMMA cavity walls — 3 mm skin not primary load path"}
+    part_b_pattern: {value: "FRAME-RAIL-*|FRAME-POST-*", provenance: verified, note: "Screw from cavity/inside into aluminium frame posts/rails (D-075 posts restored)"}
+    method: {value: "M4 pan-head from cavity into frame rivnut — mechanical only (D-065 / owner 2026-08-06 adhesive-free)", provenance: verified, note: "D-061/D-065 — install outer side slabs last or via temporary access openings; ~150 mm pitch along edges"}
+    fastener_type: {value: M4_pan_head_machine_screw, provenance: verified, note: "Uses hardware.fastener_m4_*"}
+    fastener_size: {value: M4, provenance: verified, note: "hardware.fastener_m4_nominal_diameter_mm"}
+    qty_per_joint: {value: 1, provenance: verified, note: "Per screw station along panel edge at hardware.fastener_panel_pitch_mm spacing"}
+    length_leaf: {value: hardware.fastener_m4_pan_head_length_mm, provenance: derived, note: ""}
+    torque_leaf: {value: hardware.fastener_m4_install_torque_nm, provenance: derived, note: ""}
+  JT-PANEL-INNER-FRAME:
+    joint_type_id: {value: JT-PANEL-INNER-FRAME, provenance: verified, note: "PANEL-IN-* ↔ frame / tray rails"}
+    part_a_pattern: {value: "PANEL-IN-*", provenance: verified, note: "Inner white-composite panels"}
+    part_b_pattern: {value: "FRAME-RAIL-*|FRAME-POST-*", provenance: verified, note: "Mechanical screw from service side before outer skins close access (D-075 posts restored)"}
+    method: {value: "M3 pan-head into frame angle from inside cavity", provenance: verified, note: "D-061 — lighter gauge to reduce PMMA/composite breakout risk on adjacent outer skin"}
+    fastener_type: {value: M3_pan_head_machine_screw, provenance: verified, note: "Uses hardware.fastener_m3_*"}
+    fastener_size: {value: M3, provenance: verified, note: "hardware.fastener_m3_nominal_diameter_mm"}
+    qty_per_joint: {value: 1, provenance: verified, note: "Per screw station at ~150 mm pitch along panel perimeter"}
+    length_leaf: {value: hardware.fastener_m3_pan_head_length_mm, provenance: derived, note: ""}
+    torque_leaf: {value: hardware.fastener_m3_install_torque_nm, provenance: derived, note: ""}
+  JT-TRAY-SLIDE-FRAME:
+    joint_type_id: {value: JT-TRAY-SLIDE-FRAME, provenance: verified, note: "SLIDE-{LOWER,UPPER}-{LEFT,RIGHT,CENTER}-001 ↔ FRAME-RAIL-TRAY-*"}
+    part_a_pattern: {value: "SLIDE-*", provenance: verified, note: "Full-extension drawer slides (hardware not selected)"}
+    part_b_pattern: {value: "FRAME-RAIL-TRAY-*", provenance: verified, note: "Tray ring rails"}
+    method: {value: "M4 machine screws per slide manufacturer hole pattern", provenance: verified, note: "Pitch to_measure until slide part number chosen"}
+    fastener_type: {value: M4_pan_head_machine_screw, provenance: verified, note: "Uses hardware.fastener_m4_*"}
+    fastener_size: {value: M4, provenance: verified, note: "hardware.fastener_m4_nominal_diameter_mm"}
+    qty_per_joint: {value: 1, provenance: verified, note: "Per slide mounting hole (count from datasheet when selected)"}
+    length_leaf: {value: hardware.fastener_m4_pan_head_length_mm, provenance: derived, note: ""}
+    torque_leaf: {value: hardware.fastener_m4_install_torque_nm, provenance: derived, note: ""}
+  JT-SHELF-SUPPORT-SKIN:
+    joint_type_id: {value: JT-SHELF-SUPPORT-SKIN, provenance: verified, note: "SHELF-SUPPORT-* ↔ PANEL-OUT-{LEFT,RIGHT}-001 + SHELF-* bearing"}
+    part_a_pattern: {value: "SHELF-SUPPORT-*", provenance: derived, note: "15×15×1.5 mm Al L-angle in cavity X-band (D-065 c2); vertical leg hosts M4 rivnuts"}
+    part_b_pattern: {value: "PANEL-OUT-{LEFT,RIGHT}-001|SHELF-*", provenance: verified, note: "Vertical leg against skin inner face; horizontal leg bears shelf edge"}
+    method: {value: "3×M4×12 pan-head into M4 rivnuts in Al cleat vertical leg — front/mid/rear along Y at ~150 mm pitch over film clear_depth; no adhesive (D-065 / owner 2026-08-06)", provenance: derived, note: "Method decided; L-angle host plausible (D-065 c2); rivnut hole positions / grip length to_measure on prototype"}
+    fastener_type: {value: M4_pan_head_machine_screw, provenance: verified, note: "Uses hardware.fastener_m4_*"}
+    fastener_size: {value: M4, provenance: verified, note: "hardware.fastener_m4_nominal_diameter_mm"}
+    qty_per_joint: {value: 3, provenance: derived, note: "Three screws per cleat (front / mid / rear along Y); pitch ≈ hardware.fastener_panel_pitch_mm (150 mm) over 330 mm clear depth"}
+    length_leaf: {value: hardware.fastener_m4_pan_head_length_mm, provenance: derived, note: ""}
+    torque_leaf: {value: hardware.fastener_m4_install_torque_nm, provenance: derived, note: ""}
+  JT-STACK-CAP-POST:
+    joint_type_id: {value: JT-STACK-CAP-POST, provenance: verified, note: "STACK-001 — STACK-CAP-{FL,FR,RL,RR}-001 ↔ FRAME-POST-* tops + supplementary top-ring/panel bearing (D-075 post-primary)"}
+    part_a_pattern: {value: "STACK-CAP-*", provenance: verified, note: "Four corner stacking caps (CONCEPT solid plate geometry)"}
+    part_b_pattern: {value: "FRAME-POST-*|FRAME-RAIL-TOP-*|PANEL-OUT-{LEFT,RIGHT,REAR}-001", provenance: verified, note: "Post tops primary; top ring rails and side/rear skins supplementary bearing nodes"}
+    method: {value: "M4×12 pan-head into M4 rivnut — 1 screw per cap leg (qty/joint=2); cap hole positions to_measure on prototype", provenance: to_measure, note: "D-075: rivnuts in post tops / top rails / cap plate; post-primary load path restored. Screw positions not modeled in STEP."}
+    fastener_type: {value: M4_pan_head_machine_screw, provenance: verified, note: "Uses hardware.fastener_m4_* leaves"}
+    fastener_size: {value: M4, provenance: verified, note: "hardware.fastener_m4_nominal_diameter_mm"}
+    qty_per_joint: {value: 2, provenance: verified, note: "1 M4 cap-to-leg_h + 1 M4 cap-to-leg_v per corner (D-063 buildability schedule)"}
+    length_leaf: {value: hardware.fastener_m4_pan_head_length_mm, provenance: derived, note: ""}
+    torque_leaf: {value: hardware.fastener_m4_install_torque_nm, provenance: derived, note: ""}
+  JT-HANDLE-HARDWARE:
+    joint_type_id: {value: JT-HANDLE-HARDWARE, provenance: verified, note: "Handle ↔ PANEL-OUT-RIGHT-001 — OWNER OPEN §F"}
+    part_a_pattern: {value: "PANEL-OUT-RIGHT-001", provenance: verified, note: "Side slab through-cut only in current geometry"}
+    part_b_pattern: {value: "HANDLE-HARDWARE-*", provenance: verified, note: "No bolt-on handle spec decided — docs/10 §F"}
+    method: {value: "Provisional through-cut grip only — no decided bolt-on hardware", provenance: verified, note: "D-061 — do not quote as decided; owner must choose external handle / pocket / aft cutout"}
+    fastener_type: {value: none, provenance: verified, note: "N/A until handle concept closed"}
+    fastener_size: {value: none, provenance: verified, note: "N/A"}
+    qty_per_joint: {value: 0, provenance: verified, note: "No fasteners specified"}
+    length_leaf: {value: none, provenance: derived, note: ""}
+    torque_leaf: {value: none, provenance: derived, note: ""}
 
 top_structure:
-  height_mm: {value: 15, provenance: verified, note: "TZ section 5 — top structure band height (was z_max-z_min at 690 mm envelope)"}
+  height_mm: {value: 0, provenance: verified, note: "Owner 2026-08-06: was 15 mm (TZ section 5 legacy value from the old 690 mm envelope), zeroed because no part ever filled that band — see case.height note. If a future lid/top-cover design needs headroom here, reintroduce a non-zero value tied to that part, not a bare allowance."}
   z_min_mm: {value: 529, provenance: derived, note: "film_storage_horizontal.z + shelf_stack_height_mm = 423 + 106"}
-  z_max_mm: {value: 544, provenance: derived, note: "z_min_mm + height_mm = case.height"}
+  z_max_mm: {value: 529, provenance: derived, note: "z_min_mm + height_mm = case.height"}
 
 interlock:
-  shuttle_travel_mm: {value: 75, provenance: derived, note: "Half the Z gap between lower and upper slide zones minus slide_rail_height_mm; recomputed in Parameters.interlock_shuttle_travel_mm"}
+  shuttle_travel_mm: {value: 98, provenance: derived, note: "This leaf is not read by geometry — Parameters.interlock_shuttle_travel_mm recomputes it live from plotter.lower_z/upper_z/trays.slide_rail_height_mm/etc; the stored value here is kept in sync manually for human readability only and has no functional effect."}
   tab_engagement_mm: {value: 3, provenance: derived, note: "6 × tolerance.part_assembly_feature_mm (0.5 mm); tab protrusion into shuttle channel"}
   shuttle_channel_width_mm: {value: 12, provenance: derived, note: "4 × tab_engagement_mm; compact captive-channel cross-section for INTERLOCK-SHUTTLE-001"}
 
 services:
-  svc_insert_width_mm: {value: 340, provenance: derived, note: "media_path.clear_width + margin for replaceable rear feed-slot insert"}
-  svc_insert_height_mm: {value: 18, provenance: derived, note: "Equals media_path.slot_height_target for concept geometry"}
-  svc_insert_thickness_mm: {value: 3.5, provenance: derived, note: "Matches materials.inner_panel_thickness_mm"}
-  edgeguard_depth_mm: {value: 15, provenance: to_measure, note: "Provisional soft brush/radius trim depth at media-path slot edges"}
-  edgeguard_height_mm: {value: 18, provenance: derived, note: "Equals media_path.slot_height_target"}
-  rearsupport_depth_mm: {value: 80, provenance: to_measure, note: "Provisional foldable rear support span for long material"}
-  rearsupport_height_mm: {value: 12, provenance: derived, note: "Equals media_path.clear_height_min"}
-  cover_svc_thickness_mm: {value: 3.5, provenance: derived, note: "Rear/bottom service cover panel thickness (panel height; no separate vertical extent leaf); matches materials.inner_panel_thickness_mm (3.5 mm), same panel-thickness reuse as services.svc_insert_thickness_mm"}
+  cover_svc_thickness_mm: {value: 3.5, provenance: derived, note: "Rear/bottom service cover panel thickness (panel height; no separate vertical extent leaf); matches materials.inner_panel_thickness_mm (3.5 mm)"}
   mains_inlet_width_mm: {value: 60, provenance: to_measure, note: "Provisional mains inlet hardware volume width"}
   mains_inlet_height_mm: {value: 40, provenance: to_measure, note: "Provisional mains inlet hardware volume height"}
   mains_inlet_depth_mm: {value: 35, provenance: to_measure, note: "Provisional mains inlet protrusion depth from rear panel"}
-  cable_passthrough_edge_break_radius_mm: {value: 1, provenance: verified, note: "TZ:472 — minimum safe radius R1 on cut edges; applied as a 1 mm chamfer on the SVC-CABLE-PASSTHROUGH-001 grommet bore rim so the cut edge does not cut the cable's insulation. Verified per TZ line 472 R1 spec, not a guess."}
-  cable_passthrough_grommet_wall_mm: {value: 2, provenance: to_measure, note: "PROVISIONAL silicone grommet wall thickness; SVC-CABLE-PASSTHROUGH-001 bore diameter = cable_passthrough_diameter_mm − 2×wall = 26 mm clear cable passage; grommet hardware not yet selected — VERIFY before production DXF."}
+  cable_passthrough_edge_break_radius_mm: {value: 1, provenance: verified, note: "TZ:472 — minimum safe radius R1 on cut edges; applied as a 1 mm chamfer on the SVC-CABLE-PASSTHROUGH-001 grommet bore rim so the cut edge does not cut the cable's insulation. Verified per TZ line 472 R1 spec, not a guess. Relocated from rear-centred to right-side placement 2026-08-05 (D-047) — dimensions unchanged."}
+  service_port_edge_break_radius_mm: {value: 1, provenance: verified, note: "TZ:472 R1 minimum safe cut-edge radius on USB service-port cutout (PANEL-OUT-RIGHT-001); matches cable_passthrough_edge_break practice; cutout size remains to_measure"}
+  cable_passthrough_grommet_wall_mm: {value: 2, provenance: to_measure, note: "PROVISIONAL silicone grommet wall thickness; SVC-CABLE-PASSTHROUGH-001 bore diameter = cable_passthrough_diameter_mm − 2×wall = 26 mm clear cable passage; grommet hardware not yet selected — VERIFY before production DXF. Relocated from rear-centred to right-side placement 2026-08-05 (D-047) — dimensions unchanged."}
   light_strip_length_mm: {value: 600, provenance: to_measure, note: "Provisional RGBW COB strip + heat-sink run length"}
   light_strip_width_mm: {value: 12, provenance: to_measure, note: "Provisional COB strip + aluminium heat-sink cross-section width"}
   light_strip_height_mm: {value: 8, provenance: to_measure, note: "Provisional COB strip + heat-sink cross-section height"}

@@ -1,6 +1,11 @@
 """Fail-closed loader and validation for config/parameters.yaml.
 
-This module deliberately has no CAD dependency so parameter gates can be tested quickly.
+YAML loading, schema validation, and the bulk of ``validate_parameters`` have no CAD
+dependency and stay fast. The exception is ``computed_handle_mount_y_mm`` (and therefore
+the ``PARAM-017`` handle-Y check that calls it): it lazily imports and builds the full
+transport CAD assembly to compute an indicative loaded centre-of-mass — see that
+property's docstring for why.
+
 Derived quantities (shelf_stack_height_mm, tier clearances, case.height consistency) are
 computed on access from verified leaves — never stored as stale hardcoded YAML values.
 
@@ -22,7 +27,7 @@ PROVENANCE_VALUES = frozenset({"verified", "derived", "to_measure"})
 
 # Acceptance-criteria thresholds (see config/parameters.yaml notes).
 REQUIRED_CASE_WIDTH_MM = 650  # TZ section 4 — not flexible per owner 2026-08-04
-CASE_DEPTH_TARGET_MM = 550  # TZ section 4 target; tolerance below
+CASE_DEPTH_TARGET_MM = 420  # Owner 2026-08-05 override (D-045); supersedes TZ 550 mm target
 REQUIRED_UPPER_SETBACK_MM = 0  # D-033 — tiers aligned; supersedes 130 mm (D-029) and TZ 150 mm
 MIN_LOWER_QUICK_ACCESS_EXTENSION_MM = 130  # D-033 — minimum tier-1 quick-access forward slide
 HORIZONTAL_ORGANIZER_CLEAR_MIN_MM = (610, 330, 100)  # width, depth, stack height (4×25 mm)
@@ -44,6 +49,8 @@ PARAMETER_GROUPS = (
     "stability",
     "mass_targets",
     "hardware",
+    "stacking",
+    "joints",
     "top_structure",
     "interlock",
     "services",
@@ -178,6 +185,18 @@ class Parameters:
             return float(self.value("plotter_cameo5.mass_kg"))
         raise ValueError("plotter index must be 1 or 2")
 
+    def plotter_height_mm(self, index: int) -> float:
+        """Per-slot body height — slot 1 Cameo 4 (170 mm), slot 2 Cameo 5 (124 mm).
+
+        Tier design envelopes still use ``tier_envelope_height_mm`` (governing Cameo 4 height)
+        so either machine can occupy either slot; only the actual EQUIP-PLOTTERn solid uses this.
+        """
+        if index == 1:
+            return float(self.value("plotter_cameo4.height_mm"))
+        if index == 2:
+            return float(self.value("plotter_cameo5.height_mm"))
+        raise ValueError("plotter index must be 1 or 2")
+
     def plotter_y_front_mm(self, index: int, *, tray_extension_mm: float = 0.0) -> float:
         """Plotter front face Y after optional tray extension (negative dy = forward)."""
         prefix = "lower" if index == 1 else "upper"
@@ -225,10 +244,41 @@ class Parameters:
 
     @property
     def side_panel_centre_z_mm(self) -> float:
-        """Handle mount Z — side panel vertical centre from foot top to case height."""
+        """Side panel vertical centre from foot top to case height (D-030 legacy reference)."""
         foot_h = float(self.value("materials.foot_height_mm"))
         height = float(self.value("case.height"))
         return (foot_h + height) / 2
+
+    @property
+    def computed_geometric_depth_centre_y_mm(self) -> float:
+        """Geometric case depth centre from front face (Y=0); legacy D-050 reference."""
+        return float(self.value("case.depth")) / 2.0
+
+    @property
+    def computed_handle_mount_y_mm(self) -> float:
+        """Handle mount Y — indicative loaded-case CoM Y for level carry (D-051).
+
+        Recomputed from live transport mass model; stored ``hardware.handle_mount_y_mm``
+        must track within ``tolerance.part_assembly_feature_mm`` (see
+        ``test_handle_mount_y_at_loaded_com``). Not derived live at build time because
+        the through-cutout removes material and would create a circular dependency if
+        the handle position fed back into the same assembly's mass centroid.
+        """
+        from stand_cad.geometry.analysis import indicative_loaded_case_com_y_mm
+
+        return indicative_loaded_case_com_y_mm(self)
+
+    @property
+    def computed_handle_mount_z_mm(self) -> float:
+        """Handle mount Z — lowest sightline-feasible band at depth-centred Y.
+
+        ``upper_z + slide_rail_height_mm + 2 mm`` clears tier-2 tray cladding and
+        ``PANEL-IN-MID-001`` in the through-ray grid. Z=218–220 mm clears both plotter
+        finger envelopes but fails ``test_handle_cutout_sightline_clear``.
+        """
+        upper_z = float(self.value("plotter.upper_z"))
+        slide_h = float(self.value("trays.slide_rail_height_mm"))
+        return upper_z + slide_h + 2.0
 
     @property
     def envelope_offset_x_mm(self) -> float:
@@ -278,7 +328,7 @@ class Parameters:
         pz = float(self.value(f"plotter.{prefix}_z"))
         pw = float(self.value("plotter.physical_width"))
         pd = float(self.value("plotter.physical_depth"))
-        ph = float(self.value("plotter.physical_height"))
+        ph = self.plotter_height_mm(index)
         return (
             (px, px + pw),
             (py, py + pd),
@@ -341,6 +391,20 @@ def load_parameters(path: str | Path) -> Parameters:
     return Parameters(doc)
 
 
+def _required(
+    params: Parameters,
+    path: str,
+    issues: list[ValidationIssue],
+    *,
+    code: str = "PARAM-000",
+) -> Any:
+    try:
+        return params.value(path)
+    except KeyError:
+        issues.append(ValidationIssue("ERROR", code, f"{path}: required leaf is missing"))
+        return None
+
+
 def validate_parameters(
     params: Parameters,
     *,
@@ -358,8 +422,10 @@ def validate_parameters(
                 )
             )
 
-    shelf_count = params.value("film_storage_horizontal.shelf_count")
-    if (
+    shelf_count = _required(
+        params, "film_storage_horizontal.shelf_count", issues, code="PARAM-002"
+    )
+    if shelf_count is not None and (
         not isinstance(shelf_count, int)
         or isinstance(shelf_count, bool)
         or shelf_count != HORIZONTAL_SHELF_COUNT
@@ -372,9 +438,24 @@ def validate_parameters(
             )
         )
 
-    clear_width = params.value("film_storage_horizontal.clear_width")
-    clear_depth = params.value("film_storage_horizontal.clear_depth")
-    stack_h = params.horizontal_shelf_stack_height_mm
+    clear_width = _required(
+        params, "film_storage_horizontal.clear_width", issues, code="PARAM-005"
+    )
+    clear_depth = _required(
+        params, "film_storage_horizontal.clear_depth", issues, code="PARAM-005"
+    )
+    stack_h: float | None = None
+    if shelf_count is not None:
+        try:
+            stack_h = params.horizontal_shelf_stack_height_mm
+        except KeyError as exc:
+            issues.append(
+                ValidationIssue(
+                    "ERROR",
+                    "PARAM-000",
+                    f"{exc.args[0]}: required leaf is missing",
+                )
+            )
     min_clear_width, min_clear_depth, min_stack_h = HORIZONTAL_ORGANIZER_CLEAR_MIN_MM
     if (
         isinstance(clear_width, (int, float))
@@ -406,7 +487,7 @@ def validate_parameters(
                 ),
             )
         )
-    if stack_h < min_stack_h:
+    if stack_h is not None and stack_h < min_stack_h:
         issues.append(
             ValidationIssue(
                 "ERROR",
@@ -418,8 +499,8 @@ def validate_parameters(
             )
         )
 
-    case_width = params.value("case.width")
-    if case_width != REQUIRED_CASE_WIDTH_MM:
+    case_width = _required(params, "case.width", issues, code="PARAM-006")
+    if case_width is not None and case_width != REQUIRED_CASE_WIDTH_MM:
         issues.append(
             ValidationIssue(
                 "ERROR",
@@ -428,27 +509,41 @@ def validate_parameters(
             )
         )
 
-    case_depth = params.value("case.depth")
-    depth_tol = float(params.value("case.depth_tolerance_mm"))
+    case_depth = _required(params, "case.depth", issues, code="PARAM-006")
+    depth_tol_raw = _required(params, "case.depth_tolerance_mm", issues, code="PARAM-006")
     if (
-        isinstance(case_depth, (int, float))
+        case_depth is not None
+        and depth_tol_raw is not None
+        and isinstance(case_depth, (int, float))
         and not isinstance(case_depth, bool)
-        and abs(float(case_depth) - CASE_DEPTH_TARGET_MM) > depth_tol
     ):
-        issues.append(
-            ValidationIssue(
-                "ERROR",
-                "PARAM-006",
-                (
-                    f"case.depth ({case_depth}) must be within ±{depth_tol} mm of "
-                    f"{CASE_DEPTH_TARGET_MM} mm target"
-                ),
+        depth_tol = float(depth_tol_raw)
+        if abs(float(case_depth) - CASE_DEPTH_TARGET_MM) > depth_tol:
+            issues.append(
+                ValidationIssue(
+                    "ERROR",
+                    "PARAM-006",
+                    (
+                        f"case.depth ({case_depth}) must be within ±{depth_tol} mm of "
+                        f"{CASE_DEPTH_TARGET_MM} mm target"
+                    ),
+                )
             )
-        )
 
-    case_height = params.value("case.height")
-    computed_height = params.computed_case_height_mm
-    if case_height != computed_height:
+    case_height = _required(params, "case.height", issues, code="PARAM-006")
+    computed_height: float | None = None
+    if case_height is not None:
+        try:
+            computed_height = params.computed_case_height_mm
+        except KeyError as exc:
+            issues.append(
+                ValidationIssue(
+                    "ERROR",
+                    "PARAM-000",
+                    f"{exc.args[0]}: required leaf is missing",
+                )
+            )
+    if case_height is not None and computed_height is not None and case_height != computed_height:
         issues.append(
             ValidationIssue(
                 "ERROR",
@@ -460,8 +555,8 @@ def validate_parameters(
             )
         )
 
-    upper_setback = params.value("plotter.upper_setback")
-    if upper_setback != REQUIRED_UPPER_SETBACK_MM:
+    upper_setback = _required(params, "plotter.upper_setback", issues, code="PARAM-007")
+    if upper_setback is not None and upper_setback != REQUIRED_UPPER_SETBACK_MM:
         issues.append(
             ValidationIssue(
                 "ERROR",
@@ -473,9 +568,14 @@ def validate_parameters(
             )
         )
 
-    upper_y = params.value("plotter.upper_y")
-    lower_y = params.value("plotter.lower_y")
-    if upper_setback != upper_y - lower_y:
+    upper_y = _required(params, "plotter.upper_y", issues, code="PARAM-008")
+    lower_y = _required(params, "plotter.lower_y", issues, code="PARAM-008")
+    if (
+        upper_setback is not None
+        and upper_y is not None
+        and lower_y is not None
+        and upper_setback != upper_y - lower_y
+    ):
         coordinate_delta = upper_y - lower_y
         issues.append(
             ValidationIssue(
@@ -488,10 +588,13 @@ def validate_parameters(
             )
         )
 
-    quick_access_ext = params.value("trays.lower_quick_access_extension_mm")
-    lower_extension = params.value("trays.lower_extension")
+    quick_access_ext = _required(
+        params, "trays.lower_quick_access_extension_mm", issues, code="PARAM-013"
+    )
+    lower_extension = _required(params, "trays.lower_extension", issues, code="PARAM-014")
     if (
-        isinstance(quick_access_ext, (int, float))
+        quick_access_ext is not None
+        and isinstance(quick_access_ext, (int, float))
         and not isinstance(quick_access_ext, bool)
         and quick_access_ext < MIN_LOWER_QUICK_ACCESS_EXTENSION_MM
     ):
@@ -506,8 +609,10 @@ def validate_parameters(
             )
         )
     if (
-        isinstance(quick_access_ext, (int, float))
+        quick_access_ext is not None
+        and isinstance(quick_access_ext, (int, float))
         and not isinstance(quick_access_ext, bool)
+        and lower_extension is not None
         and isinstance(lower_extension, (int, float))
         and not isinstance(lower_extension, bool)
         and quick_access_ext >= lower_extension
@@ -523,33 +628,114 @@ def validate_parameters(
             )
         )
 
-    tier_min = float(params.value("plotter.tier_clearance_min_mm"))
-    if params.tier_clearance_lower_mm < tier_min:
-        issues.append(
-            ValidationIssue(
-                "ERROR",
-                "PARAM-012",
-                (
-                    f"lower tier clearance ({params.tier_clearance_lower_mm} mm) is below "
-                    f"{tier_min} mm minimum"
-                ),
-            )
-        )
-    if params.tier_clearance_upper_mm < tier_min:
-        issues.append(
-            ValidationIssue(
-                "ERROR",
-                "PARAM-012",
-                (
-                    f"upper tier clearance ({params.tier_clearance_upper_mm} mm) is below "
-                    f"{tier_min} mm minimum"
-                ),
-            )
-        )
+    overhang_min_raw = _required(params, "trays.front_overhang_min_mm", issues, code="PARAM-015")
+    physical_depth_raw = _required(params, "plotter.physical_depth", issues, code="PARAM-015")
+    if overhang_min_raw is not None and physical_depth_raw is not None:
+        overhang_min = float(overhang_min_raw)
+        physical_depth = float(physical_depth_raw)
+        for tier_label, ext_key, y_key in (
+            ("lower", "trays.lower_extension", "plotter.lower_y"),
+            ("upper", "trays.upper_extension", "plotter.upper_y"),
+        ):
+            extension = _required(params, ext_key, issues, code="PARAM-015")
+            tier_y_raw = _required(params, y_key, issues, code="PARAM-015")
+            if extension is None or tier_y_raw is None:
+                continue
+            tier_y = float(tier_y_raw)
+            if isinstance(extension, (int, float)) and not isinstance(extension, bool):
+                if tier_label == "upper" and float(extension) <= 0.0:
+                    continue  # D-076 — upper tier fixed; TZ overhang check N/A at zero travel
+                front_y = tier_y - float(extension)
+                rear_y = front_y + physical_depth
+                if rear_y > -overhang_min:
+                    issues.append(
+                        ValidationIssue(
+                            "ERROR",
+                            "PARAM-015",
+                            (
+                                f"{ext_key} ({extension}) leaves {tier_label}-tier plotter "
+                                f"rear at Y={rear_y:.1f} mm — must be ≤ "
+                                f"−{overhang_min:.0f} mm (TZ front_overhang_min_mm) "
+                                f"at full service extension"
+                            ),
+                        )
+                    )
+                # PARAM-016 is dominated by PARAM-015 under sane inputs: rear_y =
+                # front_y + physical_depth, so front_y > 0 always implies rear_y >
+                # physical_depth > -overhang_min. Retained as a clearer front-face message
+                # when both fire; it never triggers independently of PARAM-015.
+                if front_y > 0.0:
+                    issues.append(
+                        ValidationIssue(
+                            "ERROR",
+                            "PARAM-016",
+                            (
+                                f"{ext_key} ({extension}) leaves {tier_label}-tier plotter "
+                                f"front at Y={front_y:.1f} mm — must be ≤ 0 mm (clear of case "
+                                f"front) at full service extension"
+                            ),
+                        )
+                    )
 
-    divider_thickness = params.value("film_storage_horizontal.divider_thickness")
-    materials_divider = params.value("materials.divider_thickness_mm")
-    if divider_thickness != materials_divider:
+    tier_min_raw = _required(params, "plotter.tier_clearance_min_mm", issues, code="PARAM-012")
+    if tier_min_raw is not None:
+        tier_min = float(tier_min_raw)
+        try:
+            tier_clearance_lower = params.tier_clearance_lower_mm
+        except KeyError as exc:
+            issues.append(
+                ValidationIssue(
+                    "ERROR",
+                    "PARAM-000",
+                    f"{exc.args[0]}: required leaf is missing",
+                )
+            )
+        else:
+            if tier_clearance_lower < tier_min:
+                issues.append(
+                    ValidationIssue(
+                        "ERROR",
+                        "PARAM-012",
+                        (
+                            f"lower tier clearance ({tier_clearance_lower} mm) is below "
+                            f"{tier_min} mm minimum"
+                        ),
+                    )
+                )
+        try:
+            tier_clearance_upper = params.tier_clearance_upper_mm
+        except KeyError as exc:
+            issues.append(
+                ValidationIssue(
+                    "ERROR",
+                    "PARAM-000",
+                    f"{exc.args[0]}: required leaf is missing",
+                )
+            )
+        else:
+            if tier_clearance_upper < tier_min:
+                issues.append(
+                    ValidationIssue(
+                        "ERROR",
+                        "PARAM-012",
+                        (
+                            f"upper tier clearance ({tier_clearance_upper} mm) is below "
+                            f"{tier_min} mm minimum"
+                        ),
+                    )
+                )
+
+    divider_thickness = _required(
+        params, "film_storage_horizontal.divider_thickness", issues, code="PARAM-010"
+    )
+    materials_divider = _required(
+        params, "materials.divider_thickness_mm", issues, code="PARAM-010"
+    )
+    if (
+        divider_thickness is not None
+        and materials_divider is not None
+        and divider_thickness != materials_divider
+    ):
         issues.append(
             ValidationIssue(
                 "ERROR",
@@ -561,9 +747,35 @@ def validate_parameters(
             )
         )
 
-    max_load = params.value("film_storage_horizontal.max_load_kg")
-    marked_limit = params.value("mass_targets.film_marked_limit_kg")
-    if max_load != marked_limit:
+    try:
+        slot_height = params.value("media_path.slot_height_target")
+        clear_height_min = params.value("media_path.clear_height_min")
+    except KeyError:
+        pass
+    else:
+        if (
+            isinstance(slot_height, (int, float))
+            and not isinstance(slot_height, bool)
+            and isinstance(clear_height_min, (int, float))
+            and not isinstance(clear_height_min, bool)
+            and float(slot_height) < float(clear_height_min)
+        ):
+            issues.append(
+                ValidationIssue(
+                    "ERROR",
+                    "PARAM-018",
+                    (
+                        f"media_path.slot_height_target ({slot_height}) must be ≥ "
+                        f"media_path.clear_height_min ({clear_height_min})"
+                    ),
+                )
+            )
+
+    max_load = _required(
+        params, "film_storage_horizontal.max_load_kg", issues, code="PARAM-011"
+    )
+    marked_limit = _required(params, "mass_targets.film_marked_limit_kg", issues, code="PARAM-011")
+    if max_load is not None and marked_limit is not None and max_load != marked_limit:
         issues.append(
             ValidationIssue(
                 "ERROR",
@@ -574,6 +786,74 @@ def validate_parameters(
                 ),
             )
         )
+
+    try:
+        handle_y = params.value("hardware.handle_mount_y_mm")
+    except KeyError:
+        pass
+    else:
+        try:
+            computed_handle_y = params.computed_handle_mount_y_mm
+            com_y_tol_raw = _required(
+                params, "tolerance.part_assembly_feature_mm", issues, code="PARAM-000"
+            )
+        except KeyError as exc:
+            issues.append(
+                ValidationIssue(
+                    "ERROR",
+                    "PARAM-000",
+                    f"{exc.args[0]}: required leaf is missing",
+                )
+            )
+        else:
+            if com_y_tol_raw is not None and (
+                isinstance(handle_y, (int, float))
+                and not isinstance(handle_y, bool)
+                and abs(float(handle_y) - computed_handle_y) > float(com_y_tol_raw)
+            ):
+                issues.append(
+                    ValidationIssue(
+                        "ERROR",
+                        "PARAM-017",
+                        (
+                            f"hardware.handle_mount_y_mm ({handle_y}) must track indicative "
+                            f"loaded-case CoM Y ({computed_handle_y:.2f} mm) within "
+                            f"{float(com_y_tol_raw)} mm"
+                        ),
+                    )
+                )
+
+    try:
+        handle_z = params.value("hardware.handle_mount_z_mm")
+    except KeyError:
+        pass
+    else:
+        try:
+            computed_handle_z = params.computed_handle_mount_z_mm
+        except KeyError as exc:
+            issues.append(
+                ValidationIssue(
+                    "ERROR",
+                    "PARAM-000",
+                    f"{exc.args[0]}: required leaf is missing",
+                )
+            )
+        else:
+            if (
+                isinstance(handle_z, (int, float))
+                and not isinstance(handle_z, bool)
+                and float(handle_z) != computed_handle_z
+            ):
+                issues.append(
+                    ValidationIssue(
+                        "ERROR",
+                        "PARAM-017",
+                        (
+                            f"hardware.handle_mount_z_mm ({handle_z}) must equal "
+                            f"upper_z + slide_rail_height_mm + 2 ({computed_handle_z} mm)"
+                        ),
+                    )
+                )
 
     if production_release:
         for leaf in params.leaves():

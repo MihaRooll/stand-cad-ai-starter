@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import csv
+import math
 import sys
 from collections import defaultdict
 from io import StringIO
@@ -26,6 +27,11 @@ from stand_cad.geometry.analysis import (  # noqa: E402
 )
 from stand_cad.geometry.assembly import build_transport_assembly  # noqa: E402
 from stand_cad.geometry.export import CONCEPT_REVISION  # noqa: E402
+from stand_cad.geometry.hardware import (  # noqa: E402
+    indicative_bracket_mass_kg,
+    indicative_fastener_mass_kg,
+    total_fastener_count,
+)
 from stand_cad.parameters import load_parameters  # noqa: E402
 
 DEFAULT_PARAMETERS = REPO_ROOT / "config" / "parameters.yaml"
@@ -52,6 +58,8 @@ def write_mass_report(
     )
     all_total = sum(part_mass_kg(record, params) for record in parts.values())
     empty_plus_shelf = structural + shelf_mass
+    fastener_kg = indicative_fastener_mass_kg(params)
+    bracket_kg = indicative_bracket_mass_kg(params)
 
     rows = mass_report_rows(parts, params)
     mat_mass: dict[str, float] = defaultdict(float)
@@ -82,6 +90,10 @@ def write_mass_report(
         "VIBMOUNT-*, etc.) are physically present but omitted from both headline totals; "
         "full all-parts sum via part_mass_kg over transport registry",
         f"# Full all-parts indicative total: {all_total:.3f} kg",
+        f"# D-061 indicative bought-in fasteners (not in structural total): {fastener_kg:.3f} kg "
+        f"({total_fastener_count(params)} screws — lengths/torques to_measure)",
+        f"# D-061 indicative corner brackets (20×20×2 mm L-gusset, not all modeled as solids): "
+        f"{bracket_kg:.3f} kg",
         "# Ceiling 12 kg; target band 9-11 kg applies to the structural total excluding "
         "verify_on_real_machine parts",
         f"# Dominance: {dominant_material} ({dominant_mass:.3f} kg)",
@@ -141,13 +153,39 @@ def write_stability_report(
     rev = CONCEPT_REVISION
 
     def _tier_section(report: StabilityReportInputs) -> list[str]:
-        title = (
-            "Lower tray extended"
-            if report.extended_level == "lower"
-            else "Upper tray extended"
-        )
+        tier_label = "Lower" if report.extended_level == "lower" else "Upper"
+        if report.applicable:
+            title = f"{tier_label} tray extended"
+        elif report.extension_mm <= 0.0:
+            title = f"{tier_label} tray (zero travel / fixed)"
+        else:
+            title = f"{tier_label} tray extended (tip factor not applicable)"
         other_idx = 1 if report.extended_level == "upper" else 2
         other_mass = params.plotter_mass_kg(other_idx)
+        if report.applicable and math.isfinite(report.factor):
+            tip_line = f"- **Tip factor: {report.factor:.3f}** (minimum {minimum})"
+        elif report.extension_mm <= 0.0:
+            tip_line = (
+                "- **Tip factor: N/A — not applicable "
+                "(D-076; zero travel / no overhang tip case)**"
+            )
+        else:
+            tip_line = (
+                "- **Tip factor: N/A — not applicable "
+                "(non-finite; overturn moment ≤ 0 / insufficient overturn arm)**"
+            )
+        if report.applicable and math.isfinite(report.legacy_factor):
+            legacy_line = (
+                f"- Legacy pre-D-039 factor (mass-cancelling model): "
+                f"{report.legacy_factor:.3f}"
+            )
+        elif report.extension_mm <= 0.0:
+            legacy_line = "- Legacy pre-D-039 factor: N/A (zero travel)"
+        else:
+            legacy_line = (
+                "- Legacy pre-D-039 factor: N/A "
+                "(non-finite / insufficient overturn arm)"
+            )
         return [
             f"## {title} (pivot: {report.pivot_edge})",
             "",
@@ -169,8 +207,8 @@ def write_stability_report(
             f"(pivot Y − moving CoG Y extended)",
             f"- Restore moment: {report.restore_moment_n_mm:.0f} N·mm",
             f"- Overturn moment: {report.overturn_moment_n_mm:.0f} N·mm",
-            f"- **Tip factor: {report.factor:.3f}** (minimum {minimum})",
-            f"- Legacy pre-D-039 factor (mass-cancelling model): {report.legacy_factor:.3f}",
+            tip_line,
+            legacy_line,
             "",
         ]
 
@@ -178,7 +216,9 @@ def write_stability_report(
         f"# PLT-010 rev{rev} indicative stability report — NOT authoritative for Gate G4",
         "",
         "Split stationary/moving mass static-moment model (D-039): one tray fully extended,",
-        "both plotters installed, structural mass from live `empty_case_mass_kg()` — not the",
+        "both plotters installed, structural mass from live "
+        "`empty_case_mass_for_stability_kg()` (geometric `empty_case_mass_kg()` + D-061 "
+        "indicative fastener/bracket roll-up at structural CoM) — not the "
         "`mass_targets.empty_case_target_max_kg` placeholder used by the retired model.",
         "",
         "### Model correction (D-039)",
@@ -202,8 +242,11 @@ def write_stability_report(
             f"- Case depth: {float(params.value('case.depth')):.0f} mm → "
             "**closed niche is storage/transport only**"
         ),
-        "- Active cutting requires front and rear media openings (330 mm rear slots at L1/L2) "
-        "and/or tray extension plus external rear supports (`services.rearsupport_*`).",
+        "- Active cutting requires front and rear media openings "
+        f"({float(params.value('media_path.clear_width')):.0f}×"
+        f"{float(params.value('media_path.slot_height_target')):.0f} mm rear channels at L1/L2 "
+        f"via MEDIA-SUPPORT-L1-001 / MEDIA-SUPPORT-L2-001) "
+        "and/or tray extension.",
         f"- Closed-tray clearances (D-033 aligned front faces, setback removed): plotter 1 front "
         f"{params.material_travel_clearance_front_mm(1):.0f} mm; plotter 2 rear "
         f"{params.material_travel_clearance_rear_mm(2):.0f} mm",

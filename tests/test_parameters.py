@@ -7,6 +7,8 @@ from pathlib import Path
 
 import pytest
 
+from stand_cad.geometry.assembly import build_transport_assembly
+from stand_cad.geometry.primitives import bounding_box_bounds, bounding_box_size
 from stand_cad.parameters import (
     HORIZONTAL_SHELF_COUNT,
     MIN_LOWER_QUICK_ACCESS_EXTENSION_MM,
@@ -33,8 +35,8 @@ def _valid_doc() -> dict:
         "units": "mm",
         "case": {
             "width": _leaf(650),
-            "depth": _leaf(550),
-            "height": _leaf(517),
+            "depth": _leaf(420),
+            "height": _leaf(502),
             "internal_width": _leaf(610),
             "depth_tolerance_mm": _leaf(5, "derived"),
         },
@@ -67,7 +69,9 @@ def _valid_doc() -> dict:
         },
         "trays": {
             "lower_extension": _leaf(250),
+            "upper_extension": _leaf(0),
             "lower_quick_access_extension_mm": _leaf(130),
+            "front_overhang_min_mm": _leaf(40),
         },
         "operational": {
             "material_travel_clearance_mm": _leaf(356),
@@ -89,9 +93,9 @@ def _valid_doc() -> dict:
             "tray_panel_thickness_max_mm": _leaf(12),
         },
         "top_structure": {
-            "height_mm": _leaf(15),
-            "z_min_mm": _leaf(502),
-            "z_max_mm": _leaf(517),
+            "height_mm": _leaf(0),
+            "z_min_mm": _leaf(529),
+            "z_max_mm": _leaf(529),
         },
         "mass_targets": {
             "film_marked_limit_kg": _leaf(10),
@@ -127,13 +131,21 @@ def test_default_shelf_divider_count_matches_expected():
 
 def test_computed_case_height_matches_yaml():
     params = load_parameters(PARAMETERS_PATH)
-    assert params.computed_case_height_mm == pytest.approx(544.0)
-    assert float(params.value("case.height")) == pytest.approx(544.0)
+    assert params.computed_case_height_mm == pytest.approx(529.0)
+    assert float(params.value("case.height")) == pytest.approx(529.0)
 
 
 def test_computed_upper_z_mm_matches_yaml():
     params = load_parameters(PARAMETERS_PATH)
     assert params.computed_upper_z_mm == pytest.approx(float(params.value("plotter.upper_z")))
+
+    transport = build_transport_assembly(params)
+    tray_bounds = bounding_box_bounds(transport.parts["TRAY-UPPER-001"].solid)
+    tray_top_z_mm = tray_bounds[2][1]
+    tolerance = float(params.value("tolerance.part_assembly_feature_mm"))
+    assert tray_top_z_mm == pytest.approx(params.computed_upper_z_mm, abs=tolerance), (
+        "TRAY-UPPER-001 top Z must match computed upper tray datum"
+    )
 
 
 def test_tier_clearances_meet_minimum():
@@ -200,7 +212,7 @@ def test_overall_width_mismatch_fails():
 
 def test_overall_depth_outside_tolerance_fails():
     doc = _valid_doc()
-    doc["case"]["depth"] = _leaf(556)
+    doc["case"]["depth"] = _leaf(426)
     assert "PARAM-006" in _error_codes(doc)
 
 
@@ -283,7 +295,7 @@ def test_production_release_blocks_on_to_measure_parameters():
     params = load_parameters(PARAMETERS_PATH)
     issues = validate_parameters(params, production_release=True)
     rel027 = [issue for issue in issues if issue.code == "REL-027"]
-    assert len(rel027) == 44
+    assert len(rel027) == 55
     paths = {issue.message.split(":")[0] for issue in rel027}
     assert "hardware.service_port_cutout_width_mm" in paths
     assert "hardware.service_port_cutout_height_mm" in paths
@@ -292,7 +304,7 @@ def test_production_release_blocks_on_to_measure_parameters():
 
 def test_production_release_passes_with_no_to_measure_parameters():
     doc = deepcopy(_valid_doc())
-    doc["plotter"] = {
+    doc["plotter"].update({
         "upper_setback": _leaf(0),
         "upper_y": _leaf(15),
         "lower_y": _leaf(15),
@@ -300,7 +312,7 @@ def test_production_release_passes_with_no_to_measure_parameters():
         "upper_z": _leaf(211),
         "tier_clearance_min_mm": _leaf(170),
         "feed_plane_z_from_base": _leaf(50),
-    }
+    })
     doc["plotter_cameo4"] = {
         "height_mm": _leaf(170),
         "width_mm": _leaf(580),
@@ -380,13 +392,13 @@ def test_validate_release_readiness_surfaces_rel027_with_real_config():
     params = load_parameters(PARAMETERS_PATH)
     issues = validate_release_readiness(project, equipment, params)
     rel027 = [issue for issue in issues if issue.code == "REL-027"]
-    assert len(rel027) == 44
+    assert len(rel027) == 55
 
 
 def test_validate_release_readiness_clean_synthetic_doc_has_zero_errors():
     project, equipment = _production_project_and_equipment()
     doc = deepcopy(_valid_doc())
-    doc["plotter"] = {
+    doc["plotter"].update({
         "upper_setback": _leaf(0),
         "upper_y": _leaf(15),
         "lower_y": _leaf(15),
@@ -394,7 +406,7 @@ def test_validate_release_readiness_clean_synthetic_doc_has_zero_errors():
         "upper_z": _leaf(211),
         "tier_clearance_min_mm": _leaf(170),
         "feed_plane_z_from_base": _leaf(50),
-    }
+    })
     doc["plotter_cameo4"] = {
         "height_mm": _leaf(170),
         "width_mm": _leaf(580),
@@ -423,6 +435,35 @@ def test_design_envelope_derived_from_cameo4():
     assert params.envelope_offset_y_mm == pytest.approx(12.0)
     assert params.envelope_offset_z_mm == pytest.approx(4.0)
 
+    transport = build_transport_assembly(params)
+    env_bounds = bounding_box_bounds(transport.parts["ENV-PLOTTER1-001"].solid)
+    equip_bounds = bounding_box_bounds(transport.parts["EQUIP-PLOTTER1-001"].solid)
+    env_size = bounding_box_size(transport.parts["ENV-PLOTTER1-001"].solid)
+    tolerance = float(params.value("tolerance.part_assembly_feature_mm"))
+
+    assert env_size[0] == pytest.approx(float(params.value("plotter.design_width")), abs=tolerance)
+    assert env_size[1] == pytest.approx(float(params.value("plotter.design_depth")), abs=tolerance)
+    assert env_size[2] == pytest.approx(float(params.value("plotter.design_height")), abs=tolerance)
+
+    assert env_bounds[0][0] - equip_bounds[0][0] == pytest.approx(
+        -params.envelope_offset_x_mm, abs=tolerance
+    )
+    assert env_bounds[0][1] - equip_bounds[0][1] == pytest.approx(
+        params.envelope_offset_x_mm, abs=tolerance
+    )
+    assert env_bounds[1][0] - equip_bounds[1][0] == pytest.approx(
+        -params.envelope_offset_y_mm, abs=tolerance
+    )
+    assert env_bounds[1][1] - equip_bounds[1][1] == pytest.approx(
+        params.envelope_offset_y_mm, abs=tolerance
+    )
+    assert env_bounds[2][0] - equip_bounds[2][0] == pytest.approx(
+        -params.envelope_offset_z_mm, abs=tolerance
+    )
+    assert env_bounds[2][1] - equip_bounds[2][1] == pytest.approx(
+        params.envelope_offset_z_mm, abs=tolerance
+    )
+
 
 def test_side_slab_thickness_and_clear_width():
     params = load_parameters(PARAMETERS_PATH)
@@ -434,3 +475,10 @@ def test_side_slab_thickness_and_clear_width():
     assert REQUIRED_UPPER_SETBACK_MM == 0
     assert MIN_LOWER_QUICK_ACCESS_EXTENSION_MM == 130
     assert HORIZONTAL_SHELF_COUNT == 4
+
+
+def test_validate_parameters_missing_required_leaf_returns_issue_not_keyerror():
+    doc = deepcopy(_valid_doc())
+    del doc["plotter"]["physical_depth"]
+    issues = validate_parameters(_params_from_doc(doc))
+    assert any("plotter.physical_depth" in issue.message for issue in issues)

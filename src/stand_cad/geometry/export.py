@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from copy import copy
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -14,22 +15,27 @@ from stand_cad.geometry.assembly import (
     build_operating_with_test_bodies_assembly,
     build_service_plotter_1_assembly,
     build_service_plotter_2_assembly,
-    build_transport_assembly,
+    build_transport_display_assembly,
 )
 from stand_cad.geometry.primitives import bounding_box_bounds, bounding_box_size
 from stand_cad.geometry.registry import PartRecord
 from stand_cad.parameters import Parameters, load_parameters
 
-CONCEPT_REVISION = 11
+CONCEPT_REVISION = 15
 DEFAULT_STEP_NAME = (
     f"light_plotter_tower_ASSEMBLY_CONCEPT_REFERENCE_ONLY_rev{CONCEPT_REVISION}.step"
 )
 
 
 def build_all_states(params: Parameters) -> dict[str, AssemblyState]:
-    """Build all four TZ section 13 assembly states."""
+    """Build all four TZ section 13 assembly states.
+
+    "transport" is the display-filtered variant (plotter placeholder boxes hidden, owner
+    2026-08-06) since this feeds the exported STEP/GLB the owner actually looks at; mass/CoM
+    analysis scripts import ``build_transport_assembly`` directly and are unaffected.
+    """
     return {
-        "transport": build_transport_assembly(params),
+        "transport": build_transport_display_assembly(params),
         "service_plotter_1": build_service_plotter_1_assembly(params),
         "service_plotter_2": build_service_plotter_2_assembly(params),
         "operating_with_test_bodies": build_operating_with_test_bodies_assembly(params),
@@ -37,8 +43,8 @@ def build_all_states(params: Parameters) -> dict[str, AssemblyState]:
 
 
 def transport_compound(params: Parameters):
-    """Transport-state compound for export."""
-    return build_transport_assembly(params).compound()
+    """Transport-state compound for export (display-filtered, see build_all_states)."""
+    return build_transport_display_assembly(params).compound()
 
 
 def build_labeled_transport_compound(
@@ -49,7 +55,7 @@ def build_labeled_transport_compound(
     build123d export_gltf propagates Shape.label to glTF node and mesh names,
     so the viewer can map meshes by name rather than fragile child order.
     """
-    state = build_transport_assembly(params)
+    state = build_transport_display_assembly(params)
     records = list(state.parts.values())
     labeled_solids = []
     for record in records:
@@ -72,6 +78,9 @@ def write_glb_manifest(
     size = bounding_box_size(compound)
     manifest: dict[str, Any] = {
         "generated_from": generated_from,
+        "revision": CONCEPT_REVISION,
+        "generated_at": datetime.now(UTC).replace(microsecond=0).isoformat(),
+        "units": "mm",
         "glb_file": glb_filename,
         "part_count": len(records),
         "bbox_min_mm": [x_bounds[0], y_bounds[0], z_bounds[0]],
@@ -152,6 +161,29 @@ def generate_concept_model(
     export_transport_step(params, step_path)
     live_metrics = measure_compound(states["transport"].compound())
     readback_metrics = read_back_step_metrics(step_path)
+    tol = float(params.value("tolerance.assembly_mm"))
+    if live_metrics["solid_count"] != readback_metrics["solid_count"]:
+        raise RuntimeError(
+            "STEP read-back solid_count mismatch: "
+            f"live={live_metrics['solid_count']} readback={readback_metrics['solid_count']}"
+        )
+    live_bbox = live_metrics["bbox_size_mm"]
+    read_bbox = readback_metrics["bbox_size_mm"]
+    if not isinstance(live_bbox, tuple) or not isinstance(read_bbox, tuple):
+        raise RuntimeError("STEP read-back bbox_size_mm has unexpected type")
+    for index, (live_dim, read_dim) in enumerate(zip(live_bbox, read_bbox, strict=True)):
+        if abs(float(live_dim) - float(read_dim)) > tol:
+            raise RuntimeError(
+                "STEP read-back bbox_size_mm mismatch on axis "
+                f"{index}: live={live_dim} readback={read_dim} tolerance={tol} mm"
+            )
+    live_volume = float(live_metrics["volume_mm3"])
+    read_volume = float(readback_metrics["volume_mm3"])
+    if abs(live_volume - read_volume) > max(live_volume, read_volume, 1.0) * 1e-6:
+        raise RuntimeError(
+            "STEP read-back volume_mm3 mismatch: "
+            f"live={live_volume} readback={read_volume}"
+        )
     return {
         "parameters_path": str(parameters_path),
         "step_path": str(step_path),

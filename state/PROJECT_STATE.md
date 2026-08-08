@@ -1,11 +1,52 @@
 # Project state
 
-- Project: Light desktop tower for two Silhouette plotters plus horizontal film storage, **650 × 550 × 544 mm** (derived height; see ADR-005 and `ИИ советы/Cursor_Opus5_TZ_Light_Plotter_Tower.md`)
-- Current phase: D-040 render-evidence tie-break fix → **rev11** evidence pack (CONCEPT / REFERENCE_ONLY)
-- Current gate: G0 (human verdict unconfirmed)
-- Status: F-5 closed (D-038); PLT-010 stability closed (D-039, upper 1.596 / lower 3.563, both ≥1.5 floor); render Z-buffer tie-break fixed (D-040, adversarial-reviewer cycle 1 PASS) — cladding now correctly visible in evidence PNGs, zero change to mass/stability/deflection numbers
-- Last updated: 2026-08-04 (D-040; render tie-break fix; `CONCEPT_REVISION` 10→11; rev11)
-- **Tooling/process (D-041, 2026-08-05):** `pytest-xdist` + `-n auto` (serial 153 s → parallel 72.05 s, 325 tests unchanged); `Quick`/`Full` profile guidance; operational-orchestrator turn-ending directive; `docs/14_CAD_MODELING_CONVENTIONS.md` — no geometry/gate impact
+> **Living status:** `state/AUTONOMOUS_STATUS.md` — last closed defect, backlog, anti-false-conclusion notes. Prefer it over mid-file historical narrative for “what next.”
+>
+> **FIX-TIP-001 / D-077 (2026-08-08):** Upper tip-factor at `upper_extension=0` is **N/A** (`applicable=False`); report no longer prints `inf (minimum 1.5)`. Lower@250 indicative factor remains finite (~3.785). PLT-010 / G4 **not** passed.
+>
+> **FIX-WAVE-004 (2026-08-07):** Corner posts restored (D-075); upper tray fixed / lower door-tray choreography (D-076, **owner-confirmed 2026-08-07** — "Да, все верно"). **`CONCEPT_REVISION`=15**. Door↔slide clearance resolved at sampled lower extensions 0/130/180/250 mm. **No G0–G8 gate passed.**
+>
+> **FIX-WAVE-002 / D-057 closed (2026-08-06):** All 8 unexpected D-056 pytest regressions are closed. Adversarial-reviewer cycle 2 on the collision-exemption predicate (**Y-gate** `collision.py:316-328`, solid-fill **≈428×10³ mm³** oracle) → **APPROVED**. Full profile (2026-08-06): `uv run ruff check .` clean; `uv run pytest -q --tb=line` → **365 passed, 1 failed** (sole permitted failure: `test_lid_envelope_no_intersection_in_service_states`, **210 600 mm³** lid/shuttle overlap); `powershell -ExecutionPolicy Bypass -File .\scripts\setup_windows.ps1` exit **0**. Rev12 evidence current via `scripts/regenerate.py`. Optional non-blocking nit: F-3 rail `max_bearing` full-panel Z scope. Full suite wall time **~8 min** (performance item, non-blocking).
+
+- Project: Light desktop tower for two Silhouette plotters plus horizontal film storage, **650 × 420 × 529 mm** (derived height; D-058; see ADR-005 and TZ)
+- **Operating mode: D-060 EXIT — FAST ITERATION MODE (D-043) closed 2026-08-06.** Owner visual 3D approval recorded in D-060; PROD-001 weld-free RFQ campaign active. No G0–G8 gate passed.
+- Current phase: **rev15** FIX-WAVE-004 (D-075…D-076); prior FIX-WAVE-003 reconcile (D-066…D-074)
+- Current gate: G0 (human verdict unconfirmed) — **no G0–G8 gate passed**
+- Status: **`CONCEPT_REVISION`=15** evidence under `output/validation/rev15/`. **`hardware.handle_mount_y_mm`=179.8 mm** (D-074). Corner posts **restored** (D-075); interlock / six service volumes / BASE·ORG·POST cladding remain removed (D-067…D-071). Door/tray choreography updated (D-076); `trays.upper_extension`=0 (Main best-guess, A-D076). Envelope **650 × 420 × 529 mm** unchanged.
+- Last updated: 2026-08-07 (FIX-WAVE-004 cycle 2.5 docs reconcile)
+- **Tests:** `uv run pytest -q` green on implementer machine (~370+ cases, 1 skip for missing rev evidence until regenerate); Full profile pending verifier
+- **Tooling/process (D-041, 2026-08-05):** `pytest-xdist` + `-n auto`; `Quick`/`Full` profile guidance; operational-orchestrator turn-ending directive; `docs/14_CAD_MODELING_CONVENTIONS.md`
+- **Handoff:** paste `HANDOFF_PROMPT.md` into a new chat to continue; do not use stale mid-file “Older status” narratives from prior drafts
+- **Verification debt ledger:** `state/DEFERRED_VERIFICATION.md` — side-slab mass contradiction **closed (D-055)**; lid-headroom/interlock intersection (PLT-008), transport retention, cavity-wall prototype validation remain open
+
+## Consolidated fix wave + rev12 (D-049…D-054, 2026-08-05)
+
+- **D-049 — tray travel restored to 250 mm both tiers:** `trays.lower_extension`/`upper_extension` 200→**250**; `lower_quick_access_extension_mm`=130 unchanged. At 250 mm with Cameo 4 depth 195 mm and `plotter.lower_y`=15 mm, plotter rear face Y=**−40 mm** (TZ `front_overhang_min_mm`=40 satisfied). **Indicative tip factors at `case.depth`=420 mm:** upper **2.339**, lower **2.650** (split-mass model D-039). **Supersedes D-048** (200 mm interim and its ~3.480/~3.943 figures).
+- **D-050 — superseded by D-051 (Y choice):** geometric depth-centre handle Y=210 mm / Z=252 mm; service-port/cable aft-shift experiment — do not treat as current.
+- **D-051 — handle at loaded-case balance point:** `hardware.handle_mount_y_mm`=**185.9 mm** (D-063 retune; supersedes D-055 **187.6 mm** snapshot; live loaded CoM Y tracks within `tolerance.part_assembly_feature_mm`, grip band **[130.9, 240.9] mm**); `handle_mount_z_mm`=**252 mm** unchanged. Service port Y=**275** / cable Y=**320** (D-047 pairing). Port aft margin **≈34.1 mm**; cable nearest edge **≈79.1 mm** aft of grip. **OPEN:** tier-2 finger intrusion **≈1,389,717 mm³** at balance point (Cameo 5 124 mm tier-2 body) — handle concept deferred (`docs/10_USER_INPUT_REQUIRED.md` §E/§F).
+- **D-052 — PRELIMINARY drawing package rev12:** `CONCEPT_REVISION` 11→**12**; `scripts/generate_drawings.py` → PDF + REFERENCE_ONLY DXF + programmatic `to_measure` traceability; evidence under `output/validation/rev12/`.
+- **D-053 — evidence-integrity fixes:** REL-027 count **42** (was 44 baseline; −2 when D-046 removed `services.edgeguard_depth_mm`/`rearsupport_depth_mm`); manifest readback checks; `doctor.py` rev12 artifact checks; SVG edge-skip warnings; mass-report text sync to D-046 media path.
+- **D-054 — consolidated adversarial-review fix wave:** traceability honesty (PLT-010 `IN_PROGRESS`, D-048↔D-049 supersession link, D-028 partial supersession by D-046), docs honesty (`docs/10`, `docs/08`, `docs/12`), decision-log/ADR-005 corrections, **cable-grommet lining fix** (only 3 mm of 20 mm bore was lined — now full annular grommet), render-view `cable_passthrough_closeup` target fix, test strengthening including **intentionally-failing** `tests/test_kinematics.py::test_lid_envelope_no_intersection_in_service_states` (LID-ENVELOPE-P1-001 vs INTERLOCK-SHUTTLE-001 **≈210,600 mm³** — left failing pending owner decision on lid headroom §M). No new physical design decisions.
+
+## Owner edit batch 2026-08-05 (D-044…D-048) — **partially superseded by D-049…D-054**
+
+> **Forward pointer:** D-049 restores 250 mm tray travel and supersedes D-048 figures; D-051 supersedes handle coordinates cited here; D-052 bumps `CONCEPT_REVISION` to 12; D-054 corrects documentation/tooling only. Retain this section as historical record — do not treat D-048 tip factors or 200 mm travel as current.
+
+- **D-044 — top-front rail removed:** `FRAME-RAIL-TOP-FRONT-001` and `PANEL-CLAD-FRONT-TOP-001` deleted; TOP-LEFT/TOP-RIGHT/TOP-REAR still close the ring on three sides. Top perimeter ring resistance to front-top splay **unverified** — deferred in `state/DEFERRED_VERIFICATION.md`.
+- **D-045 — depth shrink:** `case.depth` 550→**420 mm**; envelope **650 × 420 × 544 mm**; closed-state tier-2 rear clearance 340→**210 mm** (420−210 at aligned tiers). Mass roll-up at shallower depth: structural **~6.048 kg** / all-parts **~8.476 kg** (post-D-045 regenerate; **supersedes** pre-D-045 rev11 figures 7.054 / 9.292 kg).
+- **D-046 — rear media exit widened:** **450 × 10 mm** through-cuts through **both** `PANEL-OUT-REAR-001` and `PANEL-IN-REAR-001` at L1/L2; `media_path.clear_width` 330→450, `slot_height_target` 18→10, `clear_height_min` 12→10 (owner override of TZ 12 mm floor). Removed `SVC-INSERT-L{1,2}-001` / `EDGEGUARD-L{1,2}-001` / `REARSUPPORT-L{1,2}-001`; replaced by flat `MEDIA-SUPPORT-L{1,2}-001` glide surfaces plotter rear edge → inner rear wall. Physical film-glide validation still open.
+- **D-047 — cable pass-through relocated:** `SVC-CABLE-PASSTHROUGH-001` (Ø30 mm, 26 mm clear bore, R1 edge break — dimensions unchanged from D-036) moved from rear panel (was X=325) to **`PANEL-OUT-RIGHT-001` at Y=320 / Z=120**, adjacent to USB service port (Y=275). Rear wall kept clean for film feed.
+- **D-048 — tray travel capped at 200 mm both tiers (SUPERSEDED by D-049):** `trays.lower_extension` 250→200, `trays.upper_extension` 400→200; `lower_quick_access_extension_mm`=130 unchanged. **Historical indicative** tip factors at `case.depth`=420 mm: upper **~3.480**, lower **~3.943** (split-mass model D-039). **Current (D-049):** 250 mm extension; upper **2.339**, lower **2.650**. D-048 status in decision log: **Superseded**.
+- **Evidence / verification:** geometry + targeted tests updated; full pytest/adversarial/render/mass-stability re-campaign deferred per D-043. All exports remain **CONCEPT / REFERENCE_ONLY**; no gate G0–G8 passed.
+
+## FAST ITERATION MODE (D-043) — **superseded; exited D-060 (2026-08-06)**
+
+> **Historical record only.** D-043 deferred Quick/Full verification until owner visual 3D approval. **Exit recorded in D-060 (2026-08-06).** Do not cite FAST ITERATION as active.
+
+- **Recorded policy (D-043):** rapid geometry/appearance iteration in live viewer; defer exhaustive pytest/adversarial campaigns until owner approval
+- **Exit (D-060):** owner visual 3D approval **recorded satisfied 2026-08-06** — FAST ITERATION MODE closed; PROD-001 weld-free RFQ campaign is the active frame
+- **Pre-D-060 practice:** rev12 drawing package (D-052) and fix waves (D-053/D-054) ran verification before formal D-060 exit — moot after D-060; debt tracked in `state/DEFERRED_VERIFICATION.md`
+- **Invariants (unchanged):** no production-ready label; no G0–G8 pass without Human Gate; all exports remain CONCEPT/REFERENCE_ONLY/PRELIMINARY
 
 ## PLT-009 height-stack fix (2026-08-04, D-038)
 
@@ -27,23 +68,24 @@
 - **Baseline commit:** `9e38f98`
 - **Next:** adversarial-reviewer on film-post notch; verifier Quick profile
 
-## PLT-007 cable pass-through (D-036, 2026-08-04)
+## PLT-007 cable pass-through (D-036, 2026-08-04; **superseded mount by D-047, 2026-08-05**)
 
-- **Change:** Owner override of TZ section 10 certified rear mains inlet → plain **30 mm** grommeted cable pass-through at rear panel centre (X=325, Z=160.5); `SVC-CABLE-PASSTHROUGH-001` annular grommet (26 mm clear bore, 1 mm TZ:472 R1 chamfer on the bore rim); `MAINS-INLET-001` placeholder unchanged (deferred, not deleted)
+- **Change (historical D-036):** Owner override of TZ section 10 certified rear mains inlet → plain **30 mm** grommeted cable pass-through; `SVC-CABLE-PASSTHROUGH-001` annular grommet (26 mm clear bore, 1 mm TZ:472 R1 chamfer on the bore rim); `MAINS-INLET-001` placeholder unchanged (deferred, not deleted)
+- **Mount (superseded):** ~~rear panel centre (X=325, Z=160.5)~~ → **D-047:** `PANEL-OUT-RIGHT-001` at **Y=320 / Z=120**, next to USB service port (Y=275); rear-panel round cut removed
 - **Delivered:** real boolean cut through both `PANEL-OUT-REAR-001` and `PANEL-IN-REAR-001` (cycle-1 adversarial review found the first pass only cut the outer skin and used a solid, bore-less grommet — both fixed); `hardware.cable_passthrough_diameter_mm`, `services.cable_passthrough_grommet_wall_mm` (`to_measure`), `services.cable_passthrough_edge_break_radius_mm` (`verified`, TZ:472 R1); `CONCEPT_REVISION`=8; `cable_passthrough_closeup.png` evidence
 - **Evidence target:** `output/validation/rev8/views/`; STEP/manifest `*_rev8.*`
 - **Tests:** 141 pytest passing; ruff clean; `scripts/setup_windows.ps1` exit 0
 - **Review:** adversarial-reviewer APPROVED on cycle 2 (cycle 1 REWORK: F-1 solid-plug grommet, F-2 inner panel not cut, F-3 stale REL-027 count — all closed)
 - **Next:** local commit (no push); human G0 verdict unchanged
 
-## PLT-007 horizontal reconfig + Cameo 4 governing envelope (2026-08-04)
+## PLT-007 horizontal reconfig + Cameo 4 governing envelope (2026-08-04; **partially superseded D-045/D-046/D-048, 2026-08-05**)
 
-- **Envelope (at rev7, pre-D-038):** 650 × 550 × 517 mm; **610 mm clear width** (20 mm side wall, **R10** bullnose — D-027 rejects 620/630 widening). **Superseded 2026-08-04 by D-038:** `case.height` grew to **544 mm** (+27 mm height-stack fix) — see **PLT-009 height-stack fix** section above; 610 mm clear width and R10 bullnose unaffected.
+- **Envelope (current):** **650 × 420 × 529 mm** (D-045 depth shrink from 550 mm; D-058 height **544→529 mm**); **610 mm clear width** (20 mm side wall, **R10** bullnose — D-027 rejects 620/630 widening). Historical D-038 height **544 mm** superseded by D-058.
 - **Governing machine:** Silhouette Cameo 4 — 570 × 195 × 170 mm, 4.7 kg (`plotter_cameo4`); design envelope 584 × 219 × 178 mm; slot 2 mass 5.2 kg (Cameo 5)
 - **Film storage:** 4 horizontal shelves, 25 mm compartment height, 500 mm sheet edge across width
-- **Tier layout:** tiers aligned, setback removed (D-033); `lower_y`=`upper_y`=15; tier 1 has a documented 130 mm quick-access forward slide (`trays.lower_quick_access_extension_mm`) in addition to its 250 mm full-service extension; tier clear height ≥170 mm each
-- **Storage clearances (closed trays):** plotter 1 front **15 mm**; plotter 2 rear **340 mm** to case back (recomputed after D-033 alignment; was 210 mm at the old 130 mm setback)
-- **Operational clearance (structural — settled):** manufacturer pass-through **907 mm** (356+195+356) **exceeds** case depth 550 mm → **closed niche is storage/transport only** (D-028). Active cutting requires material through front **and** rear openings (330 mm slots at L1/L2 feed planes) and/or tray extension plus **external rear supports** (`services.rearsupport_*`). Tests: `test_pass_through_depth_exceeds_case_envelope`, `test_operating_state_front_rear_pass_through_open`.
+- **Tier layout:** tiers aligned, setback removed (D-033); `lower_y`=`upper_y`=15; tier 1 has 130 mm quick-access forward slide (`trays.lower_quick_access_extension_mm`) plus **250 mm** full-service extension on both tiers (D-049; **supersedes** D-048 interim 200 mm and TZ 400 mm upper); tier clear height ≥170 mm each
+- **Storage clearances (closed trays):** plotter 1 front **15 mm**; plotter 2 rear **210 mm** to case back at `case.depth`=420 mm (**supersedes** 340 mm at 550 mm depth / D-033 alignment)
+- **Operational clearance (structural — settled):** manufacturer pass-through **907 mm** (356+195+356) **exceeds** case depth **420 mm** → **closed niche is storage/transport only** (D-028). Active cutting requires material through front **and** rear openings (**450 × 10 mm** slots at L1/L2 through both rear panels — D-046; **supersedes** 330 × 18 mm outer-only / `REARSUPPORT-*`) and/or tray extension plus **`MEDIA-SUPPORT-L{1,2}-001`** glide surfaces (D-046; **supersedes** external `REARSUPPORT-*`). Tests: `test_pass_through_depth_exceeds_case_envelope`, `test_operating_state_front_rear_pass_through_open`, `test_rear_media_channel_clear_of_obstructions`.
 - **Delivered:** service-port cutout (provisional); handle Z=263 (side-panel centre) — **superseded 2026-08-04 by D-038: recomputed to 276.5 mm** on the taller 544 mm case, formula unchanged; frame cladding; grey backgrounds; `CONCEPT_REVISION`=7; `service_port_closeup.png` evidence
 - **Evidence target:** `output/validation/rev7/views/`; STEP/manifest `*_rev7.*`
 - **Viewer:** `uv run python scripts/serve_viewer.py --watch` → `http://127.0.0.1:8000/viewer/index.html` (see `viewer/README.md`)
@@ -77,7 +119,7 @@
 - **Delivered:** full-height side slabs (20 mm × 690 mm, 2D front-corner fillets, single solid each); open front (no `PANEL-OUT-FRONT-001`); open organizer top (no `TOP-STRUCTURE-001`); removed `PANEL-OUT-CORNER-*`; handle cutout repositioned (Y=`depth×0.25`, Z=`upper_z+physical_height/2` provisional); bottom vent through-cuts on `PANEL-IN-BOTTOM-001` under `AIRPATH-001`; organizer close-up render
 - **Removed parts:** `PANEL-OUT-FRONT-001`, `TOP-STRUCTURE-001`, `PANEL-OUT-CORNER-FL/FR/RL/RR-001` (4)
 - **Evidence:** 12 PNG + 5 SVG in `output/validation/rev3/views/` (incl. `organizer_closeup.png`, `base_plate_closeup.png`); STEP/STL/GLB/manifest `*_rev3.*`; `rev1/` and `rev2/` untouched
-- **Mass (rev3 figure):** indicative structural **7.849 kg** (3 mm PMMA side-slab shells; single-face shell estimate); deflection 3.953 mm (unchanged; ceiling NOT met) — **superseded: deflection fixed to ≈0.228 mm by D-035's three-rail centre support (ceiling now met); current rev11 structural mass 7.054 kg per `output/validation/rev11/mass_report.csv`**
+- **Mass (rev3 figure):** indicative structural **7.849 kg** (3 mm PMMA side-slab shells; single-face shell estimate); deflection 3.953 mm (unchanged; ceiling NOT met) — **superseded: deflection fixed to ≈0.228 mm by D-035's three-rail centre support (ceiling now met); current post-D-045 structural mass ~6.048 kg / all-parts ~8.476 kg (supersedes pre-D-045 rev11 figures 7.054 / 9.292 kg)**
 - **Tests:** 121 pytest passing; ruff clean; `scripts/setup_windows.ps1` exit 0
 - **Next:** adversarial review of rev3 PNGs; human G0 verdict unchanged
 
@@ -86,7 +128,7 @@
 - **Phase:** concept validation evidence pack (`output/validation/rev1/`, CONCEPT / REFERENCE_ONLY)
 - **Delivered:** quarter-cylinder corner shells (`PANEL-OUT-CORNER-FL/FR/RL/RR-001`); organizer top perimeter frame + front opening above retainer; divider finger cutouts; all-cell film bodies; cylindrical feet; rear vent slots; TOP-STRUCTURE sketch R25 footprint; corner junction skin continuity fix (cycle 3)
 - **Evidence:** 10 PNG + 5 SVG in `output/validation/rev1/views/`; STEP/STL/GLB/manifest `*_rev1.*` in `output/concept/`; viewer `index.html` → rev1 manifest
-- **Mass (rev1 figure):** empty-case indicative 9.573 kg; regenerate via `scripts/generate_mass_report.py` — **superseded: current rev11 structural total 7.054 kg (excl. `verify_on_real_machine` parts) / all-parts total 9.292 kg per `output/validation/rev11/mass_report.csv`**
+- **Mass (rev1 figure):** empty-case indicative 9.573 kg; regenerate via `scripts/generate_mass_report.py` — **superseded: current post-D-045 structural total ~6.048 kg (excl. `verify_on_real_machine` parts) / all-parts total ~8.476 kg (supersedes pre-D-045 rev11 figures 7.054 / 9.292 kg)**
 - **Tests:** 117 pytest passing; ruff clean; `scripts/setup_windows.ps1` exit 0
 - **Render path:** `uv run python scripts/render_validation_views.py` writes to `output/validation/rev1/views/` and `output/concept/*_rev1.*`
 - **Open:** vent slot dimensions provisional (`to_measure`); corner top-edge fillet best-effort; adversarial sign-off pending
@@ -163,21 +205,50 @@ Evidence collected is not a gate verdict: G0 remains an unconfirmed Human Gate.
 
 ## Current blockers
 
+### FAST ITERATION MODE — exited (D-060)
+
+- D-043 exit condition (owner visual 3D approval) **recorded satisfied in D-060 (2026-08-06)**. FAST ITERATION MODE is closed; PROD-001 weld-free RFQ campaign is the active operating frame. Historical D-043 policy/practice mismatch (pre-D-060) is moot — do not cite FAST ITERATION as still active.
+
+### Handle concept — tier-2 finger intrusion (D-051; `docs/10_USER_INPUT_REQUIRED.md` §E / §F)
+
+- Balance-point through-cutout at Y=**165.7** / Z=**252** intersects tier-2 plotter bay by **≈1,782,932 mm³**. Owner deferred choosing: (1) external bolt-on handle, (2) blind side pocket, (3) low aft cutout behind plotters. Blocks production-ready side-panel release.
+
+### Open-lid headroom (PLT-008; `docs/10_USER_INPUT_REQUIRED.md` §M)
+
+- Provisional 80 mm lid envelope: **27 mm** headroom tier 1 / **4 mm** tier 2 with trays closed — lid cannot fully open. At full tier-1 service extension, `LID-ENVELOPE-P1-001` intersects `INTERLOCK-SHUTTLE-001` by **≈210,600 mm³**. `tests/test_kinematics.py::test_lid_envelope_no_intersection_in_service_states` **fails intentionally** — do not weaken; remedy is owner decision on lid envelope/headroom/interlock layout.
+
+### Transport retention (`docs/10_USER_INPUT_REQUIRED.md` §N; R-012)
+
+- No tray closed-position latches, plotter tie-downs, or film front retainer modeled. Soft stops travel with trays; interlock is dual-extension inhibit only (neutral in transport). Unrestrained mass: plotters **4.7 + 5.2 kg** plus up to **10 kg** film.
+
+### Tip-over — PLT-010 honesty (`IN_PROGRESS`; `docs/10_USER_INPUT_REQUIRED.md` §K / §L)
+
+- **FIX-TIP-001 / D-077 (2026-08-08):** Upper tier at `trays.upper_extension`=0 (D-076) — tip check **N/A**, not `inf >= 1.5` pass. Applicability gate: `extension > 0` **and** `overturn_moment > 0`; report/metrics distinguish zero-travel vs extended-but-non-applicable wording (cycle 3). Lower@250 mm finite indicative factor still asserted in pytest (rev15 `stability_report.md`). Independent adversarial finding unchanged: 20 N lateral lean → **1.434**; both trays extended → **0.924** — both below TZ 1.5 floor. **Not authoritative for Gate G4.** CSV row PLT-010 status **`IN_PROGRESS`**.
+
+### Mass accounting (PLT-012 — PASSING)
+
+- Side-slab cavity-wall geometry + equal-leg angle mass formula (D-063): empty structural **8.806 kg** (≤12 kg ceiling; TZ goal band 9–11 kg met). D-061/D-065 indicative fastener **≈0.174 kg** (**158** screws: **137 M4 + 21 M3**) + bracket **0.145 kg** (34 nodes) in mass header; stability model includes joining roll-up (A-017). All-parts indicative **12.860 kg**. Pre-D-063 headline **9.877 kg** figures are **superseded** — do not cite them.
+
+### Electrical and joining design — not engineered
+
+- `THE-*` and `ELE-*` requirement rows in traceability CSV are all **`OPEN`**. No thermal/airflow analysis or qualified electrical arrangement in repository. See R-004, R-005 in `docs/08_RISK_REGISTER.md`.
+
 ### Verification-tooling fix — render Z-buffer tie-break (D-040, rev11)
 
-- `scripts/render_validation_views.py`'s PNG rasterizer had a Z-buffer tie-break defect: coplanar cladding-over-rail pairs (`PANEL-CLAD-FRONT-{BASE,ORG,TOP,TRAY-*}-001` vs their rails) always resolved to the structural rail winning, because the strict `z > depth` comparison let whichever part was inserted first (always the rail) win every coincident-depth pixel. This meant "frame concealed" render evidence since fidelity cycle 4 (rev5) never actually showed the cladding — the geometry was always correct, the tool's PNG output was not. Fixed with a material-priority epsilon tie-break (`MATERIAL_RENDER_PRIORITY`, `DEPTH_EPSILON_MM=1e-6`); regression test `tests/test_render_tiebreak.py` covers both insertion orders. Independently confirmed by adversarial review: `rev10`→`rev11` pixel histograms show an exact aluminium↔cladding swap (e.g. transport_iso.png ∓30064 px) on all four checked views, zero change to mass/stability/deflection numbers. `SLIDE-*` hardware remains visible (unchanged, known non-blocking follow-up — separate owner decision, not fixed in this cycle). See D-040.
+- `scripts/render_validation_views.py`'s PNG rasterizer had a Z-buffer tie-break defect: coplanar cladding-over-rail pairs (`PANEL-CLAD-FRONT-{BASE,ORG,TOP,TRAY-*}-001` vs their rails) always resolved to the structural rail winning, because the strict `z > depth` comparison let whichever part was inserted first (always the rail) win every coincident-depth pixel. This meant "frame concealed" render evidence since fidelity cycle 4 (rev5) never actually showed the cladding — the geometry was always correct, the tool's PNG output was not. Fixed with a material-priority epsilon tie-break (`MATERIAL_RENDER_PRIORITY`, `DEPTH_EPSILON_MM=1e-6`); regression test `tests/test_render_tiebreak.py` covers both insertion orders. Independently confirmed by adversarial review: `rev10`→`rev11` pixel histograms show an exact aluminium↔cladding swap (e.g. transport_iso.png ∓30064 px) on all four checked views, zero change to mass/stability/deflection numbers. `SLIDE-*` hardware remains visible (unchanged, known non-blocking follow-up — separate owner decision, not fixed in this cycle). See D-040. **Note:** D-044 removed `PANEL-CLAD-FRONT-TOP-001`; remaining cladding pairs unaffected. D-054 also fixed cable-grommet lining (full annular grommet, not 3 mm stub) and `cable_passthrough_closeup` render target.
 
-### Stability — indicative PLT-010 closed in rev10, reconfirmed rev11 (D-039/D-040)
+### Top-front ring structural capacity (D-044)
 
-- Upper tray fully extended (400 mm) with both plotters installed: corrected tip-over factor **1.596** (meets TZ line 508 floor of **1.5**). Lower tray: **3.563**. Legacy mass-cancelling model had upper at **1.300** — a modelling flaw, not a geometry limitation. No ballast added. See `output/validation/rev11/stability_report.md` (identical numeric content to rev10, differing only in the revision-tag title line, per D-040's independent re-check), `state/REQUIREMENTS_TRACEABILITY.csv` PLT-010 (`PASSING`), and `docs/10_USER_INPUT_REQUIRED.md` section J. Still **not authoritative for Gate G4** — needs qualified engineering review.
+- With `FRAME-RAIL-TOP-FRONT-001` removed, top perimeter closes on three sides only. Front-top side-wall splay resistance **unverified** this cycle — see `state/DEFERRED_VERIFICATION.md`.
 
 ### Measurements and manufacturing
 
-- Eight physical measurements on real plotters (Cameo 4 governing + Cameo 5 slot 2) and purchased sheet materials — see `docs/10_USER_INPUT_REQUIRED.md` section A.
-- Manufacturer DFM authorization — see `docs/10_USER_INPUT_REQUIRED.md` section B and Gate G5 in `docs/05_IMPLEMENTATION_PLAN.md`.
+- Eight physical measurements on real plotters (Cameo 4 governing + Cameo 5 slot 2) and purchased sheet materials — see `docs/10_USER_INPUT_REQUIRED.md` §A (**still open**, including feed-plane height and open-lid hinge data §A items 3–4).
+- Manufacturer DFM authorization — see `docs/10_USER_INPUT_REQUIRED.md` §B and Gate G5 in `docs/05_IMPLEMENTATION_PLAN.md`.
 
 These blockers do not prevent parameter-layer work but block production geometry release and Gate G5/G6.
 
 ## Next decision
 
-After G0 gate verdict (Human Gate), complete the consolidated input packet in `docs/10_USER_INPUT_REQUIRED.md` and start equipment envelopes only for verified selected models.
+1. **Owner decisions on open product blockers** — handle concept (§F), lid headroom (§M), transport retention (§N trays/film; plotter tie-down waived per owner 2026-08-06).
+2. After G0 gate verdict (Human Gate), complete the consolidated input packet in `docs/10_USER_INPUT_REQUIRED.md` (§A/B `to_measure` still open) and start equipment envelopes only for verified selected models.

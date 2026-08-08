@@ -138,6 +138,9 @@ def build_interlock_parts(
     shuttle_position: ShuttlePosition,
 ) -> list[PartRecord]:
     """Captive shuttle and tray-mounted tabs at a discrete interlock state."""
+    # Removed per owner request 2026-08-06 — quick visual pass; interlock hardware deleted.
+    return []
+
     tab_depth = params.interlock_tab_engagement_mm
     tab_h = float(params.value("trays.slide_rail_height_mm"))
     plotter_x1 = datums.plotter1_physical.x.max_mm
@@ -192,28 +195,22 @@ def apply_tray_extension(
 ) -> dict[str, PartRecord]:
     """Return parts dict with kinematic groups translated by -extension along Y."""
     result = dict(parts)
-    if lower_extension_mm:
-        dy = -lower_extension_mm
-        for part_id in LOWER_KINEMATIC_GROUP:
-            if part_id in result:
-                record = result[part_id]
-                result[part_id] = PartRecord(
-                    part_id=record.part_id,
-                    material=record.material,
-                    solid=translate_solid(record.solid, dy=dy),
-                    verify_on_real_machine=record.verify_on_real_machine,
-                )
-    if upper_extension_mm:
-        dy = -upper_extension_mm
-        for part_id in UPPER_KINEMATIC_GROUP:
-            if part_id in result:
-                record = result[part_id]
-                result[part_id] = PartRecord(
-                    part_id=record.part_id,
-                    material=record.material,
-                    solid=translate_solid(record.solid, dy=dy),
-                    verify_on_real_machine=record.verify_on_real_machine,
-                )
+    for group, extension in (
+        (LOWER_KINEMATIC_GROUP, lower_extension_mm),
+        (UPPER_KINEMATIC_GROUP, upper_extension_mm),
+    ):
+        if not extension:
+            continue
+        for part_id in group:
+            record = result.get(part_id)
+            if record is None:
+                continue
+            result[part_id] = PartRecord(
+                part_id=record.part_id,
+                material=record.material,
+                solid=translate_solid(record.solid, dy=-extension),
+                verify_on_real_machine=record.verify_on_real_machine,
+            )
     return result
 
 
@@ -222,14 +219,25 @@ def build_test_body_parts(params: Parameters, datums: Datums) -> list[PartRecord
     clear_w = float(params.value("media_path.clear_width"))
     parts: list[PartRecord] = []
 
-    for suffix, plotter_z, y_pos in (
-        ("PRIMARY-L1", float(params.value("plotter.lower_z")), datums.plotter1_physical.y.min_mm),
-        ("PRIMARY-L2", float(params.value("plotter.upper_z")), datums.plotter2_physical.y.min_mm),
+    for suffix, plotter_z, y_pos, plotter_index in (
+        (
+            "PRIMARY-L1",
+            float(params.value("plotter.lower_z")),
+            datums.plotter1_physical.y.min_mm,
+            1,
+        ),
+        (
+            "PRIMARY-L2",
+            float(params.value("plotter.upper_z")),
+            datums.plotter2_physical.y.min_mm,
+            2,
+        ),
     ):
         h = float(params.value("media_path.test_body_primary.height"))
         d = float(params.value("media_path.test_body_primary.depth"))
         t = float(params.value("media_path.test_body_primary.thickness"))
         cx = datums.case_envelope.x.max_mm / 2
+        plotter_h = params.plotter_height_mm(plotter_index)
         parts.append(
             PartRecord(
                 part_id=f"TESTBODY-{suffix}-001",
@@ -237,22 +245,33 @@ def build_test_body_parts(params: Parameters, datums: Datums) -> list[PartRecord
                 solid=box_from_bounds(
                     cx - clear_w / 2,
                     y_pos,
-                    plotter_z + float(params.value("plotter.physical_height")) / 2,
+                    plotter_z + plotter_h / 2,
                     cx + clear_w / 2,
                     y_pos + d,
-                    plotter_z + float(params.value("plotter.physical_height")) / 2 + t,
+                    plotter_z + plotter_h / 2 + t,
                 ),
             )
         )
 
-    for suffix, plotter_z, y_pos in (
-        ("LONG-L1", float(params.value("plotter.lower_z")), datums.plotter1_physical.y.min_mm),
-        ("LONG-L2", float(params.value("plotter.upper_z")), datums.plotter2_physical.y.min_mm),
+    for suffix, plotter_z, y_pos, plotter_index in (
+        (
+            "LONG-L1",
+            float(params.value("plotter.lower_z")),
+            datums.plotter1_physical.y.min_mm,
+            1,
+        ),
+        (
+            "LONG-L2",
+            float(params.value("plotter.upper_z")),
+            datums.plotter2_physical.y.min_mm,
+            2,
+        ),
     ):
         h = float(params.value("media_path.test_body_long.height"))
         d = float(params.value("media_path.test_body_long.depth"))
         t = float(params.value("media_path.test_body_long.thickness"))
         cx = datums.case_envelope.x.max_mm / 2
+        plotter_h = params.plotter_height_mm(plotter_index)
         parts.append(
             PartRecord(
                 part_id=f"TESTBODY-{suffix}-001",
@@ -260,10 +279,10 @@ def build_test_body_parts(params: Parameters, datums: Datums) -> list[PartRecord
                 solid=box_from_bounds(
                     cx - clear_w / 2,
                     y_pos,
-                    plotter_z + float(params.value("plotter.physical_height")) / 2,
+                    plotter_z + plotter_h / 2,
                     cx + clear_w / 2,
                     y_pos + d,
-                    plotter_z + float(params.value("plotter.physical_height")) / 2 + h,
+                    plotter_z + plotter_h / 2 + h,
                 ),
             )
         )
