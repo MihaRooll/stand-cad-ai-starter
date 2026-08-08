@@ -155,6 +155,13 @@ VIB_EQUIP_MAX_BEARING_MM3 = 2500.0
 # pairs (2026-08-08 transport); pre-fix burial ~96525 mm³ rejected.
 TRAY_SLIDE_MAX_BEARING_MM3 = 500.0
 
+# Cross-tier staggered Y-overlap skin bearing (mm³) — tiers share front-face Y (D-033)
+# and stack in Z; Y overlap alone is intentional, not collision. Live max 0 mm³ across
+# 149 transport / 38 service_p1 / 149 service_p2 cross-tier marker pairs with y_overlap
+# > threshold (2026-08-08); pre-fix burial EQUIP-PLOTTER1 ↔ FRAME-RAIL-TRAY-UPPER ~43875
+# mm³ rejected (D-097).
+STAGGERED_TIER_MAX_BEARING_MM3 = 500.0
+
 # Service cover ↔ panel skin bearing (mm³) — flush mount on bottom/rear panels.
 # Live max 7901.25 mm³ (COVER-SVC-001 ↔ PANEL-IN-BOTTOM-001 / PANEL-IN-REAR-001)
 # and 1048.99 mm³ (↔ PANEL-OUT-REAR-001, 2026-08-08 transport). IN-REAR mates
@@ -1171,7 +1178,9 @@ def is_staggered_tier_y_overlap(
     """Tiers share the same front-face Y (D-033) and fully overlap in Y.
 
     They stack in Z instead, so cross-tier Y overlap is intentional by
-    design, not a collision.
+    design, not a collision. Requires ``intersection_volume <=
+    STAGGERED_TIER_MAX_BEARING_MM3 + threshold`` (D-097) — Y overlap alone
+    must not silent-green volumetric burial (historical ~43875 mm³).
     """
     lower_markers = (
         "EQUIP-PLOTTER1-",
@@ -1206,7 +1215,10 @@ def is_staggered_tier_y_overlap(
     bounds_a = bounding_box_bounds(parts[a].solid)
     bounds_b = bounding_box_bounds(parts[b].solid)
     y_overlap = min(bounds_a[1][1], bounds_b[1][1]) - max(bounds_a[1][0], bounds_b[1][0])
-    return y_overlap > threshold
+    if y_overlap <= threshold:
+        return False
+    inter_vol = intersection_volume(parts[a].solid, parts[b].solid)
+    return inter_vol <= STAGGERED_TIER_MAX_BEARING_MM3 + threshold
 
 
 def intentional_block_pair(state_name: str, a: str, b: str) -> bool:

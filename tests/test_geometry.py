@@ -2887,6 +2887,72 @@ def test_equip_seating_bearing_rejects_slide_volumetric_burial(params, transport
     assert not is_equip_seating_bearing(equip_id, slide_id, transport.parts, threshold)
 
 
+def test_staggered_tier_y_overlap_live_transport_plane_touch(params, transport):
+    """FIX-COLL-012 — live cross-tier Y-overlap pairs with vol≈0 still exempt."""
+    from stand_cad.geometry.collision import (
+        STAGGERED_TIER_MAX_BEARING_MM3,
+        is_mating,
+        is_staggered_tier_y_overlap,
+    )
+
+    threshold = float(params.value("tolerance.part_assembly_feature_mm"))
+    lower_id = "EQUIP-PLOTTER1-001"
+    upper_id = "FRAME-RAIL-TRAY-UPPER-L-001"
+    live_inter = intersection_volume(
+        transport.parts[lower_id].solid,
+        transport.parts[upper_id].solid,
+    )
+    assert live_inter <= STAGGERED_TIER_MAX_BEARING_MM3 + threshold
+    assert is_staggered_tier_y_overlap(lower_id, upper_id, transport.parts, threshold)
+    assert is_mating(
+        lower_id, upper_id, transport.parts, threshold=threshold, params=params
+    )
+
+
+def test_staggered_tier_y_overlap_rejects_volumetric_burial(params, transport):
+    """FIX-COLL-012 — cross-tier Y-overlap must not silent-green deep burial."""
+    from stand_cad.geometry.collision import (
+        STAGGERED_TIER_MAX_BEARING_MM3,
+        is_mating,
+        is_staggered_tier_y_overlap,
+    )
+    from stand_cad.geometry.registry import PartRecord
+
+    threshold = float(params.value("tolerance.part_assembly_feature_mm"))
+    equip_id = "EQUIP-PLOTTER1-001"
+    rail_id = "FRAME-RAIL-TRAY-UPPER-L-001"
+    equip = transport.parts[equip_id]
+    equip_bounds = bounding_box_bounds(equip.solid)
+    buried_rail = PartRecord(
+        part_id=rail_id,
+        material=transport.parts[rail_id].material,
+        solid=box_from_bounds(
+            equip_bounds[0][0],
+            equip_bounds[1][0],
+            equip_bounds[2][0],
+            equip_bounds[0][1],
+            equip_bounds[1][1],
+            equip_bounds[2][1] + 50.0,
+        ),
+    )
+    parts = dict(transport.parts)
+    parts[rail_id] = buried_rail
+    inter_vol = intersection_volume(equip.solid, buried_rail.solid)
+    assert inter_vol > STAGGERED_TIER_MAX_BEARING_MM3 + threshold
+    assert inter_vol > 20_000.0
+    assert not is_staggered_tier_y_overlap(equip_id, rail_id, parts, threshold)
+    assert not is_mating(equip_id, rail_id, parts, threshold=threshold, params=params)
+    live_inter = intersection_volume(
+        transport.parts[equip_id].solid,
+        transport.parts[rail_id].solid,
+    )
+    assert live_inter <= STAGGERED_TIER_MAX_BEARING_MM3 + threshold
+    assert is_staggered_tier_y_overlap(equip_id, rail_id, transport.parts, threshold)
+    assert is_mating(
+        equip_id, rail_id, transport.parts, threshold=threshold, params=params
+    )
+
+
 def test_tray_slide_bearing_rejects_volumetric_burial(params, transport):
     """FIX-COLL-005 — TRAY↔SLIDE bearing ceiling rejects deep burial."""
     from stand_cad.geometry.collision import (

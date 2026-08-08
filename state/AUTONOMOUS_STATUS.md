@@ -7,18 +7,33 @@
 | Field | Value |
 |---|---|
 | Branch | `main` |
-| HEAD | pending FIX-COLL-011 land — D-096 Full green |
+| HEAD | pending FIX-COLL-012 land — D-097 Full green |
 | Upstream | `origin/main` synced (ordinary push OK) |
-| Next in flight | Residual P2 INTERLOCK/MAINS, SOFT↔TRAY; owner blockers: §F/§M/§N/§A |
+| Next in flight | F-1 share_face TRAY/SLIDE↔cross-tier rail; dead INTERLOCK/MAINS allowlists; owner blockers: §F/§M/§N/§A |
 | Live `CONCEPT_REVISION` | **15** (`src/stand_cad/geometry/export.py`) |
 | Envelope | **650 × 420 × 540 mm** (D-089 full +11 mm stack; was 529 pre-D-089) |
 | Owner-confirmed product | D-075 posts restored; D-076 upper fixed (`upper_extension=0`), lower 250 mm + door/tray choreography |
 | Gates | **No G0–G8 passed** — all CONCEPT / REFERENCE_ONLY / PRELIMINARY |
 | Mode | Autonomously fixing highest-impact **software/honesty** defects until owner says **СТОП** |
-| Verify at land | Full **green** — `setup_windows.ps1` exit 0 (428 passed, 1 xfailed); ruff clean (FIX-COLL-011) |
+| Verify at land | Full **green** — `setup_windows.ps1` exit 0 (430 passed, 1 xfailed); ruff clean (FIX-COLL-012) |
 | Commit policy | Mega-land authorized 2026-08-08. Keep excluding `ИИ советы/`, secrets, `.pytest_cache/`. `output/` gitignored. |
 
 ## Last closed defect
+
+### FIX-COLL-012-staggered-tier-volume-gate — staggered-tier Y-overlap volume gate (D-097) — **closed cycle 1**
+
+| | |
+|---|---|
+| Problem | `is_staggered_tier_y_overlap()` returned True on cross-tier Y-overlap alone — no `intersection_volume` ceiling; historical burial `EQUIP-PLOTTER1` ↔ `FRAME-RAIL-TRAY-UPPER` ~**43875 mm³** silent-green |
+| Root cause | Y-overlap-only heuristic in `is_staggered_tier_y_overlap()` wired via `is_mating()` ~1114 — same class as D-086/D-080/D-087 volume gates |
+| Fix | `STAGGERED_TIER_MAX_BEARING_MM3=500.0`; gate after Y-overlap check; marker lists and `is_mating` call site unchanged. Two regression tests |
+| Measured | Live transport/service max **0 mm³** (149/38/149 cross-tier marker pairs with y_overlap > threshold) |
+| Residual P2 | F-1: TRAY/SLIDE↔cross-tier `FRAME-RAIL-TRAY` uncapped share_face before staggered; dead INTERLOCK/MAINS allowlists; other uncapped `MATING_PAIRS` |
+| Key paths | `collision.py`; `tests/test_geometry.py`; `docs/14` §11; `state/DECISION_LOG.md` D-097 |
+| Verify | Adversarial accept; Quick 430 passed; Full `setup_windows.ps1` exit 0 |
+| Explicitly NOT done | Gate pass; §F/§M/§N/§A closure; Path A geometry; INTERLOCK/MAINS restore |
+
+**Anti-false-conclusion:** 500 mm³ ceiling is hygiene gate — live 0 mm³ does not prove physical Z clearance at prototype (kinematics canary separate).
 
 ### FIX-COLL-011-cover-svc-frame-ceiling — COVER-SVC↔FRAME BASE/POST volume gates (D-096) — **closed cycle 1**
 
@@ -317,4 +332,5 @@
 | 2026-08-08 | FIX-COLL-008 closed (D-093); POST↔PANEL-IN ceiling 25000; share_face ORG∪POST; Full green. |
 | 2026-08-08 | FIX-COLL-007 closed (D-092); ORG/MID ceilings 35000; share_face bypass closed; Full green. |
 | 2026-08-08 | FIX-COLL-009 closed (D-094); TRAY-rail↔PANEL-IN ceiling 15000; share_face ORG∪POST∪TRAY; Full green. |
+| 2026-08-08 | FIX-COLL-012 closed (D-097); staggered-tier ceiling 500 mm³; Full green. |
 | 2026-08-08 | FIX-COLL-011 closed (D-096); COVER↔FRAME BASE/POST ceilings 10000/500; Full green. |
