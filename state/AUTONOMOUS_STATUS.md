@@ -7,7 +7,7 @@
 | Field | Value |
 |---|---|
 | Branch | `main` |
-| HEAD | pending FIX-COLL-005 land — D-089 Path A + HANDOFF sync; Full green |
+| HEAD | pending FIX-DOC-007 land — D-090 envelope/mass/tip advertising |
 | Upstream | `origin/main` synced (ordinary push OK) |
 | Next in flight | Next software audit; residual MATING_PAIRS P2; owner blockers: §F/§M/§N/§A |
 | Live `CONCEPT_REVISION` | **15** (`src/stand_cad/geometry/export.py`) |
@@ -15,10 +15,21 @@
 | Owner-confirmed product | D-075 posts restored; D-076 upper fixed (`upper_extension=0`), lower 250 mm + door/tray choreography |
 | Gates | **No G0–G8 passed** — all CONCEPT / REFERENCE_ONLY / PRELIMINARY |
 | Mode | Autonomously fixing highest-impact **software/honesty** defects until owner says **СТОП** |
-| Verify at land | Full **green** — `setup_windows.ps1` exit 0 (404 passed, 1 xfailed); ruff clean (FIX-COLL-005) |
+| Verify at land | Quick **green** — 406 passed, 1 xfailed; ruff clean (FIX-DOC-007); docs/tests/state only |
 | Commit policy | Mega-land authorized 2026-08-08. Keep excluding `ИИ советы/`, secrets, `.pytest_cache/`. `output/` gitignored. |
 
 ## Last closed defect
+
+### FIX-DOC-007-post-d089-advertising — sole-current envelope/mass/tip sync (D-090) — **closed cycle 1**
+
+| | |
+|---|---|
+| Problem | README + docs/12 still advertised envelope H **529 mm** and stale mass/tip; HANDOFF Open list claimed **PLT-012 PASSING**; CSV PRD-006/PLT-001 cited 529 + old kg |
+| Fix | Sync README, docs/12, HANDOFF current zones, CSV PRD-006/PLT-001/PLT-012/PLT-022 to live rev15 figures; regression tests pin advertising to live `case.height` / mass / tip |
+| Live figures | Envelope **650×420×540 mm**; structural **9.651 kg**; all-parts **13.445 kg**; lower tip **3.828** |
+| Key paths | `README.md`; `docs/12_PRODUCTION_RFQ_TEMPLATE.md`; `HANDOFF_PROMPT.md`; `state/REQUIREMENTS_TRACEABILITY.csv`; `tests/test_concept_revision_docs.py` |
+| Verify | Adversarial accept; Quick 406 passed + ruff 0; A-017 tip → 3.828 (FIX-DOC-007b) |
+| Explicitly NOT done | G-pass; PLT-012 PASSING; §F/§M/§N/§A closure |
 
 ### FIX-COLL-005-tray-slide-stack — Path A + door-base notch (D-089) — **closed cycle 2**
 
@@ -210,3 +221,5 @@
 | 2026-08-08 | FIX-DOC-005 closed (D-088); docs/12 §F/§M owner blockers → sole-current intrusion/headroom; stale 1.39×10⁶ / 210600 lid/shuttle pin. |
 | 2026-08-08 | FIX-COLL-005 closed (D-089); Path A tray↔slide Z-stack; live 96525→0; ceiling 500; envelope 540; handle Y=181.3; Full green. |
 | 2026-08-08 | FIX-DOC-006 HANDOFF current zones → D-089 (540 / 181.3 / 263 / intrusion 1,502,833.5). |
+| 2026-08-08 | FIX-DOC-007 closed (D-090); README/docs/12/HANDOFF/CSV advertising → 540 / 9.651 / 13.445 / 3.828; PLT-012 PASSING claim removed. |
+| 2026-08-08 | FIX-DOC-007b closed; A-017 tip validation action → **≈3.828** (residual D-090). |

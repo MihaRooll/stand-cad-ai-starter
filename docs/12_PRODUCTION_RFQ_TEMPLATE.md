@@ -6,7 +6,7 @@ Subject: DFM and quotation request — light desktop plotter tower prototype —
 
 We need one functional prototype of a light desktop tower for two Silhouette cutting plotters plus horizontal film storage, for event operation and transport. The attached package is marked **`PRELIMINARY` / `CONCEPT` / `NOT FOR PRODUCTION` / `REFERENCE_ONLY`** and is submitted for DFM and quotation only.
 
-**Overall envelope (derived):** **650 × 420 × 529 mm** (W × D × H).  
+**Overall envelope (derived):** **650 × 420 × 540 mm** (W × D × H).  
 **Frame:** 15×15×1.5 mm aluminium angle — **no welding** (owner requirement D-060).  
 **Joining (concept level, D-061/D-063/D-064):** 20×20×2 mm aluminium corner brackets + M4/M3 pan-head machine screws into rivnuts. Frame corners: **2×M4 per node** (1 per bracket leg — dual M4 per 15 mm angle leg rejected for edge distance). **Stacking (D-064):** four **STACK-CAP-*** parts + **JT-STACK-CAP-POST** (2×M4 per cap into post tops). Full joint schedule: `config/parameters.yaml` `joints.*`, drawing sheet **JOIN-001**, assembly sequence **`docs/15_ASSEMBLY_INSTRUCTIONS.md`**. Manufacturer may counter-propose equivalent brackets, insert brands, and screw lengths after DFM — we expect written rationale.
 
@@ -71,13 +71,13 @@ Figures below are **indicative** from `scripts/generate_mass_report.py` at regen
 
 | Metric | Typical rev15 order of magnitude |
 |---|---|
-| Empty structural (excl. verify_on_real_machine parts) | **9.590 kg** |
-| All-parts (+ plotters in model) | **13.383 kg** |
+| Empty structural (excl. verify_on_real_machine parts) | **9.651 kg** |
+| All-parts (+ plotters in model) | **13.445 kg** |
 | Bought-in fasteners (indicative, excl. structural total) | **≈0.174 kg** registry (**158** screws: **137 M4 + 21 M3** from `joints.*`) **+ 4 FOOT M4** supplementary (`hardware.py::supplementary_fastener_instances`; `base_clad_m3=0` since D-069 removed BASE cladding) → **162** total indicative |
 | Corner brackets (indicative, not all modeled as solids) | **0.145 kg** (34 nodes: 22 JT-FRAME-CORNER + 12 JT-TRAY-RAIL-FRAME) |
 | Stacking caps (D-064, four **STACK-CAP-***) | **~0.118 kg** indicative (4× **0.0294 kg** per `mass_report.csv` / `part_mass_kg`; 40×40×8 mm plate less Ø30.75×2.5 mm recess) |
 | Stacking cap fasteners | included in registry **158** (**JT-STACK-CAP-POST**, 4 corners × qty 2) |
-| Tip factor lower tier @ 250 mm ext / 420 mm depth | **3.785** (split-mass model D-039; incl. D-061 joining roll-up) |
+| Tip factor lower tier @ 250 mm ext / 420 mm depth | **3.828** (split-mass model D-039; incl. D-061 joining roll-up) |
 | Tip factor upper tier | **N/A — not applicable** (D-076 zero travel / no overhang tip case; D-077 policy) |
 | Tray deflection (3-rail indicative model @ 10 kg) | ~0.23 mm vs 1.5 mm ceiling |
 | REL-027 `to_measure` leaf count | **55** (see `state/REQUIREMENTS_TRACEABILITY.csv` PLT-017; live validator oracle in `tests/test_parameters.py`) |

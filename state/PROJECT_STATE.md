@@ -2,6 +2,8 @@
 
 > **Living status:** `state/AUTONOMOUS_STATUS.md` — last closed defect, backlog, anti-false-conclusion notes. Prefer it over mid-file historical narrative for “what next.”
 >
+> **FIX-DOC-007 / D-090 (2026-08-08):** README + docs/12 + HANDOFF + CSV sole-current advertising synced post D-089 — envelope **540 mm**, mass **9.651/13.445 kg**, tip lower **3.828**; HANDOFF no longer claims PLT-012 PASSING. §F/§M/§N/§A remain OPEN. **No** G0–G8 pass.
+>
 > **FIX-COLL-005 / D-089 (2026-08-08, cycle 2):** Path A slide below tray; `TRAY_SLIDE_MAX_BEARING_MM3=500.0`; live max **0 mm³**. Open-door BASE-FRONT/BOTTOM clearance notches (removed 26k allowlist). Full +11 mm stack → **540 mm** envelope. **No** G0–G8 pass.
 >
 > **FIX-DOC-005 / D-088 (2026-08-08):** `docs/12_PRODUCTION_RFQ_TEMPLATE.md` §F/§M owner-blocker rows synced to sole-current — tier-2 intrusion ≈1,515,402 mm³ at Y=180.6; §M transport headroom 27/50 mm vs 80 mm (not 210,600 mm³ lid/shuttle). Regression pin in `tests/test_concept_revision_docs.py`. §F/§M/§N/§A remain OPEN. **No** G0–G8 pass.
@@ -20,7 +22,7 @@
 >
 > **FIX-MASS-001 / D-078 (2026-08-08):** Mass-report header lists excluded categories from live transport only; no longer claims removed `MAINS-INLET` / `INTERLOCK` / `EDGEGUARD` are physically present. PLT-012 / G4 **not** passed.
 >
-> **FIX-TIP-001 / D-077 (2026-08-08):** Upper tip-factor at `upper_extension=0` is **N/A** (`applicable=False`); report no longer prints `inf (minimum 1.5)`. Lower@250 indicative factor remains finite (~3.785). PLT-010 / G4 **not** passed.
+> **FIX-TIP-001 / D-077 (2026-08-08):** Upper tip-factor at `upper_extension=0` is **N/A** (`applicable=False`); report no longer prints `inf (minimum 1.5)`. Lower@250 indicative factor remains finite (~3.828 post D-089). PLT-010 / G4 **not** passed.
 >
 > **FIX-WAVE-004 (2026-08-07):** Corner posts restored (D-075); upper tray fixed / lower door-tray choreography (D-076, **owner-confirmed 2026-08-07** — "Да, все верно"). **`CONCEPT_REVISION`=15**. Door↔slide clearance resolved at sampled lower extensions 0/130/180/250 mm. **No G0–G8 gate passed.**
 >
@@ -31,7 +33,7 @@
 - Current phase: **rev15** FIX-WAVE-004 (D-075…D-076); prior FIX-WAVE-003 reconcile (D-066…D-074)
 - Current gate: G0 (human verdict unconfirmed) — **no G0–G8 gate passed**
 - Status: **`CONCEPT_REVISION`=15** evidence under `output/validation/rev15/`. **`hardware.handle_mount_y_mm`=181.3 mm** (D-089; was 180.6 at D-084). **`hardware.handle_mount_z_mm`=263 mm** (D-089; was 252). Corner posts **restored** (D-075); interlock / six service volumes / BASE·ORG·POST cladding remain removed (D-067…D-071). Door/tray choreography updated (D-076, **owner-confirmed**); `trays.upper_extension`=0. Envelope **650 × 420 × 540 mm** (D-089).
-- Last updated: 2026-08-08 (FIX-COLL-005 / D-089 cycle 2)
+- Last updated: 2026-08-08 (FIX-DOC-007 / D-090 advertising sync)
 - **Tests:** `uv run pytest -q` green on implementer machine (~370+ cases, 1 skip for missing rev evidence until regenerate); Full profile pending verifier
 - **Tooling/process (D-041, 2026-08-05):** `pytest-xdist` + `-n auto`; `Quick`/`Full` profile guidance; operational-orchestrator turn-ending directive; `docs/14_CAD_MODELING_CONVENTIONS.md`
 - **Handoff:** paste `HANDOFF_PROMPT.md` into a new chat to continue; do not use stale mid-file “Older status” narratives from prior drafts
