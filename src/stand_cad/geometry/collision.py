@@ -186,6 +186,16 @@ MID_UPPER_PENETRATING_PATTERNS: frozenset[tuple[str, str]] = frozenset(
     }
 )
 
+# Frame post ↔ inner panel penetrating joint (mm³) — bolt-through / pocket overlap.
+# Live max 18652.9 mm³ (FRAME-POST-RR/RL-001 ↔ PANEL-IN-REAR-001, 2026-08-08 transport).
+POST_PANEL_PENETRATING_MAX_BEARING_MM3 = 25_000.0
+
+POST_PANEL_PENETRATING_PATTERNS: frozenset[tuple[str, str]] = frozenset(
+    {
+        ("FRAME-POST-", "PANEL-IN-"),
+    }
+)
+
 
 def _door_is_open_horizontal(solid, *, threshold: float = 1.0) -> bool:
     """True when a drop-front door has swung to horizontal work-surface posture."""
@@ -598,6 +608,9 @@ def is_penetrating_structural_joint(
         elif (pattern_a, pattern_b) in MID_UPPER_PENETRATING_PATTERNS:
             if inter_vol > MID_UPPER_PENETRATING_MAX_BEARING_MM3 + threshold:
                 continue
+        elif (pattern_a, pattern_b) in POST_PANEL_PENETRATING_PATTERNS:
+            if inter_vol > POST_PANEL_PENETRATING_MAX_BEARING_MM3 + threshold:
+                continue
         if inter_vol > threshold:
             return True
     return False
@@ -873,7 +886,10 @@ def is_mating(
         return True
     # Panels flush-mounted to frame rails/posts.
     if _share_face_if_prefix(a, b, parts, threshold, "PANEL-IN-", "FRAME-"):
-        if not _matches_penetrating_patterns(a, b, ORG_REAR_PENETRATING_PATTERNS):
+        if not (
+            _matches_penetrating_patterns(a, b, ORG_REAR_PENETRATING_PATTERNS)
+            or _matches_penetrating_patterns(a, b, POST_PANEL_PENETRATING_PATTERNS)
+        ):
             return True
     if _is_side_slab_frame_pair(a, b) is not None:
         if params is None:

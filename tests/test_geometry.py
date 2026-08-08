@@ -2209,6 +2209,100 @@ def test_org_rear_penetrating_live_mate_passes(params, transport):
     assert is_mating(rail_id, panel_id, parts, threshold=threshold, params=params)
 
 
+def test_post_panel_penetrating_rejects_volumetric_burial(params, transport):
+    """FIX-COLL-008 AC-2 — POST↔PANEL-IN penetrating pattern must reject deep burial."""
+    from stand_cad.geometry.collision import (
+        POST_PANEL_PENETRATING_MAX_BEARING_MM3,
+        is_mating,
+        is_penetrating_structural_joint,
+    )
+    from stand_cad.geometry.registry import PartRecord
+
+    threshold = float(params.value("tolerance.part_assembly_feature_mm"))
+    post_id = "FRAME-POST-RR-001"
+    panel_id = "PANEL-IN-REAR-001"
+    panel = transport.parts[panel_id]
+    panel_bounds = bounding_box_bounds(panel.solid)
+    post = transport.parts[post_id]
+    # Offset overlap — volumetric burial without coplanar AABB face
+    # (avoids PANEL-IN-/FRAME- share_face path).
+    buried_post = PartRecord(
+        part_id=post_id,
+        material=post.material,
+        solid=box_from_bounds(
+            panel_bounds[0][0] + 2.0,
+            panel_bounds[1][0] + 2.0,
+            panel_bounds[2][0] + 2.0,
+            panel_bounds[0][0] + 200.0,
+            panel_bounds[1][0] + 200.0,
+            panel_bounds[2][0] + 200.0,
+        ),
+    )
+    parts = dict(transport.parts)
+    parts[post_id] = buried_post
+    inter_vol = intersection_volume(buried_post.solid, panel.solid)
+    assert inter_vol > POST_PANEL_PENETRATING_MAX_BEARING_MM3 + threshold
+    assert inter_vol > 30_000.0
+    assert not is_penetrating_structural_joint(post_id, panel_id, parts, threshold)
+    assert not is_mating(post_id, panel_id, parts, threshold=threshold, params=params)
+
+
+def test_post_panel_share_face_burial_rejects_volumetric_burial(params, transport):
+    """FIX-COLL-008 cycle 1 — coplanar-face POST↔PANEL-IN burial must not silent-green."""
+    from stand_cad.geometry.collision import (
+        POST_PANEL_PENETRATING_MAX_BEARING_MM3,
+        aabb_share_face,
+        is_mating,
+        is_penetrating_structural_joint,
+    )
+    from stand_cad.geometry.registry import PartRecord
+
+    threshold = float(params.value("tolerance.part_assembly_feature_mm"))
+    post_id = "FRAME-POST-RR-001"
+    panel_id = "PANEL-IN-REAR-001"
+    panel = transport.parts[panel_id]
+    panel_bounds = bounding_box_bounds(panel.solid)
+    post = transport.parts[post_id]
+    buried_post = PartRecord(
+        part_id=post_id,
+        material=post.material,
+        solid=box_from_bounds(
+            panel_bounds[0][0],
+            panel_bounds[1][0],
+            panel_bounds[2][0],
+            panel_bounds[0][1],
+            panel_bounds[1][1] + 50.0,
+            panel_bounds[2][1],
+        ),
+    )
+    parts = dict(transport.parts)
+    parts[post_id] = buried_post
+    inter_vol = intersection_volume(buried_post.solid, panel.solid)
+    assert aabb_share_face(buried_post.solid, panel.solid, threshold)
+    assert inter_vol > POST_PANEL_PENETRATING_MAX_BEARING_MM3 + threshold
+    assert inter_vol > 30_000.0
+    assert not is_penetrating_structural_joint(post_id, panel_id, parts, threshold)
+    assert not is_mating(post_id, panel_id, parts, threshold=threshold, params=params)
+
+
+def test_post_panel_penetrating_live_mate_passes(params, transport):
+    """FIX-COLL-008 AC-1 — live POST↔PANEL-IN intersection stays under class ceiling."""
+    from stand_cad.geometry.collision import (
+        POST_PANEL_PENETRATING_MAX_BEARING_MM3,
+        is_mating,
+        is_penetrating_structural_joint,
+    )
+
+    threshold = float(params.value("tolerance.part_assembly_feature_mm"))
+    post_id = "FRAME-POST-RR-001"
+    panel_id = "PANEL-IN-REAR-001"
+    parts = transport.parts
+    inter_vol = intersection_volume(parts[post_id].solid, parts[panel_id].solid)
+    assert inter_vol <= POST_PANEL_PENETRATING_MAX_BEARING_MM3 + threshold
+    assert is_penetrating_structural_joint(post_id, panel_id, parts, threshold)
+    assert is_mating(post_id, panel_id, parts, threshold=threshold, params=params)
+
+
 def test_mid_upper_penetrating_rejects_volumetric_burial(params, transport):
     """FIX-COLL-007 AC-2 — MID ↔ SLIDE-UPPER penetrating pattern must reject deep burial."""
     from stand_cad.geometry.collision import (
