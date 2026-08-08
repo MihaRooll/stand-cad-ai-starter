@@ -54,7 +54,7 @@ Curved side-profile massing beyond the bullnose and RGBW photometric glow remain
 
 **Current placement (D-074, 2026-08-07):** `hardware.handle_mount_y_mm` = **179.8 mm** (loaded-case balance-point CoM Y — live recomputation within `tolerance.part_assembly_feature_mm`; retune after FIX-WAVE-003 mass removals; supersedes D-063 **185.9 mm**); `hardware.handle_mount_z_mm` = **252 mm** (unchanged). TZ:304 grip cutout (110×35 mm) on the right side slab (`PANEL-OUT-RIGHT-001`): grip band **Y ≈ [124.8, 234.8] mm**, **Z ≈ [234.5, 269.5] mm**.
 
-**Tier-2 finger intrusion (OPEN blocker):** at Y=185.9 / Z=252 the through-cutout grip volume intersects the tier-2 plotter bay (`EQUIP-PLOTTER2-001`, Cameo 5 **124 mm** body) by **≈1,389,717 mm³** (`handle_finger_intrusion_volume_mm3`, `tests/test_geometry.py::test_handle_tier2_finger_intrusion_at_balance_point`). Tier-1 plotter finger intrusion is **0 mm³**. Service-port aft margin **≈34.1 mm** (port Y=275); cable entry (Y=320, Ø30) nearest edge **≈79.1 mm** aft of grip band.
+**Tier-2 finger intrusion (OPEN blocker):** at Y=179.8 / Z=252 the through-cutout grip volume intersects the tier-2 plotter bay (`EQUIP-PLOTTER2-001`, Cameo 5 **124 mm** body) by **≈1,529,766 mm³** (`handle_finger_intrusion_volume_mm3`, `tests/test_geometry.py::test_handle_tier2_finger_intrusion_at_balance_point`). Tier-1 plotter finger intrusion is **0 mm³**. Service-port aft margin **≈40.2 mm** (port Y=275); cable entry (Y=320, Ø30) nearest edge **≈85.2 mm** aft of grip band.
 
 **Superseded history (do not treat as current):**
 
@@ -73,7 +73,7 @@ D-051 records that the owner **deferred** a handle-concept decision. None of the
 2. **Blind pocket in the side slab** — recessed grip without a through-hole into the interior volume.
 3. **Low aft cutout behind the plotters** — grip opening in the rear/aft zone, clear of tier-2 finger reach.
 
-Until one option is chosen and modelled, the §E through-cutout intersecting the tier-2 bay by **≈1.39×10⁶ mm³** blocks a production-ready side-panel release. Tracked in `state/DEFERRED_VERIFICATION.md` (D-050/D-051 row).
+Until one option is chosen and modelled, the §E through-cutout intersecting the tier-2 bay by **≈1.53×10⁶ mm³** (1,529,766 mm³ at current Y=179.8) blocks a production-ready side-panel release. Tracked in `state/DEFERRED_VERIFICATION.md` (D-050/D-051 row).
 
 ## G. Rear vent render evidence (PLT-005 rework F-3)
 
@@ -83,7 +83,7 @@ TZ line 290 bottom+rear layout unchanged. Primary transport rear view may still 
 
 Owner simplified TZ section 10's certified rear mains inlet (with retention/strain relief, feeding an internal certified distributor) to a plain grommeted cable pass-through hole for the prototype: he will route a household extension cord/power strip through the hole and plug the plotters and lighting into it himself inside the case. **`SVC-CABLE-PASSTHROUGH-001`** is on **`PANEL-OUT-RIGHT-001`** at **Y=320 mm / Z=120 mm** (D-047; cable Y reverted from D-050's brief Y=330 experiment per D-051), **45 mm aft** of the USB service port at **Y=275 / Z=120**. Two provisional leaves remain open (`to_measure`, A-015): `hardware.cable_passthrough_diameter_mm` (30 mm) and `services.cable_passthrough_grommet_wall_mm` (2 mm → 26 mm clear bore) — chosen in a generous 25–35 mm range for a common plug/cable end, **not measured against the actual cord at the current right-side mount location**. The grommet edge-break radius (`services.cable_passthrough_edge_break_radius_mm`, 1 mm) is settled at TZ:472's own verified R1 value and does not need further measurement.
 
-**To close this item:** measure the outer diameter of the actual extension-cord plug/cable end the owner intends to route through the **right-side** opening, then update `config/parameters.yaml` and regenerate before production DXF release. The certified-inlet path (TZ section 10) remains deferred, not deleted — `MAINS-INLET-001` stays modeled as a placeholder service volume if a future revision reinstates it (D-036).
+**To close this item:** measure the outer diameter of the actual extension-cord plug/cable end the owner intends to route through the **right-side** opening, then update `config/parameters.yaml` and regenerate before production DXF release. The certified-inlet path (TZ section 10) remains **deferred / not modeled** in the current assembly (D-036); D-071 removed the former `MAINS-INLET-001` placeholder solid — a future revision would need to reintroduce it explicitly if the owner chooses the certified path.
 
 ## I. Tier-2 under-tray hardware vs plotter 1 envelope (F-5) — **RESOLVED (D-038, 2026-08-04)**
 

@@ -7,7 +7,7 @@
 | Field | Value |
 |---|---|
 | Branch | `main` |
-| HEAD | `5eb2375`+ working tree — FIX-DOC-002-handoff-rev15 closed in WT |
+| HEAD | `5eb2375`+ working tree — FIX-DOC-003-docs10-csv-rev15 closed in WT |
 | Upstream | `origin/main` synced (ordinary push OK) |
 | Next in flight | Door PANEL-IN-MID / SOFTSTOP unconditional True (P2 honesty backlog) |
 | Prior base | `65d6fe3` (D-041) |
@@ -20,6 +20,17 @@
 | Commit policy | Mega-land authorized 2026-08-08. Keep excluding `ИИ советы/`, secrets, `.pytest_cache/`. `output/` gitignored. |
 
 ## Last closed defect
+
+### FIX-DOC-003-docs10-csv-rev15 — docs/10 + CSV rev15 sync (D-083)
+
+| | |
+|---|---|
+| Problem | `docs/10_USER_INPUT_REQUIRED.md` §E/§F still cited stale Y=185.9 / ≈1.39×10⁶ mm³ as sole current; §H claimed MAINS-INLET placeholder solid retained; CSV rows still pointed at rev13 / 53-leaf REL-027 / 8.806 kg as current |
+| Root cause | Documentation not refreshed after FIX-WAVE-004 / D-074 handle retune and D-071 service-volume removal |
+| Fix | §E → Y=179.8 / ≈1,529,766 mm³ + margins 40.2/85.2; §F → ≈1.53×10⁶; §H → deferred/not modeled (D-036/D-071); CSV SWE/PLT/MFG/PRD/ELE rows → rev15 paths, CONCEPT_REVISION=15, REL-027=55, current mass 9.590/13.383 kg |
+| Key paths | `docs/10_USER_INPUT_REQUIRED.md`, `state/REQUIREMENTS_TRACEABILITY.csv`, `state/DECISION_LOG.md`, `state/PROJECT_STATE.md` |
+| Verify | Adversarial cycle-1 **approve** (findings=[]); Quick exit 0 — `uv run pytest tests/test_geometry.py -k handle_tier2_finger --tb=short -q`, `uv run pytest tests/test_concept_revision_docs.py`, full `uv run pytest`, `uv run ruff check .` |
+| Explicitly NOT done | Gate pass; §F/§M/§N/§A closure; geometry/config changes |
 
 ### FIX-DOC-002-handoff-rev15 — HANDOFF product-truth sync (D-082)
 
@@ -73,8 +84,7 @@
 ## Open defect backlog (impact order)
 
 1. **Door PANEL-IN-MID / SOFTSTOP unconditional True** — `is_door_mate` returns True without volume ceiling; no clearance `< thr` contacts measured in transport / service_p1 / tray1_qa. T2+; do not invent cap without evidence.
-2. **Traceability CSV / ASSUMPTIONS** evidence paths still pointing at rev13 for several PLT/SWE rows.
-3. Owner blockers unchanged: §F handle, §M lid headroom, §N retention, §A measurements.
+2. Owner blockers unchanged: §F handle, §M lid headroom, §N retention, §A measurements.
 
 ## Where we are / next action
 
@@ -109,5 +119,6 @@
 | 2026-08-08 | FIX-MASS-001 closed (D-078); backlog #2 removed; header honesty test added. |
 | 2026-08-08 | FIX-COLL-001 closed (D-080); open-front volume ceiling 750 mm³; backlog #1 narrowed to door PANEL-IN-MID/SOFTSTOP P2. |
 | 2026-08-08 | FIX-TOOL-001 closed (D-081); `_stage1_metrics.py` interlock N/A guard; backlog #2 removed. |
+| 2026-08-08 | FIX-DOC-003 closed (D-083); docs/10 §E/§F/§H + CSV current-evidence → rev15; backlog #2 (CSV rev13 pointers) removed. |
 | 2026-08-08 | FIX-DOC-002 closed (D-082); HANDOFF current zones → rev15; backlog #3 (HANDOFF product-truth) removed. |
 | 2026-08-08 | FIX-DOC-002 cycle 3: PROJECT_STATE Current blockers honesty (F-7/F-8/F-9). |
