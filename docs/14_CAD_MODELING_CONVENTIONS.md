@@ -67,7 +67,7 @@ Largest uncapped non–open-front **`PENETRATING_JOINT_PATTERNS`** pairs are gat
 
 Deep synthetic burial ≫ ceiling must **not** silent-green (including coplanar AABB-face burial for ORG-REAR, POST↔PANEL-IN, and TRAY-rail↔PANEL-IN). **`OPEN_FRONT_MAX_BEARING_MM3`** (**750 mm³**) and §10 behavior unchanged (D-080).
 
-**Residual uncapped penetrating classes (P2):** `INTERLOCK-TAB-` ↔ `PANEL-IN-` (uncapped — not re-measured this cycle); `FRAME-RAIL-BASE-REAR-` ↔ `MAINS-INLET-` (uncapped — out of scope). `COVER-SVC-001` ↔ `FRAME-POST-R*` (~**123 mm³**) and `COVER-SVC-` ↔ `FRAME-RAIL-BASE` share_face (~**7350 mm³**) remain uncapped — cap in a follow-on cycle. Do not apply a single global ~40k ceiling.
+**Residual uncapped penetrating classes (P2):** `INTERLOCK-TAB-` ↔ `PANEL-IN-` (uncapped — not re-measured this cycle); `FRAME-RAIL-BASE-REAR-` ↔ `MAINS-INLET-` (uncapped — out of scope). Do not apply a single global ~40k ceiling.
 
 ## 11. Kinematic-group mates — no blanket exemption (D-086)
 
@@ -83,4 +83,8 @@ Deep synthetic burial ≫ ceiling must **not** silent-green (including coplanar 
 
 **Service cover ↔ panel (`is_cover_svc_panel_bearing`, D-095):** `COVER-SVC-001` ↔ `PANEL-IN-BOTTOM-001` and ↔ `PANEL-OUT-REAR-001` on `MATING_PAIRS`; `COVER-SVC-001` ↔ `PANEL-IN-REAR-001` mates via **`COVER-SVC-`/`PANEL-` `_share_face_if_prefix`** only (not on `MATING_PAIRS`). Live max **7901.25 mm³** (BOTTOM / IN-REAR) and **1048.99 mm³** (OUT-REAR, 2026-08-08 transport). Exempt when `intersection_volume <= COVER_SVC_PANEL_MAX_BEARING_MM3 + threshold` (**10000 mm³** ceiling). Both `MATING_PAIRS` and share_face paths volume-gated — coplanar IN-REAR burial cannot bypass. Deep burial must fail.
 
-**Residual uncapped `MATING_PAIRS` / share_face (P2):** `COVER-SVC-001` ↔ `FRAME-POST-R*` (~**123 mm³**); `COVER-SVC-` ↔ `FRAME-RAIL-BASE` share_face (~**7350 mm³**); SOFT↔TRAY, INTERLOCK, shelf/org, media, mains, … — D-087 residual P2 where applicable.
+**Service cover ↔ base rail (`is_cover_svc_frame_base_bearing`, D-096):** `COVER-SVC-001` ↔ `FRAME-RAIL-BASE-REAR-001` mates via **`COVER-SVC-`/`FRAME-RAIL-BASE` `_share_face_if_prefix`** only. Live max **7350.0 mm³** (2026-08-08 transport). Exempt when `intersection_volume <= COVER_SVC_FRAME_BASE_MAX_BEARING_MM3 + threshold` (**10000 mm³** ceiling). Coplanar share_face burial cannot bypass. Deep burial must fail.
+
+**Service cover ↔ rear corner post (`is_cover_svc_frame_post_bearing`, D-096):** `COVER-SVC-001` ↔ `FRAME-POST-RL/RR-001` on `PENETRATING_JOINT_PATTERNS` and via **`COVER-SVC-`/`FRAME-POST-R` `_share_face_if_prefix`**. Live max **122.9474 mm³** (2026-08-08 transport). Exempt when `intersection_volume <= COVER_SVC_FRAME_POST_MAX_BEARING_MM3 + threshold` (**500 mm³** ceiling). Both penetrating and share_face paths volume-gated. Deep burial must fail.
+
+**Residual uncapped `MATING_PAIRS` / share_face (P2):** SOFT↔TRAY, INTERLOCK, shelf/org, media, mains, … — D-087 residual P2 where applicable.

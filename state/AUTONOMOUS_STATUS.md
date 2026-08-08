@@ -7,18 +7,33 @@
 | Field | Value |
 |---|---|
 | Branch | `main` |
-| HEAD | pending FIX-COLL-010 land — D-095 Full green |
+| HEAD | pending FIX-COLL-011 land — D-096 Full green |
 | Upstream | `origin/main` synced (ordinary push OK) |
-| Next in flight | Residual P2 COVER↔POST/BASE-REAR, INTERLOCK/MAINS, SOFT↔TRAY; owner blockers: §F/§M/§N/§A |
+| Next in flight | Residual P2 INTERLOCK/MAINS, SOFT↔TRAY; owner blockers: §F/§M/§N/§A |
 | Live `CONCEPT_REVISION` | **15** (`src/stand_cad/geometry/export.py`) |
 | Envelope | **650 × 420 × 540 mm** (D-089 full +11 mm stack; was 529 pre-D-089) |
 | Owner-confirmed product | D-075 posts restored; D-076 upper fixed (`upper_extension=0`), lower 250 mm + door/tray choreography |
 | Gates | **No G0–G8 passed** — all CONCEPT / REFERENCE_ONLY / PRELIMINARY |
 | Mode | Autonomously fixing highest-impact **software/honesty** defects until owner says **СТОП** |
-| Verify at land | Full **green** — `setup_windows.ps1` exit 0 (423 passed, 1 xfailed); ruff clean (FIX-COLL-010) |
+| Verify at land | Full **green** — `setup_windows.ps1` exit 0 (428 passed, 1 xfailed); ruff clean (FIX-COLL-011) |
 | Commit policy | Mega-land authorized 2026-08-08. Keep excluding `ИИ советы/`, secrets, `.pytest_cache/`. `output/` gitignored. |
 
 ## Last closed defect
+
+### FIX-COLL-011-cover-svc-frame-ceiling — COVER-SVC↔FRAME BASE/POST volume gates (D-096) — **closed cycle 1**
+
+| | |
+|---|---|
+| Problem | `COVER-SVC-001` ↔ `FRAME-RAIL-BASE-REAR-001` (~7350 mm³) and ↔ `FRAME-POST-RL/RR-001` (~123 mm³) uncapped on share_face; POST pairs also uncapped in `PENETRATING_JOINT_PATTERNS` — deep burial silent-green |
+| Root cause | `is_mating()` returned unconditional True for `COVER-SVC-`/`FRAME-RAIL-BASE` and `FRAME-POST-R` share_face; `is_penetrating_structural_joint()` had no ceiling for COVER↔POST patterns |
+| Fix | `COVER_SVC_FRAME_BASE_MAX_BEARING_MM3=10000.0`; `COVER_SVC_FRAME_POST_MAX_BEARING_MM3=500.0`; helpers + share_face gates; `COVER_SVC_FRAME_POST_PENETRATING_PATTERNS` gated in penetrating path. Five regression tests |
+| Measured | Live transport: BASE-REAR **7350.0 mm³**; POST RL/RR **122.9474 mm³** each |
+| Residual P2 | INTERLOCK-TAB↔PANEL-IN; BASE-REAR↔MAINS-INLET; other uncapped `MATING_PAIRS` |
+| Key paths | `collision.py`; `tests/test_geometry.py`; `docs/14` §11; `state/DECISION_LOG.md` D-096 |
+| Verify | Adversarial accept; Quick 428 passed; Full `setup_windows.ps1` exit 0 |
+| Explicitly NOT done | Gate pass; §F/§M/§N/§A closure; global ceiling |
+
+**Anti-false-conclusion:** 10000/500 mm³ ceilings are measured hygiene gates — live overlap is design intent, not proof of physical clearance at prototype.
 
 ### FIX-COLL-010-cover-svc-mating-ceiling — COVER-SVC↔PANEL volume gate (D-095) — **closed cycle 1**
 
@@ -28,7 +43,7 @@
 | Root cause | `is_mating()` MATING_PAIRS branch returned unconditional True; share_face bypass had no volume ceiling |
 | Fix | `COVER_SVC_PANEL_MAX_BEARING_MM3=10000.0` with `is_cover_svc_panel_pair()` / `is_cover_svc_panel_bearing()`; gate MATING_PAIRS branch + share_face path. Four regression tests |
 | Measured | Live transport: BOTTOM **7901.25 mm³**; OUT-REAR **1048.99 mm³**; IN-REAR **7901.25 mm³** |
-| Residual P2 | COVER↔POST ~**123 mm³**; COVER↔BASE-REAR share_face ~**7350 mm³**; INTERLOCK-TAB↔PANEL-IN; BASE-REAR↔MAINS-INLET; other uncapped `MATING_PAIRS` |
+| Residual P2 | INTERLOCK-TAB↔PANEL-IN; BASE-REAR↔MAINS-INLET; other uncapped `MATING_PAIRS` |
 | Key paths | `collision.py`; `tests/test_geometry.py`; `docs/14` §11; `state/DECISION_LOG.md` D-095 |
 | Verify | Adversarial accept; Quick 423 passed; Full `setup_windows.ps1` exit 0 |
 | Explicitly NOT done | Gate pass; §F/§M/§N/§A closure; COVER↔POST/BASE-REAR caps; global ceiling |
@@ -302,4 +317,4 @@
 | 2026-08-08 | FIX-COLL-008 closed (D-093); POST↔PANEL-IN ceiling 25000; share_face ORG∪POST; Full green. |
 | 2026-08-08 | FIX-COLL-007 closed (D-092); ORG/MID ceilings 35000; share_face bypass closed; Full green. |
 | 2026-08-08 | FIX-COLL-009 closed (D-094); TRAY-rail↔PANEL-IN ceiling 15000; share_face ORG∪POST∪TRAY; Full green. |
-| 2026-08-08 | FIX-COLL-010 closed (D-095); COVER-SVC↔PANEL ceiling 10000 + share_face gate; Full green. |
+| 2026-08-08 | FIX-COLL-011 closed (D-096); COVER↔FRAME BASE/POST ceilings 10000/500; Full green. |

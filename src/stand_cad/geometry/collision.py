@@ -161,6 +161,21 @@ TRAY_SLIDE_MAX_BEARING_MM3 = 500.0
 # via share_face only (not on MATING_PAIRS) — gate that path too (D-095).
 COVER_SVC_PANEL_MAX_BEARING_MM3 = 10_000.0
 
+# Service cover ↔ base rear rail skin bearing (mm³) — share_face mount on rear base rail.
+# Live max 7350.0 mm³ (COVER-SVC-001 ↔ FRAME-RAIL-BASE-REAR-001, 2026-08-08 transport).
+COVER_SVC_FRAME_BASE_MAX_BEARING_MM3 = 10_000.0
+
+# Service cover ↔ rear corner post penetrating / share_face overlap (mm³).
+# Live max 122.9474 mm³ (COVER-SVC-001 ↔ FRAME-POST-RL/RR-001, 2026-08-08 transport).
+COVER_SVC_FRAME_POST_MAX_BEARING_MM3 = 500.0
+
+COVER_SVC_FRAME_POST_PENETRATING_PATTERNS: frozenset[tuple[str, str]] = frozenset(
+    {
+        ("COVER-SVC-001", "FRAME-POST-RL-"),
+        ("COVER-SVC-001", "FRAME-POST-RR-"),
+    }
+)
+
 OPEN_FRONT_PENETRATING_PATTERNS: frozenset[tuple[str, str]] = frozenset(
     {
         ("PANEL-CLAD-FRONT-", "TRAY-LOWER-"),
@@ -630,6 +645,9 @@ def is_penetrating_structural_joint(
         elif (pattern_a, pattern_b) in TRAY_RAIL_PANEL_PENETRATING_PATTERNS:
             if inter_vol > TRAY_RAIL_PANEL_PENETRATING_MAX_BEARING_MM3 + threshold:
                 continue
+        elif (pattern_a, pattern_b) in COVER_SVC_FRAME_POST_PENETRATING_PATTERNS:
+            if inter_vol > COVER_SVC_FRAME_POST_MAX_BEARING_MM3 + threshold:
+                continue
         if inter_vol > threshold:
             return True
     return False
@@ -870,6 +888,54 @@ def is_cover_svc_panel_bearing(
     return inter_vol <= COVER_SVC_PANEL_MAX_BEARING_MM3 + threshold
 
 
+def is_cover_svc_frame_base_pair(a: str, b: str) -> bool:
+    """True when a,b is a service cover ↔ base rail mating pair."""
+    return (_id_matches(a, "COVER-SVC-") and _id_matches(b, "FRAME-RAIL-BASE-")) or (
+        _id_matches(b, "COVER-SVC-") and _id_matches(a, "FRAME-RAIL-BASE-")
+    )
+
+
+def is_cover_svc_frame_base_bearing(
+    a: str,
+    b: str,
+    parts: dict[str, PartRecord],
+    threshold: float,
+) -> bool:
+    """Service cover flush-mounted on base rail — skin bearing only."""
+    if not is_cover_svc_frame_base_pair(a, b):
+        return False
+    if minimum_clearance(parts[a].solid, parts[b].solid) >= threshold:
+        return False
+    inter_vol = intersection_volume(parts[a].solid, parts[b].solid)
+    return inter_vol <= COVER_SVC_FRAME_BASE_MAX_BEARING_MM3 + threshold
+
+
+def is_cover_svc_frame_post_pair(a: str, b: str) -> bool:
+    """True when a,b is a service cover ↔ rear corner post mating pair."""
+    return (
+        _id_matches(a, "COVER-SVC-")
+        and (_id_matches(b, "FRAME-POST-RL-") or _id_matches(b, "FRAME-POST-RR-"))
+    ) or (
+        _id_matches(b, "COVER-SVC-")
+        and (_id_matches(a, "FRAME-POST-RL-") or _id_matches(a, "FRAME-POST-RR-"))
+    )
+
+
+def is_cover_svc_frame_post_bearing(
+    a: str,
+    b: str,
+    parts: dict[str, PartRecord],
+    threshold: float,
+) -> bool:
+    """Service cover overlap with rear corner post — penetrating / share_face skin only."""
+    if not is_cover_svc_frame_post_pair(a, b):
+        return False
+    if minimum_clearance(parts[a].solid, parts[b].solid) >= threshold:
+        return False
+    inter_vol = intersection_volume(parts[a].solid, parts[b].solid)
+    return inter_vol <= COVER_SVC_FRAME_POST_MAX_BEARING_MM3 + threshold
+
+
 def is_mating(
     a: str,
     b: str,
@@ -1027,10 +1093,12 @@ def is_mating(
     if is_cover_svc_panel_pair(a, b):
         if _share_face_if_prefix(a, b, parts, threshold, "COVER-SVC-", "PANEL-"):
             return is_cover_svc_panel_bearing(a, b, parts, threshold)
-    if _share_face_if_prefix(a, b, parts, threshold, "COVER-SVC-", "FRAME-RAIL-BASE"):
-        return True
-    if _share_face_if_prefix(a, b, parts, threshold, "COVER-SVC-", "FRAME-POST-R"):
-        return True
+    if is_cover_svc_frame_base_pair(a, b):
+        if _share_face_if_prefix(a, b, parts, threshold, "COVER-SVC-", "FRAME-RAIL-BASE"):
+            return is_cover_svc_frame_base_bearing(a, b, parts, threshold)
+    if is_cover_svc_frame_post_pair(a, b):
+        if _share_face_if_prefix(a, b, parts, threshold, "COVER-SVC-", "FRAME-POST-R"):
+            return is_cover_svc_frame_post_bearing(a, b, parts, threshold)
 
     # Rear/bottom service pocket cluster — intentional shared faces.
     if a in REAR_BOTTOM_SERVICE_CLUSTER and b in REAR_BOTTOM_SERVICE_CLUSTER:

@@ -2518,6 +2518,158 @@ def test_cover_svc_panel_share_face_burial_rejects_volumetric_burial(params, tra
     assert not is_mating(cover_id, panel_id, parts, threshold=threshold, params=params)
 
 
+def test_cover_svc_frame_base_live_mate_passes(params, transport):
+    """FIX-COLL-011 AC-1 — live COVER-SVC↔BASE-REAR share_face stays under class ceiling."""
+    from stand_cad.geometry.collision import (
+        COVER_SVC_FRAME_BASE_MAX_BEARING_MM3,
+        is_cover_svc_frame_base_bearing,
+        is_mating,
+    )
+
+    threshold = float(params.value("tolerance.part_assembly_feature_mm"))
+    cover_id = "COVER-SVC-001"
+    rail_id = "FRAME-RAIL-BASE-REAR-001"
+    parts = transport.parts
+    inter_vol = intersection_volume(parts[cover_id].solid, parts[rail_id].solid)
+    assert inter_vol <= COVER_SVC_FRAME_BASE_MAX_BEARING_MM3 + threshold
+    assert is_cover_svc_frame_base_bearing(cover_id, rail_id, parts, threshold)
+    assert is_mating(cover_id, rail_id, parts, threshold=threshold, params=params)
+
+
+def test_cover_svc_frame_post_live_mate_passes(params, transport):
+    """FIX-COLL-011 AC-2 — live COVER-SVC↔POST share_face + penetrating stay under ceiling."""
+    from stand_cad.geometry.collision import (
+        COVER_SVC_FRAME_POST_MAX_BEARING_MM3,
+        is_cover_svc_frame_post_bearing,
+        is_mating,
+        is_penetrating_structural_joint,
+    )
+
+    threshold = float(params.value("tolerance.part_assembly_feature_mm"))
+    cover_id = "COVER-SVC-001"
+    for post_id in ("FRAME-POST-RL-001", "FRAME-POST-RR-001"):
+        parts = transport.parts
+        inter_vol = intersection_volume(parts[cover_id].solid, parts[post_id].solid)
+        assert inter_vol <= COVER_SVC_FRAME_POST_MAX_BEARING_MM3 + threshold
+        assert is_cover_svc_frame_post_bearing(cover_id, post_id, parts, threshold)
+        assert is_penetrating_structural_joint(cover_id, post_id, parts, threshold)
+        assert is_mating(cover_id, post_id, parts, threshold=threshold, params=params)
+
+
+def test_cover_svc_frame_base_burial_rejects_volumetric_burial(params, transport):
+    """FIX-COLL-011 AC-3 — COVER-SVC↔BASE-REAR share_face burial must not silent-green."""
+    from stand_cad.geometry.collision import (
+        COVER_SVC_FRAME_BASE_MAX_BEARING_MM3,
+        aabb_share_face,
+        is_cover_svc_frame_base_bearing,
+        is_mating,
+    )
+    from stand_cad.geometry.registry import PartRecord
+
+    threshold = float(params.value("tolerance.part_assembly_feature_mm"))
+    cover_id = "COVER-SVC-001"
+    rail_id = "FRAME-RAIL-BASE-REAR-001"
+    rail = transport.parts[rail_id]
+    rail_bounds = bounding_box_bounds(rail.solid)
+    cover = transport.parts[cover_id]
+    buried_cover = PartRecord(
+        part_id=cover_id,
+        material=cover.material,
+        solid=box_from_bounds(
+            rail_bounds[0][0],
+            rail_bounds[1][0],
+            rail_bounds[2][0],
+            rail_bounds[0][1],
+            rail_bounds[1][1] + 50.0,
+            rail_bounds[2][1],
+        ),
+    )
+    parts = dict(transport.parts)
+    parts[cover_id] = buried_cover
+    inter_vol = intersection_volume(buried_cover.solid, rail.solid)
+    assert aabb_share_face(buried_cover.solid, rail.solid, threshold)
+    assert inter_vol > COVER_SVC_FRAME_BASE_MAX_BEARING_MM3 + threshold
+    assert inter_vol > 30_000.0
+    assert not is_cover_svc_frame_base_bearing(cover_id, rail_id, parts, threshold)
+    assert not is_mating(cover_id, rail_id, parts, threshold=threshold, params=params)
+
+
+def test_cover_svc_frame_post_share_face_burial_rejects_volumetric_burial(params, transport):
+    """FIX-COLL-011 AC-3 — coplanar-face COVER-SVC↔POST burial must not silent-green."""
+    from stand_cad.geometry.collision import (
+        COVER_SVC_FRAME_POST_MAX_BEARING_MM3,
+        aabb_share_face,
+        is_cover_svc_frame_post_bearing,
+        is_mating,
+        is_penetrating_structural_joint,
+    )
+    from stand_cad.geometry.registry import PartRecord
+
+    threshold = float(params.value("tolerance.part_assembly_feature_mm"))
+    cover_id = "COVER-SVC-001"
+    post_id = "FRAME-POST-RR-001"
+    post = transport.parts[post_id]
+    post_bounds = bounding_box_bounds(post.solid)
+    cover = transport.parts[cover_id]
+    buried_cover = PartRecord(
+        part_id=cover_id,
+        material=cover.material,
+        solid=box_from_bounds(
+            post_bounds[0][0],
+            post_bounds[1][0],
+            post_bounds[2][0],
+            post_bounds[0][1],
+            post_bounds[1][1] + 50.0,
+            post_bounds[2][1],
+        ),
+    )
+    parts = dict(transport.parts)
+    parts[cover_id] = buried_cover
+    inter_vol = intersection_volume(buried_cover.solid, post.solid)
+    assert aabb_share_face(buried_cover.solid, post.solid, threshold)
+    assert inter_vol > COVER_SVC_FRAME_POST_MAX_BEARING_MM3 + threshold
+    assert inter_vol > 30_000.0
+    assert not is_cover_svc_frame_post_bearing(cover_id, post_id, parts, threshold)
+    assert not is_penetrating_structural_joint(cover_id, post_id, parts, threshold)
+    assert not is_mating(cover_id, post_id, parts, threshold=threshold, params=params)
+
+
+def test_cover_svc_frame_post_penetrating_burial_rejects_volumetric_burial(params, transport):
+    """FIX-COLL-011 AC-3 — COVER-SVC↔POST penetrating pattern must reject deep burial."""
+    from stand_cad.geometry.collision import (
+        COVER_SVC_FRAME_POST_MAX_BEARING_MM3,
+        is_mating,
+        is_penetrating_structural_joint,
+    )
+    from stand_cad.geometry.registry import PartRecord
+
+    threshold = float(params.value("tolerance.part_assembly_feature_mm"))
+    cover_id = "COVER-SVC-001"
+    post_id = "FRAME-POST-RR-001"
+    post = transport.parts[post_id]
+    post_bounds = bounding_box_bounds(post.solid)
+    cover = transport.parts[cover_id]
+    buried_cover = PartRecord(
+        part_id=cover_id,
+        material=cover.material,
+        solid=box_from_bounds(
+            post_bounds[0][0] + 2.0,
+            post_bounds[1][0] + 2.0,
+            post_bounds[2][0] + 2.0,
+            post_bounds[0][0] + 200.0,
+            post_bounds[1][0] + 200.0,
+            post_bounds[2][0] + 200.0,
+        ),
+    )
+    parts = dict(transport.parts)
+    parts[cover_id] = buried_cover
+    inter_vol = intersection_volume(buried_cover.solid, post.solid)
+    assert inter_vol > COVER_SVC_FRAME_POST_MAX_BEARING_MM3 + threshold
+    assert inter_vol > 30_000.0
+    assert not is_penetrating_structural_joint(cover_id, post_id, parts, threshold)
+    assert not is_mating(cover_id, post_id, parts, threshold=threshold, params=params)
+
+
 def test_mid_upper_penetrating_rejects_volumetric_burial(params, transport):
     """FIX-COLL-007 AC-2 — MID ↔ SLIDE-UPPER penetrating pattern must reject deep burial."""
     from stand_cad.geometry.collision import (
