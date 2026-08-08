@@ -2,6 +2,8 @@
 
 > **Living status:** `state/AUTONOMOUS_STATUS.md` — last closed defect, backlog, anti-false-conclusion notes. Prefer it over mid-file historical narrative for “what next.”
 >
+> **FIX-COLL-007 / D-092 (2026-08-08, cycle 2 closed):** Per-class penetrating ceilings ORG-REAR + MID↔UPPER (**35000 mm³**); ORG-REAR excluded from `PANEL-IN-`/`FRAME-` share_face bypass; coplanar-face burial regression. Adversarial cycle 2 **accept**; Quick **413 passed**, 1 xfailed + ruff 0. Residual penetrating P2 noted. **No** G0–G8 pass.
+>
 > **FIX-COLL-006 / D-091 (2026-08-08):** Volume-gate eight VIBMOUNT-P* ↔ EQUIP-PLOTTER* pairs on `MATING_PAIRS` via `VIB_EQUIP_MAX_BEARING_MM3=2500.0` (live exactly **2000 mm³** pad embed; hygiene ceiling, not beyond-pad burial fix). Other uncapped `MATING_PAIRS` remain residual P2. Quick 408 passed, 1 xfailed + ruff 0. **No** G0–G8 pass.
 >
 > **FIX-DOC-007 / D-090 (2026-08-08):** README + docs/12 + HANDOFF + CSV sole-current advertising synced post D-089 — envelope **540 mm**, mass **9.651/13.445 kg**, tip lower **3.828**; HANDOFF no longer claims PLT-012 PASSING. §F/§M/§N/§A remain OPEN. **No** G0–G8 pass.

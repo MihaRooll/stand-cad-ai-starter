@@ -7,18 +7,33 @@
 | Field | Value |
 |---|---|
 | Branch | `main` |
-| HEAD | pending FIX-COLL-006 land — D-091 VIB↔EQUIP hygiene gate; Full green |
+| HEAD | pending FIX-COLL-007 land — D-092 Full green |
 | Upstream | `origin/main` synced (ordinary push OK) |
-| Next in flight | Next software audit; residual MATING_PAIRS P2 (SOFT↔TRAY, …); owner blockers: §F/§M/§N/§A |
+| Next in flight | Residual penetrating P2 (POST↔PANEL-IN ~18.7k, TRAY-rail↔PANEL-IN ~10k, …); uncapped `MATING_PAIRS`; owner blockers: §F/§M/§N/§A |
 | Live `CONCEPT_REVISION` | **15** (`src/stand_cad/geometry/export.py`) |
 | Envelope | **650 × 420 × 540 mm** (D-089 full +11 mm stack; was 529 pre-D-089) |
 | Owner-confirmed product | D-075 posts restored; D-076 upper fixed (`upper_extension=0`), lower 250 mm + door/tray choreography |
 | Gates | **No G0–G8 passed** — all CONCEPT / REFERENCE_ONLY / PRELIMINARY |
 | Mode | Autonomously fixing highest-impact **software/honesty** defects until owner says **СТОП** |
-| Verify at land | Full **green** — `setup_windows.ps1` exit 0 (408 passed, 1 xfailed); ruff clean (FIX-COLL-006) |
+| Verify at land | Full **green** — `setup_windows.ps1` exit 0 (413 passed, 1 xfailed); ruff clean (FIX-COLL-007) |
 | Commit policy | Mega-land authorized 2026-08-08. Keep excluding `ИИ советы/`, secrets, `.pytest_cache/`. `output/` gitignored. |
 
 ## Last closed defect
+
+### FIX-COLL-007-penetrating-joint-ceiling — per-class penetrating volume gates (D-092) — **closed cycle 2**
+
+| | |
+|---|---|
+| Problem | Largest uncapped non–open-front `PENETRATING_JOINT_PATTERNS` allowed deep burial silent-green — no volume ceiling unlike D-080 open-front; cycle 1 left ORG-REAR coplanar share_face bypass |
+| Root cause | `is_penetrating_structural_joint()` gated only open-front patterns (cycle 1); `PANEL-IN-`/`FRAME-` `_share_face_if_prefix` returned True before penetrating check for ORG-REAR (cycle 2 F-1) |
+| Fix | **Cycle 1:** `ORG_REAR_PENETRATING_MAX_BEARING_MM3=35000.0` and `MID_UPPER_PENETRATING_MAX_BEARING_MM3=35000.0` with pattern frozensets; gate in `is_penetrating_structural_joint()`. **Cycle 2:** exclude ORG-REAR from `PANEL-IN-`/`FRAME-` `_share_face_if_prefix` bypass in `is_mating()`; coplanar-face burial regression |
+| Measured | Live transport: ORG-REAR **31500 mm³**; SLIDE-UPPER ↔ MID **30712.5 mm³**; open-front live max **540 mm³** unchanged |
+| Residual P2 | POST↔PANEL-IN max **18652.9 mm³**; TRAY-rail↔PANEL-IN max **10237.5 mm³**; INTERLOCK-TAB↔PANEL-IN; BASE-REAR↔MAINS-INLET; COVER-SVC↔POST ~**123 mm³**; uncapped `MATING_PAIRS` (SOFT↔TRAY, …) |
+| Key paths | `collision.py`; `tests/test_geometry.py`; `docs/14` §10a; `state/DECISION_LOG.md` D-092 |
+| Verify | Adversarial cycle 2 **accept**; Quick 413 passed; Full `setup_windows.ps1` exit 0 |
+| Explicitly NOT done | Gate pass; §F/§M/§N/§A closure; global penetrating ceiling; Path A geometry |
+
+**Anti-false-conclusion:** 35000 mm³ ceilings are measured hygiene gates — live volumes are below ceiling by design overlap, not proof of physical clearance at prototype.
 
 ### FIX-COLL-006-vib-equip-bearing-ceiling — VIB↔EQUIP pad volume gate (D-091)
 
@@ -239,3 +254,4 @@
 | 2026-08-08 | FIX-DOC-007 closed (D-090); README/docs/12/HANDOFF/CSV advertising → 540 / 9.651 / 13.445 / 3.828; PLT-012 PASSING claim removed. |
 | 2026-08-08 | FIX-DOC-007b closed; A-017 tip validation action → **≈3.828** (residual D-090). |
 | 2026-08-08 | FIX-COLL-006 closed (D-091); VIB↔EQUIP hygiene ceiling 2500 (live pad 2000); Full green. |
+| 2026-08-08 | FIX-COLL-007 closed (D-092); ORG/MID ceilings 35000; share_face bypass closed; Full green. |

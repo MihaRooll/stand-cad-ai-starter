@@ -2115,6 +2115,155 @@ def test_open_front_penetrating_rejects_volumetric_burial(params, transport):
     assert not is_mating(clad_id, slide_id, parts, threshold=threshold, params=params)
 
 
+def test_org_rear_penetrating_rejects_volumetric_burial(params, transport):
+    """FIX-COLL-007 AC-2 — ORG-REAR penetrating pattern must reject deep burial."""
+    from stand_cad.geometry.collision import (
+        ORG_REAR_PENETRATING_MAX_BEARING_MM3,
+        is_mating,
+        is_penetrating_structural_joint,
+    )
+    from stand_cad.geometry.registry import PartRecord
+
+    threshold = float(params.value("tolerance.part_assembly_feature_mm"))
+    rail_id = "FRAME-RAIL-ORG-REAR-001"
+    panel_id = "PANEL-IN-REAR-001"
+    panel = transport.parts[panel_id]
+    panel_bounds = bounding_box_bounds(panel.solid)
+    rail = transport.parts[rail_id]
+    # Offset overlap — volumetric burial without coplanar AABB face
+    # (avoids PANEL-IN-/FRAME- share_face path).
+    buried_rail = PartRecord(
+        part_id=rail_id,
+        material=rail.material,
+        solid=box_from_bounds(
+            panel_bounds[0][0] + 2.0,
+            panel_bounds[1][0] + 2.0,
+            panel_bounds[2][0] + 2.0,
+            panel_bounds[0][0] + 200.0,
+            panel_bounds[1][0] + 200.0,
+            panel_bounds[2][0] + 200.0,
+        ),
+    )
+    parts = dict(transport.parts)
+    parts[rail_id] = buried_rail
+    inter_vol = intersection_volume(buried_rail.solid, panel.solid)
+    assert inter_vol > ORG_REAR_PENETRATING_MAX_BEARING_MM3 + threshold
+    assert inter_vol > 40_000.0
+    assert not is_penetrating_structural_joint(rail_id, panel_id, parts, threshold)
+    assert not is_mating(rail_id, panel_id, parts, threshold=threshold, params=params)
+
+
+def test_org_rear_share_face_burial_rejects_volumetric_burial(params, transport):
+    """FIX-COLL-007 cycle 2 F-1 — coplanar-face ORG-REAR burial must not silent-green."""
+    from stand_cad.geometry.collision import (
+        ORG_REAR_PENETRATING_MAX_BEARING_MM3,
+        aabb_share_face,
+        is_mating,
+        is_penetrating_structural_joint,
+    )
+    from stand_cad.geometry.registry import PartRecord
+
+    threshold = float(params.value("tolerance.part_assembly_feature_mm"))
+    rail_id = "FRAME-RAIL-ORG-REAR-001"
+    panel_id = "PANEL-IN-REAR-001"
+    panel = transport.parts[panel_id]
+    panel_bounds = bounding_box_bounds(panel.solid)
+    rail = transport.parts[rail_id]
+    buried_rail = PartRecord(
+        part_id=rail_id,
+        material=rail.material,
+        solid=box_from_bounds(
+            panel_bounds[0][0],
+            panel_bounds[1][0],
+            panel_bounds[2][0],
+            panel_bounds[0][1],
+            panel_bounds[1][1] + 50.0,
+            panel_bounds[2][1],
+        ),
+    )
+    parts = dict(transport.parts)
+    parts[rail_id] = buried_rail
+    inter_vol = intersection_volume(buried_rail.solid, panel.solid)
+    assert aabb_share_face(buried_rail.solid, panel.solid, threshold)
+    assert inter_vol > ORG_REAR_PENETRATING_MAX_BEARING_MM3 + threshold
+    assert inter_vol > 40_000.0
+    assert not is_penetrating_structural_joint(rail_id, panel_id, parts, threshold)
+    assert not is_mating(rail_id, panel_id, parts, threshold=threshold, params=params)
+
+
+def test_org_rear_penetrating_live_mate_passes(params, transport):
+    """FIX-COLL-007 AC-1 — live ORG-REAR intersection stays under class ceiling."""
+    from stand_cad.geometry.collision import (
+        ORG_REAR_PENETRATING_MAX_BEARING_MM3,
+        is_mating,
+        is_penetrating_structural_joint,
+    )
+
+    threshold = float(params.value("tolerance.part_assembly_feature_mm"))
+    rail_id = "FRAME-RAIL-ORG-REAR-001"
+    panel_id = "PANEL-IN-REAR-001"
+    parts = transport.parts
+    inter_vol = intersection_volume(parts[rail_id].solid, parts[panel_id].solid)
+    assert inter_vol <= ORG_REAR_PENETRATING_MAX_BEARING_MM3 + threshold
+    assert is_penetrating_structural_joint(rail_id, panel_id, parts, threshold)
+    assert is_mating(rail_id, panel_id, parts, threshold=threshold, params=params)
+
+
+def test_mid_upper_penetrating_rejects_volumetric_burial(params, transport):
+    """FIX-COLL-007 AC-2 — MID ↔ SLIDE-UPPER penetrating pattern must reject deep burial."""
+    from stand_cad.geometry.collision import (
+        MID_UPPER_PENETRATING_MAX_BEARING_MM3,
+        is_mating,
+        is_penetrating_structural_joint,
+    )
+    from stand_cad.geometry.registry import PartRecord
+
+    threshold = float(params.value("tolerance.part_assembly_feature_mm"))
+    slide_id = "SLIDE-UPPER-LEFT-001"
+    mid_id = "PANEL-IN-MID-001"
+    mid = transport.parts[mid_id]
+    mid_bounds = bounding_box_bounds(mid.solid)
+    slide = transport.parts[slide_id]
+    # Offset overlap — volumetric burial without coplanar AABB face.
+    buried_slide = PartRecord(
+        part_id=slide_id,
+        material=slide.material,
+        solid=box_from_bounds(
+            mid_bounds[0][0] + 2.0,
+            mid_bounds[1][0] + 2.0,
+            mid_bounds[2][0] + 2.0,
+            mid_bounds[0][0] + 200.0,
+            mid_bounds[1][0] + 200.0,
+            mid_bounds[2][0] + 200.0,
+        ),
+    )
+    parts = dict(transport.parts)
+    parts[slide_id] = buried_slide
+    inter_vol = intersection_volume(buried_slide.solid, mid.solid)
+    assert inter_vol > MID_UPPER_PENETRATING_MAX_BEARING_MM3 + threshold
+    assert inter_vol > 40_000.0
+    assert not is_penetrating_structural_joint(slide_id, mid_id, parts, threshold)
+    assert not is_mating(slide_id, mid_id, parts, threshold=threshold, params=params)
+
+
+def test_mid_upper_penetrating_live_mate_passes(params, transport):
+    """FIX-COLL-007 AC-1 — live MID ↔ SLIDE-UPPER intersection stays under class ceiling."""
+    from stand_cad.geometry.collision import (
+        MID_UPPER_PENETRATING_MAX_BEARING_MM3,
+        is_mating,
+        is_penetrating_structural_joint,
+    )
+
+    threshold = float(params.value("tolerance.part_assembly_feature_mm"))
+    slide_id = "SLIDE-UPPER-LEFT-001"
+    mid_id = "PANEL-IN-MID-001"
+    parts = transport.parts
+    inter_vol = intersection_volume(parts[slide_id].solid, parts[mid_id].solid)
+    assert inter_vol <= MID_UPPER_PENETRATING_MAX_BEARING_MM3 + threshold
+    assert is_penetrating_structural_joint(slide_id, mid_id, parts, threshold)
+    assert is_mating(slide_id, mid_id, parts, threshold=threshold, params=params)
+
+
 def test_kinematic_group_membership_alone_rejects_equip_softstop_burial(params, transport):
     """FIX-COLL-003 AC-1 — same-group membership must not exempt deep EQUIP↔SOFTSTOP burial."""
     from stand_cad.geometry.collision import MATING_PAIRS, is_mating, pair_key

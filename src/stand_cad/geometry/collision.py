@@ -164,6 +164,28 @@ OPEN_FRONT_PENETRATING_PATTERNS: frozenset[tuple[str, str]] = frozenset(
     }
 )
 
+# Organizer rear rail ↔ rear inner panel penetrating joint (mm³) — bolt-through overlap.
+# Live max 31500 mm³ (FRAME-RAIL-ORG-REAR-001 ↔ PANEL-IN-REAR-001, 2026-08-08 transport).
+ORG_REAR_PENETRATING_MAX_BEARING_MM3 = 35_000.0
+
+# Mid partition ↔ upper tier slide/tray/softstop penetrating joints (mm³).
+# Live max 30712.5 mm³ (SLIDE-UPPER-* ↔ PANEL-IN-MID-001, 2026-08-08 transport).
+MID_UPPER_PENETRATING_MAX_BEARING_MM3 = 35_000.0
+
+ORG_REAR_PENETRATING_PATTERNS: frozenset[tuple[str, str]] = frozenset(
+    {
+        ("FRAME-RAIL-ORG-", "PANEL-IN-REAR-"),
+    }
+)
+
+MID_UPPER_PENETRATING_PATTERNS: frozenset[tuple[str, str]] = frozenset(
+    {
+        ("SLIDE-UPPER-", "PANEL-IN-MID-001"),
+        ("TRAY-UPPER-001", "PANEL-IN-MID-001"),
+        ("SOFTSTOP-UPPER-001", "PANEL-IN-MID-001"),
+    }
+)
+
 
 def _door_is_open_horizontal(solid, *, threshold: float = 1.0) -> bool:
     """True when a drop-front door has swung to horizontal work-surface posture."""
@@ -292,6 +314,20 @@ def _id_matches(part_id: str, pattern: str) -> bool:
     if pattern.endswith("-"):
         return part_id.startswith(pattern)
     return part_id == pattern
+
+
+def _matches_penetrating_patterns(
+    a: str,
+    b: str,
+    patterns: frozenset[tuple[str, str]],
+) -> bool:
+    """True when part IDs match any (pattern_a, pattern_b) in either order."""
+    for pattern_a, pattern_b in patterns:
+        if (_id_matches(a, pattern_a) and _id_matches(b, pattern_b)) or (
+            _id_matches(a, pattern_b) and _id_matches(b, pattern_a)
+        ):
+            return True
+    return False
 
 
 SIDE_SLAB_IDS = frozenset({"PANEL-OUT-LEFT-001", "PANEL-OUT-RIGHT-001"})
@@ -555,6 +591,12 @@ def is_penetrating_structural_joint(
         inter_vol = intersection_volume(solid_a, solid_b)
         if (pattern_a, pattern_b) in OPEN_FRONT_PENETRATING_PATTERNS:
             if inter_vol > OPEN_FRONT_MAX_BEARING_MM3 + threshold:
+                continue
+        elif (pattern_a, pattern_b) in ORG_REAR_PENETRATING_PATTERNS:
+            if inter_vol > ORG_REAR_PENETRATING_MAX_BEARING_MM3 + threshold:
+                continue
+        elif (pattern_a, pattern_b) in MID_UPPER_PENETRATING_PATTERNS:
+            if inter_vol > MID_UPPER_PENETRATING_MAX_BEARING_MM3 + threshold:
                 continue
         if inter_vol > threshold:
             return True
@@ -831,7 +873,8 @@ def is_mating(
         return True
     # Panels flush-mounted to frame rails/posts.
     if _share_face_if_prefix(a, b, parts, threshold, "PANEL-IN-", "FRAME-"):
-        return True
+        if not _matches_penetrating_patterns(a, b, ORG_REAR_PENETRATING_PATTERNS):
+            return True
     if _is_side_slab_frame_pair(a, b) is not None:
         if params is None:
             return False

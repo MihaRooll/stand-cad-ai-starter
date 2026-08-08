@@ -54,6 +54,19 @@ The X-band gate tests **overlap with the pocket band** `[0, side_clear]` (left) 
 
 Front perimeter structure (`PANEL-CLAD-FRONT-*`, `FRAME-RAIL-BASE-FRONT-*`, `FRAME-RAIL-ORG-FRONT-*`) legitimately touches the travelling tray/slide/plotter stack at the open front opening — zero clearance with small skin/plane bearing is expected. **`is_open_front_kinematic_contact()`** and the four front clad/rail **`PENETRATING_JOINT_PATTERNS`** (clad/rail ↔ `TRAY-LOWER-*` / `SLIDE-LOWER-*`) exempt only when `intersection_volume <= OPEN_FRONT_MAX_BEARING_MM3 + threshold` (**750 mm³** ceiling; live max **540 mm³** measured 2026-08-08 across transport / service_p1 / tray1_qa). Deep volumetric burial (~1e6 mm³ synthetic) must **not** silent-green. Door ↔ `PANEL-IN-MID-001` / `SOFTSTOP-*` closed-posture mates follow the same volume-ceiling pattern via **`is_door_mate`** and **`DOOR_FRONT_PLANE_MAX_BEARING_MM3`** (D-084; live DOOR-LOWER ↔ MID **5985 → 0 mm³** after Path A trim).
 
+## 10a. Non–open-front penetrating joints — per-class volume ceilings (D-092)
+
+Largest uncapped non–open-front **`PENETRATING_JOINT_PATTERNS`** pairs are gated by class-specific ceilings in **`is_penetrating_structural_joint()`** — same predicate shape as §10 open-front (reject when `intersection_volume > class_ceiling + threshold`; no global penetrating default). Live maxes measured in **transport** posture (2026-08-08). **`PANEL-IN-`/`FRAME-` `_share_face_if_prefix`** does **not** bypass ORG-REAR — pairs matching `ORG_REAR_PENETRATING_PATTERNS` defer to the capped penetrating predicate (D-092 cycle 2).
+
+| Pattern class | Constant | Ceiling (mm³) | Live max (2026-08-08 transport) |
+|---|---|---|---|
+| `FRAME-RAIL-ORG-` ↔ `PANEL-IN-REAR-` | `ORG_REAR_PENETRATING_MAX_BEARING_MM3` | **35000** | **31500** (`FRAME-RAIL-ORG-REAR-001` ↔ `PANEL-IN-REAR-001`) |
+| `SLIDE-UPPER-` / `TRAY-UPPER-001` / `SOFTSTOP-UPPER-001` ↔ `PANEL-IN-MID-001` | `MID_UPPER_PENETRATING_MAX_BEARING_MM3` | **35000** | **30712.5** (`SLIDE-UPPER-*` ↔ MID; TRAY/SOFTSTOP ↔ MID same family, live vol≈0) |
+
+Deep synthetic burial ≫ ceiling must **not** silent-green (including coplanar AABB-face burial for ORG-REAR). **`OPEN_FRONT_MAX_BEARING_MM3`** (**750 mm³**) and §10 behavior unchanged (D-080).
+
+**Residual uncapped penetrating classes (P2):** `FRAME-POST-` ↔ `PANEL-IN-` (live max **18652.9 mm³**); `FRAME-RAIL-TRAY-` ↔ `PANEL-IN-` (live max **10237.5 mm³**); `INTERLOCK-TAB-` ↔ `PANEL-IN-` (uncapped — not re-measured this cycle); `FRAME-RAIL-BASE-REAR-` ↔ `MAINS-INLET-` (uncapped — out of scope); `COVER-SVC-001` ↔ `FRAME-POST-R*` (~**123 mm³**). Cap in a follow-on cycle — do not apply a single global ~40k ceiling.
+
 ## 11. Kinematic-group mates — no blanket exemption (D-086)
 
 **Do not** treat shared `LOWER_KINEMATIC_GROUP` / `UPPER_KINEMATIC_GROUP` membership as an unconditional `is_mating` pass — that greenwashed deep burial (e.g. synthetic TRAY↔EQUIP). Intentional same-group contacts must be on **`MATING_PAIRS`**, **`is_door_mate`**, **`is_open_front_kinematic_contact`**, INTERLOCK/face helpers, or a measured skin ceiling.
