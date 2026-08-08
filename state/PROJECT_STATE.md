@@ -2,6 +2,8 @@
 
 > **Living status:** `state/AUTONOMOUS_STATUS.md` — last closed defect, backlog, anti-false-conclusion notes. Prefer it over mid-file historical narrative for “what next.”
 >
+> **FIX-MASS-001 / D-078 (2026-08-08):** Mass-report header lists excluded categories from live transport only; no longer claims removed `MAINS-INLET` / `INTERLOCK` / `EDGEGUARD` are physically present. PLT-012 / G4 **not** passed.
+>
 > **FIX-TIP-001 / D-077 (2026-08-08):** Upper tip-factor at `upper_extension=0` is **N/A** (`applicable=False`); report no longer prints `inf (minimum 1.5)`. Lower@250 indicative factor remains finite (~3.785). PLT-010 / G4 **not** passed.
 >
 > **FIX-WAVE-004 (2026-08-07):** Corner posts restored (D-075); upper tray fixed / lower door-tray choreography (D-076, **owner-confirmed 2026-08-07** — "Да, все верно"). **`CONCEPT_REVISION`=15**. Door↔slide clearance resolved at sampled lower extensions 0/130/180/250 mm. **No G0–G8 gate passed.**
@@ -225,9 +227,9 @@ Evidence collected is not a gate verdict: G0 remains an unconfirmed Human Gate.
 
 - **FIX-TIP-001 / D-077 (2026-08-08):** Upper tier at `trays.upper_extension`=0 (D-076) — tip check **N/A**, not `inf >= 1.5` pass. Applicability gate: `extension > 0` **and** `overturn_moment > 0`; report/metrics distinguish zero-travel vs extended-but-non-applicable wording (cycle 3). Lower@250 mm finite indicative factor still asserted in pytest (rev15 `stability_report.md`). Independent adversarial finding unchanged: 20 N lateral lean → **1.434**; both trays extended → **0.924** — both below TZ 1.5 floor. **Not authoritative for Gate G4.** CSV row PLT-010 status **`IN_PROGRESS`**.
 
-### Mass accounting (PLT-012 — PASSING)
+### Mass accounting (PLT-012 — `IN_PROGRESS`; indicative only)
 
-- Side-slab cavity-wall geometry + equal-leg angle mass formula (D-063): empty structural **8.806 kg** (≤12 kg ceiling; TZ goal band 9–11 kg met). D-061/D-065 indicative fastener **≈0.174 kg** (**158** screws: **137 M4 + 21 M3**) + bracket **0.145 kg** (34 nodes) in mass header; stability model includes joining roll-up (A-017). All-parts indicative **12.860 kg**. Pre-D-063 headline **9.877 kg** figures are **superseded** — do not cite them.
+- **D-078 (2026-08-08):** Current indicative totals live in `output/validation/rev15/mass_report.csv` — **not authoritative for Gate G4** / PLT-012 sign-off. Historical rev13 snapshot (side-slab cavity-wall + equal-leg angle formula, D-063): empty structural **8.806 kg**; D-061/D-065 indicative fastener **≈0.174 kg** (**158** screws: **137 M4 + 21 M3**) + bracket **0.145 kg** (34 nodes); all-parts indicative **12.860 kg**. Pre-D-063 headline **9.877 kg** and rev13 figures above are **superseded** — do not cite as current or as PLT-012 pass.
 
 ### Electrical and joining design — not engineered
 

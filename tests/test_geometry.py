@@ -490,6 +490,42 @@ def test_indicative_empty_case_mass_non_authoritative(params, transport):
     assert mass > 0
 
 
+def test_mass_report_header_honest_excluded_categories(tmp_path, transport):
+    """FIX-MASS-001 AC-2 — header must not claim absent categories are physically present."""
+    import importlib.util
+    import sys
+
+    parts = transport.parts
+    absent_prefixes = ("MAINS-INLET", "INTERLOCK-", "EDGEGUARD-")
+    for prefix in absent_prefixes:
+        assert not any(pid.startswith(prefix) for pid in parts), (
+            f"precondition: no {prefix}* in transport after D-046/D-067/D-071"
+        )
+
+    module_path = REPO_ROOT / "scripts" / "generate_mass_report.py"
+    spec = importlib.util.spec_from_file_location("generate_mass_report", module_path)
+    assert spec is not None and spec.loader is not None
+    mass_mod = importlib.util.module_from_spec(spec)
+    sys.modules["generate_mass_report"] = mass_mod
+    spec.loader.exec_module(mass_mod)
+
+    report_path = tmp_path / "mass_report.csv"
+    mass_mod.write_mass_report(PARAMETERS_PATH, report_path)
+    text = report_path.read_text(encoding="utf-8")
+    excluded_line = next(
+        line for line in text.splitlines() if "Other excluded categories" in line
+    )
+
+    for absent in absent_prefixes:
+        assert absent.rstrip("-") not in excluded_line and absent not in excluded_line, (
+            f"header must not mention removed category {absent}: {excluded_line}"
+        )
+
+    assert "SLIDE" in excluded_line
+    assert "VIBMOUNT" in excluded_line
+    assert "physically present" in excluded_line
+
+
 def test_idempotent_rebuild_matching_metrics(params):
     """PLT-016 — two in-process transport builds yield matching bbox/volume."""
     tol = float(params.value("tolerance.part_assembly_feature_mm"))

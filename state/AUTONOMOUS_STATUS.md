@@ -7,7 +7,9 @@
 | Field | Value |
 |---|---|
 | Branch | `main` |
-| HEAD (mega-land) | `b4da1d7` — *Land rev15 concept tree and FIX-TIP-001 tip-factor N/A honesty.* |
+| HEAD | `d816e5a` (status snapshot); mega-land `b4da1d7` — *Land rev15 + FIX-TIP-001* |
+| Upstream | `origin/main` synced (ordinary push OK) |
+| Next in flight | Collision allowlist burial — backlog #1 confirmation |
 | Prior base | `65d6fe3` (D-041) |
 | Live `CONCEPT_REVISION` | **15** (`src/stand_cad/geometry/export.py`) |
 | Envelope | **650 × 420 × 529 mm** |
@@ -19,34 +21,32 @@
 
 ## Last closed defect
 
-### FIX-TIP-001 — upper tip-factor vacuous pass (D-077)
+### FIX-MASS-001 — mass-report header honesty (D-078)
 
 | | |
 |---|---|
-| Problem | After D-076, upper tip factor = `inf`; pytest `factor >= tip_factor_min` and report `Tip factor: inf (minimum 1.5)` were vacuous / misleading |
-| Root cause | `overturn_moment <= 0 → float("inf")` is valid math; pairing with min-floor assert/publish is not |
-| Fix | `StabilityReportInputs.applicable = extension > 0 and overturn_moment > 0`; report prints **N/A (D-076)** for non-applicable; lower@250 still finite (~3.785 ≥ 1.5) |
-| Key paths | `src/stand_cad/geometry/analysis.py`, `scripts/generate_mass_report.py`, `tests/test_geometry.py`, `scripts/_stage1_metrics.py`, state D-077 / PLT-010 |
-| Evidence | `output/validation/rev15/stability_report.md` + RFQ copy — upper N/A, lower 3.785 |
-| Verify | Targeted tip tests green; Quick `pytest` + `ruff` exit 0; adversarial **approve** |
-| Explicitly NOT done | Gate G4 / PLT-010 PASSING; lean/dual-tray tip closure; open-door tip physics |
+| Problem | `generate_mass_report.py` header claimed `MAINS-INLET-001` / `INTERLOCK-*` / `EDGEGUARD-*` "physically present" after D-046/D-067/D-071 removed them from transport |
+| Root cause | Static header text not updated when parts were removed from `build_transport_assembly()` |
+| Fix | `_present_other_excluded_category_labels()` builds header from live `transport.parts`; only `SLIDE-*`, `VIBMOUNT-*`, `etc.` listed |
+| Key paths | `scripts/generate_mass_report.py`, `tests/test_geometry.py::test_mass_report_header_honest_excluded_categories`, `output/validation/rev15/mass_report.csv` + RFQ copy |
+| Verify | `uv run pytest -k mass_report` + ruff on touched py — exit 0 |
+| Explicitly NOT done | Gate G4 / PLT-012 PASSING; mass-formula / geometry changes |
 
-**Anti-false-conclusion:** Do **not** treat `inf` as “buggy arithmetic.” Do **not** invent a finite upper tip. Do **not** claim G4 closed because lower ≥ 1.5.
+**Anti-false-conclusion:** Do **not** treat indicative mass totals as G4 sign-off. Do **not** re-add removed categories to transport without owner decision.
 
 ## Open defect backlog (impact order)
 
 1. **Collision allowlist burial** — `is_open_front_kinematic_contact` / `is_door_mate` can skip deep interpenetration (`collision.py`). T2+; weak oracle. Confirm before fix.
-2. **Mass-report header honesty** — `generate_mass_report.py` still claims `MAINS-INLET` / `INTERLOCK-*` “physically present” after D-067/D-071. Separate from rev-sync.
-3. **Stale rev13 advertising** — `docs/12` (P0 RFQ paths), README current-status, HANDOFF product-truth still say rev13 while live is 15. Refresh numbers from rev15 evidence; keep §F/§M/§N/§A OPEN. Test must not false-fail on historical `Already closed` lines.
-4. **`scripts/_stage1_metrics.py` KeyError** on removed `INTERLOCK-SHUTTLE-001` (if still unguarded after tip metrics edit).
-5. **Traceability CSV / ASSUMPTIONS** evidence paths still pointing at rev13 for several PLT/SWE rows.
-6. Owner blockers unchanged: §F handle, §M lid headroom, §N retention, §A measurements.
+2. **Stale rev13 advertising** — `docs/12` (P0 RFQ paths), README current-status, HANDOFF product-truth still say rev13 while live is 15. Refresh numbers from rev15 evidence; keep §F/§M/§N/§A OPEN. Test must not false-fail on historical `Already closed` lines.
+3. **`scripts/_stage1_metrics.py` KeyError** on removed `INTERLOCK-SHUTTLE-001` (if still unguarded after tip metrics edit).
+4. **Traceability CSV / ASSUMPTIONS** evidence paths still pointing at rev13 for several PLT/SWE rows.
+5. Owner blockers unchanged: §F handle, §M lid headroom, §N retention, §A measurements.
 
 ## Where we are / next action
 
 1. Land verified working tree (mega-commit + ordinary push) per owner approval.
-2. Refresh this file + `HANDOFF_PROMPT.md` product-truth pointers to rev15 / D-077.
-3. Pick backlog **#1 or #2** (highest remaining impact), run confirmation (reproduce → counter → root → test → safety), then T2 plan/implement/adversarial/verify; commit only that cycle’s paths when isolatable.
+2. Refresh `HANDOFF_PROMPT.md` product-truth pointers to rev15 / D-077 / D-078.
+3. Pick backlog **#1** (highest remaining impact), run confirmation (reproduce → counter → root → test → safety), then T2 plan/implement/adversarial/verify; commit only that cycle's paths when isolatable.
 4. Prefer Quick mid-cycle; Full before stage-final commits.
 
 ## Protection rules (do not skip)
@@ -73,3 +73,4 @@
 | When | Change |
 |---|---|
 | 2026-08-08 | Created. FIX-TIP-001 done in WT; mega-commit authorized; backlog listed. |
+| 2026-08-08 | FIX-MASS-001 closed (D-078); backlog #2 removed; header honesty test added. |

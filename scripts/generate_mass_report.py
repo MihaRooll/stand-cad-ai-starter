@@ -38,6 +38,33 @@ DEFAULT_PARAMETERS = REPO_ROOT / "config" / "parameters.yaml"
 DEFAULT_VALIDATION_DIR = REPO_ROOT / "output" / "validation" / f"rev{CONCEPT_REVISION}"
 DEFAULT_OUTPUT = DEFAULT_VALIDATION_DIR / "mass_report.csv"
 
+_KNOWN_OTHER_EXCLUDED: tuple[tuple[str, str], ...] = (
+    ("SLIDE-", "SLIDE-*"),
+    ("VIBMOUNT-", "VIBMOUNT-*"),
+    ("MAINS-INLET", "MAINS-INLET-001"),
+    ("INTERLOCK-", "INTERLOCK-*"),
+    ("EDGEGUARD-", "EDGEGUARD-*"),
+)
+
+
+def _present_other_excluded_category_labels(parts: dict) -> str:
+    """List excluded (non-SHELF) category labels actually present in transport.parts."""
+    other_ids = {
+        part_id
+        for part_id, record in parts.items()
+        if record.verify_on_real_machine and not part_id.startswith("SHELF-")
+    }
+    labels: list[str] = []
+    matched: set[str] = set()
+    for prefix, label in _KNOWN_OTHER_EXCLUDED:
+        hits = {part_id for part_id in other_ids if part_id.startswith(prefix)}
+        if hits:
+            labels.append(label)
+            matched |= hits
+    if other_ids - matched:
+        labels.append("etc.")
+    return ", ".join(labels) if labels else "(none)"
+
 
 def write_mass_report(
     params_path: Path = DEFAULT_PARAMETERS,
@@ -78,6 +105,7 @@ def write_mass_report(
         )
     )
 
+    other_excluded = _present_other_excluded_category_labels(parts)
     header_lines = [
         f"# PLT-006 rev{CONCEPT_REVISION} indicative mass report — NOT authoritative for Gate G4",
         "# Method: single-face shell / open-section frame approximations from analysis.py",
@@ -86,9 +114,8 @@ def write_mass_report(
         f"{len(excluded)} parts / {excluded_mass:.3f} kg): {structural:.3f} kg",
         f"# Including modeled SHELF-* parts only (adds back ~{shelf_mass:.3f} kg of the "
         f"excluded mass): {empty_plus_shelf:.3f} kg",
-        "# Other excluded categories (SLIDE-*, MAINS-INLET-001, INTERLOCK-*, EDGEGUARD-*, "
-        "VIBMOUNT-*, etc.) are physically present but omitted from both headline totals; "
-        "full all-parts sum via part_mass_kg over transport registry",
+        f"# Other excluded categories ({other_excluded}) are physically present but omitted "
+        "from both headline totals; full all-parts sum via part_mass_kg over transport registry",
         f"# Full all-parts indicative total: {all_total:.3f} kg",
         f"# D-061 indicative bought-in fasteners (not in structural total): {fastener_kg:.3f} kg "
         f"({total_fastener_count(params)} screws — lengths/torques to_measure)",
