@@ -7,7 +7,7 @@
 | Field | Value |
 |---|---|
 | Branch | `main` |
-| HEAD | `5eb2375`+ working tree — FIX-DOC-003-docs10-csv-rev15 closed in WT |
+| HEAD | pending FIX-DOC-004 commit — ASSUMPTIONS rev15 sync (D-085) |
 | Upstream | `origin/main` synced (ordinary push OK) |
 | Next in flight | Owner blockers: §F handle, §M lid headroom, §N retention, §A measurements |
 | Prior base | `65d6fe3` (D-041) |
@@ -20,6 +20,17 @@
 | Commit policy | Mega-land authorized 2026-08-08. Keep excluding `ИИ советы/`, secrets, `.pytest_cache/`. `output/` gitignored. |
 
 ## Last closed defect
+
+### FIX-DOC-004-assumptions-rev15 — ASSUMPTIONS rev15 evidence sync (D-085)
+
+| | |
+|---|---|
+| Problem | A-013/A-017 validation actions still cited rev13 evidence; A-014 still claimed bottom vents under modeled `AIRPATH-001` after D-071 removal |
+| Root cause | Assumption register not refreshed after FIX-WAVE-004 / rev15 evidence and D-071 service-volume removal |
+| Fix | A-013 → `output/validation/rev15/views/transport_*` (rev13 historical); A-017 → rev15 stability report + upper N/A (D-076/D-077); A-014 → panel through-cuts only, no current AIRPATH solid |
+| Key paths | `state/ASSUMPTIONS.md`, `state/DECISION_LOG.md`, `state/AUTONOMOUS_STATUS.md` |
+| Verify | `uv run ruff check state/ASSUMPTIONS.md` — exit 0 |
+| Explicitly NOT done | Gate pass; §F/§M/§N/§A closure; geometry/config changes |
 
 ### FIX-COLL-002-door-mid-clearance — DOOR-LOWER ↔ PANEL-IN-MID burial (D-084)
 
@@ -134,3 +145,4 @@
 | 2026-08-08 | FIX-DOC-003 closed (D-083); docs/10 §E/§F/§H + CSV current-evidence → rev15; backlog #2 (CSV rev13 pointers) removed. |
 | 2026-08-08 | FIX-DOC-002 closed (D-082); HANDOFF current zones → rev15; backlog #3 (HANDOFF product-truth) removed. |
 | 2026-08-08 | FIX-DOC-002 cycle 3: PROJECT_STATE Current blockers honesty (F-7/F-8/F-9). |
+| 2026-08-08 | FIX-DOC-004 closed (D-085); A-013/A-017 → rev15 evidence; A-014 AIRPATH honesty (D-071). |
