@@ -1830,6 +1830,80 @@ def test_strut_mate_rejects_volumetric_burial(params, service_p1):
     )
 
 
+def test_open_front_kinematic_contact_rejects_volumetric_burial(params, transport):
+    """FIX-COLL-001 — synthetic rail burial must not pass open-front or is_mating."""
+    from stand_cad.geometry.collision import (
+        OPEN_FRONT_MAX_BEARING_MM3,
+        is_mating,
+        is_open_front_kinematic_contact,
+    )
+    from stand_cad.geometry.registry import PartRecord
+
+    threshold = float(params.value("tolerance.part_assembly_feature_mm"))
+    rail_id = "FRAME-RAIL-BASE-FRONT-001"
+    equip_id = "EQUIP-PLOTTER1-001"
+    equip = transport.parts[equip_id]
+    equip_bounds = bounding_box_bounds(equip.solid)
+    rail = transport.parts[rail_id]
+    buried_rail = PartRecord(
+        part_id=rail_id,
+        material=rail.material,
+        solid=box_from_bounds(
+            equip_bounds[0][0],
+            equip_bounds[1][0],
+            equip_bounds[2][0],
+            equip_bounds[0][1],
+            equip_bounds[1][1] + 50.0,
+            equip_bounds[2][1],
+        ),
+    )
+    parts = dict(transport.parts)
+    parts[rail_id] = buried_rail
+    inter_vol = intersection_volume(buried_rail.solid, equip.solid)
+    assert inter_vol > OPEN_FRONT_MAX_BEARING_MM3 + threshold
+    assert inter_vol > 20_000.0
+    assert not is_open_front_kinematic_contact(rail_id, equip_id, parts, threshold)
+    assert not is_mating(rail_id, equip_id, parts, threshold=threshold, params=params)
+
+
+def test_open_front_penetrating_rejects_volumetric_burial(params, transport):
+    """FIX-COLL-001 AC-3 — front penetrating pattern must reject deep burial."""
+    from stand_cad.geometry.collision import (
+        OPEN_FRONT_MAX_BEARING_MM3,
+        is_mating,
+        is_open_front_kinematic_contact,
+        is_penetrating_structural_joint,
+    )
+    from stand_cad.geometry.registry import PartRecord
+
+    threshold = float(params.value("tolerance.part_assembly_feature_mm"))
+    clad_id = "PANEL-CLAD-FRONT-TRAY-LOWER-L-001"
+    slide_id = "SLIDE-LOWER-LEFT-001"
+    slide = transport.parts[slide_id]
+    slide_bounds = bounding_box_bounds(slide.solid)
+    clad = transport.parts[clad_id]
+    buried_clad = PartRecord(
+        part_id=clad_id,
+        material=clad.material,
+        solid=box_from_bounds(
+            slide_bounds[0][0],
+            slide_bounds[1][0],
+            slide_bounds[2][0],
+            slide_bounds[0][1],
+            slide_bounds[1][1] + 50.0,
+            slide_bounds[2][1],
+        ),
+    )
+    parts = dict(transport.parts)
+    parts[clad_id] = buried_clad
+    inter_vol = intersection_volume(buried_clad.solid, slide.solid)
+    assert inter_vol > OPEN_FRONT_MAX_BEARING_MM3 + threshold
+    assert inter_vol > 20_000.0
+    assert not is_penetrating_structural_joint(clad_id, slide_id, parts, threshold)
+    assert not is_open_front_kinematic_contact(clad_id, slide_id, parts, threshold)
+    assert not is_mating(clad_id, slide_id, parts, threshold=threshold, params=params)
+
+
 def test_post_cladding_and_base_org_cladding_not_emitted(params, transport):
     """D-069/D-070 — owner removed BASE/ORG/POST front cladding strips."""
     removed = [

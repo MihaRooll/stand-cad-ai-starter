@@ -9,7 +9,7 @@
 | Branch | `main` |
 | HEAD | `5eb2375`+ working tree — FIX-DOC-001-rfq-rev15 in progress |
 | Upstream | `origin/main` synced (ordinary push OK) |
-| Next in flight | Collision allowlist burial (P0) |
+| Next in flight | Door PANEL-IN-MID / SOFTSTOP unconditional True (P2 honesty backlog) |
 | Prior base | `65d6fe3` (D-041) |
 | Live `CONCEPT_REVISION` | **15** (`src/stand_cad/geometry/export.py`) |
 | Envelope | **650 × 420 × 529 mm** |
@@ -20,6 +20,19 @@
 | Commit policy | Mega-land authorized 2026-08-08. Keep excluding `ИИ советы/`, secrets, `.pytest_cache/`. `output/` gitignored. |
 
 ## Last closed defect
+
+### FIX-COLL-001-open-front-ceiling — intersection-volume ceiling (D-080)
+
+| | |
+|---|---|
+| Problem | `is_open_front_kinematic_contact` / front penetrating patterns exempted any clearance `< thr`, allowing deep burial to silent-green |
+| Root cause | No intersection-volume upper bound on open-front skin bearing (unlike door F-1 / cavity-joint ceilings) |
+| Fix | `OPEN_FRONT_MAX_BEARING_MM3=750.0` (live max **540 mm³**); gate open-front + four front clad/rail penetrating patterns; synthetic burial tests (open_front + penetrating) |
+| Key paths | `collision.py`; `tests/test_geometry.py::test_open_front_kinematic_contact_rejects_volumetric_burial`; `tests/test_geometry.py::test_open_front_penetrating_rejects_volumetric_burial`; `docs/14` §10 |
+| Verify | Targeted pytest `-k "open_front or door_mate or cavity_joint or collision"` + kinematics collision — pending adversarial/Quick |
+| Explicitly NOT done | Gate pass; P2 door `PANEL-IN-MID` / `SOFTSTOP-*` unconditional True cap (no measured contacts) |
+
+**Anti-false-conclusion:** Green collision sweep ≠ physical clearance at prototype. Do **not** treat 750 mm³ ceiling as manufacturing sign-off.
 
 ### FIX-DOC-001-rfq-rev15 — RFQ/README advertising sync (D-079)
 
@@ -37,7 +50,7 @@
 
 ## Open defect backlog (impact order)
 
-1. **Collision allowlist burial** — `is_open_front_kinematic_contact` / `is_door_mate` can skip deep interpenetration (`collision.py`). T2+; weak oracle. Confirm before fix.
+1. **Door PANEL-IN-MID / SOFTSTOP unconditional True** — `is_door_mate` returns True without volume ceiling; no clearance `< thr` contacts measured in transport / service_p1 / tray1_qa. T2+; do not invent cap without evidence.
 2. **`scripts/_stage1_metrics.py` KeyError** on removed `INTERLOCK-SHUTTLE-001` (if still unguarded after tip metrics edit).
 3. **Traceability CSV / ASSUMPTIONS** evidence paths still pointing at rev13 for several PLT/SWE rows.
 4. **HANDOFF product-truth** still cites rev13 in Product truth header — refresh in a follow-up packet (test excludes historical closed lists).
@@ -75,4 +88,4 @@
 |---|---|
 | 2026-08-08 | Created. FIX-TIP-001 done in WT; mega-commit authorized; backlog listed. |
 | 2026-08-08 | FIX-MASS-001 closed (D-078); backlog #2 removed; header honesty test added. |
-| 2026-08-08 | FIX-DOC-001-rfq-rev15 closed (D-079); docs/12 + README advertise rev15; `test_concept_revision_docs.py` added. |
+| 2026-08-08 | FIX-COLL-001 closed (D-080); open-front volume ceiling 750 mm³; backlog #1 narrowed to door PANEL-IN-MID/SOFTSTOP P2. |

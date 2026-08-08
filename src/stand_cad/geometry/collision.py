@@ -130,6 +130,20 @@ DOOR_FRONT_PLANE_MAX_BEARING_MM3 = 500.0
 # Cosmetic strut ↔ post/panel/rail attachment at corner (7 mm Ø cylinder clip).
 DOOR_STRUT_MAX_BEARING_MM3 = 350.0
 
+# Open-front structural/cladding ↔ tray-stack skin bearing ceiling (mm³) — plane-touch /
+# skin contact only; rejects volumetric burial through is_open_front_kinematic_contact
+# and the four front clad/rail penetrating patterns. Live max 540 mm³ (2026-08-08).
+OPEN_FRONT_MAX_BEARING_MM3 = 750.0
+
+OPEN_FRONT_PENETRATING_PATTERNS: frozenset[tuple[str, str]] = frozenset(
+    {
+        ("PANEL-CLAD-FRONT-", "TRAY-LOWER-"),
+        ("PANEL-CLAD-FRONT-", "SLIDE-LOWER-"),
+        ("FRAME-RAIL-BASE-FRONT-", "TRAY-LOWER-"),
+        ("FRAME-RAIL-BASE-FRONT-", "SLIDE-LOWER-"),
+    }
+)
+
 
 def _door_is_open_horizontal(solid, *, threshold: float = 1.0) -> bool:
     """True when a drop-front door has swung to horizontal work-surface posture."""
@@ -518,7 +532,11 @@ def is_penetrating_structural_joint(
         solid_b = parts[b].solid
         if minimum_clearance(solid_a, solid_b) >= threshold:
             continue
-        if intersection_volume(solid_a, solid_b) > threshold:
+        inter_vol = intersection_volume(solid_a, solid_b)
+        if (pattern_a, pattern_b) in OPEN_FRONT_PENETRATING_PATTERNS:
+            if inter_vol > OPEN_FRONT_MAX_BEARING_MM3 + threshold:
+                continue
+        if inter_vol > threshold:
             return True
     return False
 
@@ -817,7 +835,8 @@ def is_open_front_kinematic_contact(
                 _id_matches(b, clad_prefix) and _id_matches(a, stack_prefix)
             ):
                 if minimum_clearance(parts[a].solid, parts[b].solid) < threshold:
-                    return True
+                    inter_vol = intersection_volume(parts[a].solid, parts[b].solid)
+                    return inter_vol <= OPEN_FRONT_MAX_BEARING_MM3 + threshold
     return False
 
 
