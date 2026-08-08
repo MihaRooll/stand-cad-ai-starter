@@ -7,18 +7,33 @@
 | Field | Value |
 |---|---|
 | Branch | `main` |
-| HEAD | pending FIX-COLL-008 land — D-093 Full green |
+| HEAD | pending FIX-COLL-009 land — D-094 Full green |
 | Upstream | `origin/main` synced (ordinary push OK) |
-| Next in flight | Residual P2 TRAY-rail↔PANEL-IN ~10k; uncapped `MATING_PAIRS`; owner blockers: §F/§M/§N/§A |
+| Next in flight | Residual P2 INTERLOCK/MAINS/COVER/SOFT; uncapped `MATING_PAIRS`; owner blockers: §F/§M/§N/§A |
 | Live `CONCEPT_REVISION` | **15** (`src/stand_cad/geometry/export.py`) |
 | Envelope | **650 × 420 × 540 mm** (D-089 full +11 mm stack; was 529 pre-D-089) |
 | Owner-confirmed product | D-075 posts restored; D-076 upper fixed (`upper_extension=0`), lower 250 mm + door/tray choreography |
 | Gates | **No G0–G8 passed** — all CONCEPT / REFERENCE_ONLY / PRELIMINARY |
 | Mode | Autonomously fixing highest-impact **software/honesty** defects until owner says **СТОП** |
-| Verify at land | Full **green** — `setup_windows.ps1` exit 0 (416 passed, 1 xfailed); ruff clean (FIX-COLL-008) |
+| Verify at land | Full **green** — `setup_windows.ps1` exit 0 (419 passed, 1 xfailed); ruff clean (FIX-COLL-009) |
 | Commit policy | Mega-land authorized 2026-08-08. Keep excluding `ИИ советы/`, secrets, `.pytest_cache/`. `output/` gitignored. |
 
 ## Last closed defect
+
+### FIX-COLL-009-tray-rail-panel-penetrating-ceiling — TRAY-rail↔PANEL-IN volume gate (D-094) — **closed cycle 1**
+
+| | |
+|---|---|
+| Problem | `FRAME-RAIL-TRAY-` ↔ `PANEL-IN-` in `PENETRATING_JOINT_PATTERNS` with no volume ceiling — deep burial silent-green; coplanar share_face bypass (ORG∪POST-only exclude from D-092/D-093) |
+| Root cause | `is_penetrating_structural_joint()` gated ORG/MID/POST/open-front only; `PANEL-IN-`/`FRAME-` `_share_face_if_prefix` returned True for TRAY-rail↔PANEL-IN before penetrating check |
+| Fix | `TRAY_RAIL_PANEL_PENETRATING_MAX_BEARING_MM3=15000.0` with `TRAY_RAIL_PANEL_PENETRATING_PATTERNS={("FRAME-RAIL-TRAY-", "PANEL-IN-")}`; gate after POST. Exclude TRAY from share_face bypass (union with ORG∪POST). Three regression tests mirror D-093 |
+| Measured | Live transport: `FRAME-RAIL-TRAY-LOWER-L/R-001` ↔ `PANEL-IN-BOTTOM-001` **10237.5 mm³** each; ORG/MID/POST/open-front unchanged |
+| Residual P2 | INTERLOCK-TAB↔PANEL-IN; BASE-REAR↔MAINS-INLET; COVER-SVC↔POST ~**123 mm³**; uncapped `MATING_PAIRS` |
+| Key paths | `collision.py`; `tests/test_geometry.py`; `docs/14` §10a; `state/DECISION_LOG.md` D-094 |
+| Verify | Adversarial accept; Quick 419 passed; Full `setup_windows.ps1` exit 0 |
+| Explicitly NOT done | Gate pass; §F/§M/§N/§A closure; global penetrating ceiling; Path A geometry |
+
+**Anti-false-conclusion:** 15000 mm³ ceiling is measured hygiene gate — live 10237.5 mm³ overlap is design intent, not proof of physical clearance at prototype.
 
 ### FIX-COLL-008-post-panel-penetrating-ceiling — POST↔PANEL-IN volume gate (D-093) — **closed cycle 1**
 
@@ -28,7 +43,7 @@
 | Root cause | `is_penetrating_structural_joint()` gated ORG/MID/open-front only; `PANEL-IN-`/`FRAME-` `_share_face_if_prefix` returned True for POST↔PANEL-IN before penetrating check |
 | Fix | `POST_PANEL_PENETRATING_MAX_BEARING_MM3=25000.0` with `POST_PANEL_PENETRATING_PATTERNS={("FRAME-POST-", "PANEL-IN-")}`; gate after MID_UPPER. Exclude POST from share_face bypass (union with ORG). Three regression tests mirror D-092 |
 | Measured | Live transport: `FRAME-POST-RR/RL-001` ↔ `PANEL-IN-REAR-001` **18652.9 mm³** each; ORG/MID/open-front unchanged |
-| Residual P2 | TRAY-rail↔PANEL-IN max **10237.5 mm³**; INTERLOCK-TAB↔PANEL-IN; BASE-REAR↔MAINS-INLET; COVER-SVC↔POST ~**123 mm³**; uncapped `MATING_PAIRS` |
+| Residual P2 | INTERLOCK-TAB↔PANEL-IN; BASE-REAR↔MAINS-INLET; COVER-SVC↔POST ~**123 mm³**; uncapped `MATING_PAIRS` |
 | Key paths | `collision.py`; `tests/test_geometry.py`; `docs/14` §10a; `state/DECISION_LOG.md` D-093 |
 | Verify | Adversarial accept; Quick 416 passed; Full `setup_windows.ps1` exit 0 |
 | Explicitly NOT done | Gate pass; §F/§M/§N/§A closure; global penetrating ceiling; Path A geometry |
@@ -43,7 +58,7 @@
 | Root cause | `is_penetrating_structural_joint()` gated only open-front patterns (cycle 1); `PANEL-IN-`/`FRAME-` `_share_face_if_prefix` returned True before penetrating check for ORG-REAR (cycle 2 F-1) |
 | Fix | **Cycle 1:** `ORG_REAR_PENETRATING_MAX_BEARING_MM3=35000.0` and `MID_UPPER_PENETRATING_MAX_BEARING_MM3=35000.0` with pattern frozensets; gate in `is_penetrating_structural_joint()`. **Cycle 2:** exclude ORG-REAR from `PANEL-IN-`/`FRAME-` `_share_face_if_prefix` bypass in `is_mating()`; coplanar-face burial regression |
 | Measured | Live transport: ORG-REAR **31500 mm³**; SLIDE-UPPER ↔ MID **30712.5 mm³**; open-front live max **540 mm³** unchanged |
-| Residual P2 | POST↔PANEL-IN max **18652.9 mm³**; TRAY-rail↔PANEL-IN max **10237.5 mm³**; INTERLOCK-TAB↔PANEL-IN; BASE-REAR↔MAINS-INLET; COVER-SVC↔POST ~**123 mm³**; uncapped `MATING_PAIRS` (SOFT↔TRAY, …) |
+| Residual P2 | POST↔PANEL-IN max **18652.9 mm³** (closed D-093); INTERLOCK-TAB↔PANEL-IN; BASE-REAR↔MAINS-INLET; COVER-SVC↔POST ~**123 mm³**; uncapped `MATING_PAIRS` (SOFT↔TRAY, …) |
 | Key paths | `collision.py`; `tests/test_geometry.py`; `docs/14` §10a; `state/DECISION_LOG.md` D-092 |
 | Verify | Adversarial cycle 2 **accept**; Quick 413 passed; Full `setup_windows.ps1` exit 0 |
 | Explicitly NOT done | Gate pass; §F/§M/§N/§A closure; global penetrating ceiling; Path A geometry |
@@ -271,3 +286,4 @@
 | 2026-08-08 | FIX-COLL-006 closed (D-091); VIB↔EQUIP hygiene ceiling 2500 (live pad 2000); Full green. |
 | 2026-08-08 | FIX-COLL-008 closed (D-093); POST↔PANEL-IN ceiling 25000; share_face ORG∪POST; Full green. |
 | 2026-08-08 | FIX-COLL-007 closed (D-092); ORG/MID ceilings 35000; share_face bypass closed; Full green. |
+| 2026-08-08 | FIX-COLL-009 closed (D-094); TRAY-rail↔PANEL-IN ceiling 15000; share_face ORG∪POST∪TRAY; Full green. |

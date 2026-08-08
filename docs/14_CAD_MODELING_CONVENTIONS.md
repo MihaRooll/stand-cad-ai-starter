@@ -56,17 +56,18 @@ Front perimeter structure (`PANEL-CLAD-FRONT-*`, `FRAME-RAIL-BASE-FRONT-*`, `FRA
 
 ## 10a. Non–open-front penetrating joints — per-class volume ceilings (D-092)
 
-Largest uncapped non–open-front **`PENETRATING_JOINT_PATTERNS`** pairs are gated by class-specific ceilings in **`is_penetrating_structural_joint()`** — same predicate shape as §10 open-front (reject when `intersection_volume > class_ceiling + threshold`; no global penetrating default). Live maxes measured in **transport** posture (2026-08-08). **`PANEL-IN-`/`FRAME-` `_share_face_if_prefix`** does **not** bypass ORG-REAR or POST↔PANEL-IN — pairs matching `ORG_REAR_PENETRATING_PATTERNS` or `POST_PANEL_PENETRATING_PATTERNS` defer to the capped penetrating predicate (D-092 cycle 2; D-093).
+Largest uncapped non–open-front **`PENETRATING_JOINT_PATTERNS`** pairs are gated by class-specific ceilings in **`is_penetrating_structural_joint()`** — same predicate shape as §10 open-front (reject when `intersection_volume > class_ceiling + threshold`; no global penetrating default). Live maxes measured in **transport** posture (2026-08-08). **`PANEL-IN-`/`FRAME-` `_share_face_if_prefix`** does **not** bypass ORG-REAR, POST↔PANEL-IN, or TRAY-rail↔PANEL-IN — pairs matching `ORG_REAR_PENETRATING_PATTERNS`, `POST_PANEL_PENETRATING_PATTERNS`, or `TRAY_RAIL_PANEL_PENETRATING_PATTERNS` defer to the capped penetrating predicate (D-092 cycle 2; D-093; D-094).
 
 | Pattern class | Constant | Ceiling (mm³) | Live max (2026-08-08 transport) |
 |---|---|---|---|
 | `FRAME-RAIL-ORG-` ↔ `PANEL-IN-REAR-` | `ORG_REAR_PENETRATING_MAX_BEARING_MM3` | **35000** | **31500** (`FRAME-RAIL-ORG-REAR-001` ↔ `PANEL-IN-REAR-001`) |
 | `SLIDE-UPPER-` / `TRAY-UPPER-001` / `SOFTSTOP-UPPER-001` ↔ `PANEL-IN-MID-001` | `MID_UPPER_PENETRATING_MAX_BEARING_MM3` | **35000** | **30712.5** (`SLIDE-UPPER-*` ↔ MID; TRAY/SOFTSTOP ↔ MID same family, live vol≈0) |
 | `FRAME-POST-` ↔ `PANEL-IN-` | `POST_PANEL_PENETRATING_MAX_BEARING_MM3` | **25000** | **18652.9** (`FRAME-POST-RR/RL-001` ↔ `PANEL-IN-REAR-001`) |
+| `FRAME-RAIL-TRAY-` ↔ `PANEL-IN-` | `TRAY_RAIL_PANEL_PENETRATING_MAX_BEARING_MM3` | **15000** | **10237.5** (`FRAME-RAIL-TRAY-LOWER-L/R-001` ↔ `PANEL-IN-BOTTOM-001`) |
 
-Deep synthetic burial ≫ ceiling must **not** silent-green (including coplanar AABB-face burial for ORG-REAR and POST↔PANEL-IN). **`OPEN_FRONT_MAX_BEARING_MM3`** (**750 mm³**) and §10 behavior unchanged (D-080).
+Deep synthetic burial ≫ ceiling must **not** silent-green (including coplanar AABB-face burial for ORG-REAR, POST↔PANEL-IN, and TRAY-rail↔PANEL-IN). **`OPEN_FRONT_MAX_BEARING_MM3`** (**750 mm³**) and §10 behavior unchanged (D-080).
 
-**Residual uncapped penetrating classes (P2):** `FRAME-RAIL-TRAY-` ↔ `PANEL-IN-` (live max **10237.5 mm³**); `INTERLOCK-TAB-` ↔ `PANEL-IN-` (uncapped — not re-measured this cycle); `FRAME-RAIL-BASE-REAR-` ↔ `MAINS-INLET-` (uncapped — out of scope); `COVER-SVC-001` ↔ `FRAME-POST-R*` (~**123 mm³**). Cap in a follow-on cycle — do not apply a single global ~40k ceiling.
+**Residual uncapped penetrating classes (P2):** `INTERLOCK-TAB-` ↔ `PANEL-IN-` (uncapped — not re-measured this cycle); `FRAME-RAIL-BASE-REAR-` ↔ `MAINS-INLET-` (uncapped — out of scope); `COVER-SVC-001` ↔ `FRAME-POST-R*` (~**123 mm³**). Cap in a follow-on cycle — do not apply a single global ~40k ceiling.
 
 ## 11. Kinematic-group mates — no blanket exemption (D-086)
 
