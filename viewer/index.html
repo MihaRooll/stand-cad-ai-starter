@@ -115,7 +115,7 @@
       <p class="sub">CONCEPT / REFERENCE ONLY</p>
     </header>
     <div id="controls">
-      <label for="model-select">Concept revision</label>
+      <label for="model-select">Assembly state</label>
       <select id="model-select" disabled><option>Loading index…</option></select>
 
       <label for="opacity">Global opacity <span id="opacity-val">100</span>%</label>
@@ -1100,14 +1100,15 @@
         showFatalError(err.message, MODELS_INDEX_URL);
         throw err;
       }
-      markStep('index', 'done', `model index (${availableModels.length} revision(s))`);
+      markStep('index', 'done', `model index (${availableModels.length} state(s))`);
 
       modelSelect.innerHTML = '';
       for (const entry of availableModels) {
         const opt = document.createElement('option');
         opt.value = entry.manifest_url;
         const rev = entry.revision >= 0 ? `rev${entry.revision}` : entry.manifest_file;
-        opt.textContent = `${rev} — ${entry.glb_file}`;
+        const label = entry.label || entry.glb_file;
+        opt.textContent = `${rev} — ${label}`;
         modelSelect.appendChild(opt);
       }
       modelSelect.disabled = false;
@@ -1116,7 +1117,8 @@
         if (selected) await loadModelEntry(selected);
       });
 
-      return availableModels[0];
+      const defaultUrl = payload.default_manifest_url;
+      return availableModels.find((m) => m.manifest_url === defaultUrl) || availableModels[0];
     }
 
     function animate() {

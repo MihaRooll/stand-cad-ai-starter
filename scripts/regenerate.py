@@ -7,13 +7,18 @@ import subprocess
 import sys
 from pathlib import Path
 
-from stand_cad.geometry.export import CONCEPT_REVISION, DEFAULT_STEP_NAME, generate_concept_model
+from stand_cad.geometry.export import (
+    CONCEPT_REVISION,
+    DEFAULT_STEP_NAME,
+    generate_concept_model,
+    viewer_mesh_state_stem,
+)
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_PARAMETERS = REPO_ROOT / "config" / "parameters.yaml"
 DEFAULT_CONCEPT_DIR = REPO_ROOT / "output" / "concept"
 DEFAULT_OUTPUT_DIR = REPO_ROOT / "output" / "validation" / f"rev{CONCEPT_REVISION}" / "views"
-CONCEPT_STEM = f"light_plotter_tower_ASSEMBLY_CONCEPT_REFERENCE_ONLY_rev{CONCEPT_REVISION}"
+CONCEPT_STEM = viewer_mesh_state_stem("transport")
 
 
 def main() -> None:
@@ -60,11 +65,15 @@ def main() -> None:
     pdf_path = drawings_dir / (
         f"light_plotter_tower_DRAWINGS_PRELIMINARY_CONCEPT_NOT_FOR_PRODUCTION_rev{CONCEPT_REVISION}.pdf"
     )
-    mesh_paths = {
-        "stl": DEFAULT_CONCEPT_DIR / f"{CONCEPT_STEM}.stl",
-        "glb": DEFAULT_CONCEPT_DIR / f"{CONCEPT_STEM}.glb",
-        "manifest": DEFAULT_CONCEPT_DIR / f"{CONCEPT_STEM}.manifest.json",
+    mesh_paths: dict[str, Path] = {
+        "transport_stl": DEFAULT_CONCEPT_DIR / f"{CONCEPT_STEM}.stl",
+        "transport_glb": DEFAULT_CONCEPT_DIR / f"{CONCEPT_STEM}.glb",
+        "transport_manifest": DEFAULT_CONCEPT_DIR / f"{CONCEPT_STEM}.manifest.json",
     }
+    for assembly_state in ("service_plotter_1", "service_plotter_2"):
+        stem = viewer_mesh_state_stem(assembly_state)
+        mesh_paths[f"{assembly_state}_glb"] = DEFAULT_CONCEPT_DIR / f"{stem}.glb"
+        mesh_paths[f"{assembly_state}_manifest"] = DEFAULT_CONCEPT_DIR / f"{stem}.manifest.json"
 
     print(f"\nRevision: rev{CONCEPT_REVISION}")
     print("Artifacts written:")

@@ -2,23 +2,34 @@
 
 > **Read this first** in a new chat after `HANDOFF_PROMPT.md`. Update this file at every closed defect cycle (before commit). English only. Owner replies in Russian; do not invent production-ready / G0–G8 pass.
 
-## Snapshot (2026-08-08)
+## Snapshot (2026-08-09)
 
 | Field | Value |
 |---|---|
 | Branch | `main` |
-| HEAD | pending FIX-DOC-008 land — D-100 |
+| HEAD | pending FIX-VIEW-001 land — D-101 |
 | Upstream | `origin/main` synced (ordinary push OK) |
 | Next in flight | Live uncapped MATING_PAIRS (SOFT↔TRAY etc.); owner blockers: §F/§M/§N/§A |
 | Live `CONCEPT_REVISION` | **15** (`src/stand_cad/geometry/export.py`) |
+| Viewer GLB states | transport + service_plotter_1 + service_plotter_2 under `output/concept/` (D-101) |
 | Envelope | **650 × 420 × 540 mm** (D-089 full +11 mm stack; was 529 pre-D-089) |
 | Owner-confirmed product | D-075 posts restored; D-076 upper fixed (`upper_extension=0`), lower 250 mm + door/tray choreography |
 | Gates | **No G0–G8 passed** — all CONCEPT / REFERENCE_ONLY / PRELIMINARY |
 | Mode | Autonomously fixing highest-impact **software/honesty** defects until owner says **СТОП** |
-| Verify at land | Full **green** — `setup_windows.ps1` exit 0 (433 passed, 1 xfailed); ruff clean (FIX-HONESTY-001) |
+| Verify at land | Full **green** — `setup_windows.ps1` exit 0 (446 passed, 1 xfailed); ruff clean (FIX-VIEW-001) |
 | Commit policy | Mega-land authorized 2026-08-08. Keep excluding `ИИ советы/`, secrets, `.pytest_cache/`. `output/` gitignored. |
 
 ## Last closed defect
+
+### FIX-VIEW-001-open-door-glb-states — service GLB viewer export (D-101) — **closed cycle 1**
+
+| | |
+|---|---|
+| Problem | Interactive GLB viewer only showed transport (doors closed); owner could not inspect open drop-front service states |
+| Fix | `export_viewer_mesh_states()` writes three GLB+manifest pairs; viewer dropdown labels; default/reload prefer transport at same rev; F-1 `include_stl` kwarg fixed |
+| Key paths | `export.py`; `viewer_models.py`; `serve_viewer.py`; `viewer/index.html`; tests |
+| Verify | Verifier pass; targeted 13 passed; Full `setup_windows.ps1` exit 0 (446 passed) |
+| Explicitly NOT done | Gate pass; door kinematics change; CONCEPT_REVISION bump |
 
 ### FIX-DOC-008-csv-pytest-count — traceability pytest-count honesty (D-100) — **closed**
 
@@ -382,3 +393,4 @@
 | 2026-08-08 | FIX-COLL-013 closed (D-098); cross-tier TRAY/SLIDE↔rail share_face exclude; Full green. |
 | 2026-08-08 | FIX-HONESTY-001 closed (D-099); prune zombie INTERLOCK/MAINS/… allowlists; Full green. |
 | 2026-08-08 | FIX-DOC-008 closed (D-100); CSV SWE-001/003 stop advertising stale 345 pytest. |
+| 2026-08-09 | FIX-VIEW-001 closed (D-101); open-door service GLB states in viewer; Full green. |

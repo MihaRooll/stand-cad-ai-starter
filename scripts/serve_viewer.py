@@ -6,7 +6,6 @@ from __future__ import annotations
 import argparse
 import errno
 import json
-import re
 import socketserver
 import subprocess
 import sys
@@ -18,6 +17,15 @@ from http import HTTPStatus
 from http.server import SimpleHTTPRequestHandler
 from pathlib import Path
 
+from stand_cad.viewer_models import (
+    build_models_index as build_models_index_from_dir,
+)
+from stand_cad.viewer_models import (
+    pick_default_model,
+    pick_newest_concept_pair,
+    revision_from_name,
+)
+
 HOST = "127.0.0.1"
 PORT = 8000
 MAX_PORT_CANDIDATES = 20
@@ -25,7 +33,6 @@ REPO_ROOT = Path(__file__).resolve().parents[1]
 CONCEPT_DIR = REPO_ROOT / "output" / "concept"
 MODELS_JSON_PATH = "/viewer/models.json"
 RELOAD_STATUS_PATH = "/viewer/reload-status"
-REV_PATTERN = re.compile(r"_rev(\d+)\.manifest\.json$", re.IGNORECASE)
 
 # Shared watch state (updated by background poller when --watch is active).
 _watch_lock = threading.Lock()
@@ -63,19 +70,15 @@ def ensure_three_vendor() -> None:
 
 
 def _revision_from_name(name: str) -> int:
-    match = REV_PATTERN.search(name)
-    return int(match.group(1)) if match else -1
+    return revision_from_name(name)
 
 
 def _newest_concept_pair() -> tuple[Path | None, Path | None, int]:
     """Return (manifest_path, glb_path, revision) for the newest concept revision."""
-    best_rev = -1
-    best_manifest: Path | None = None
-    best_glb: Path | None = None
+    candidates: list[tuple[Path, dict, Path]] = []
     if not CONCEPT_DIR.is_dir():
         return None, None, -1
     for manifest_path in CONCEPT_DIR.glob("*.manifest.json"):
-        rev = _revision_from_name(manifest_path.name)
         try:
             payload = json.loads(manifest_path.read_text(encoding="utf-8"))
         except (OSError, json.JSONDecodeError):
@@ -86,11 +89,8 @@ def _newest_concept_pair() -> tuple[Path | None, Path | None, int]:
         glb_path = CONCEPT_DIR / glb_name
         if not glb_path.is_file():
             continue
-        if rev >= best_rev:
-            best_rev = rev
-            best_manifest = manifest_path
-            best_glb = glb_path
-    return best_manifest, best_glb, best_rev
+        candidates.append((manifest_path, payload, glb_path))
+    return pick_newest_concept_pair(candidates)
 
 
 def _concept_dir_mtime_ns() -> int:
@@ -139,32 +139,7 @@ def _watch_poll_loop(interval: float) -> None:
 
 
 def build_models_index() -> dict:
-    models: list[dict] = []
-    if CONCEPT_DIR.is_dir():
-        for manifest_path in sorted(CONCEPT_DIR.glob("*.manifest.json")):
-            try:
-                payload = json.loads(manifest_path.read_text(encoding="utf-8"))
-            except (OSError, json.JSONDecodeError):
-                continue
-            glb_name = payload.get("glb_file") or manifest_path.name.replace(
-                ".manifest.json", ".glb"
-            )
-            glb_path = CONCEPT_DIR / glb_name
-            if not glb_path.is_file():
-                continue
-            models.append(
-                {
-                    "revision": _revision_from_name(manifest_path.name),
-                    "manifest_file": manifest_path.name,
-                    "manifest_url": f"/output/concept/{manifest_path.name}",
-                    "glb_file": glb_name,
-                    "glb_url": f"/output/concept/{glb_name}",
-                    "part_count": payload.get("part_count"),
-                    "bbox_size_mm": payload.get("bbox_size_mm"),
-                }
-            )
-    models.sort(key=lambda item: (item["revision"], item["manifest_file"]), reverse=True)
-    return {"models": models, "default_manifest_url": models[0]["manifest_url"] if models else None}
+    return build_models_index_from_dir(CONCEPT_DIR)
 
 
 class RepositoryHandler(SimpleHTTPRequestHandler):
@@ -242,7 +217,7 @@ def verify_viewer(base_url: str | None = None, *, port: int = PORT) -> int:
         print("VERIFY FAIL: no concept models under output/concept/")
         return 1
 
-    newest = index["models"][0]
+    newest = pick_default_model(index["models"]) or index["models"][0]
     urls = [
         f"{base}/viewer/index.html",
         f"{base}/viewer/vendor/three@0.170.0/build/three.module.js",

@@ -34,7 +34,7 @@ uv run python scripts/serve_viewer.py --watch
 
 Open **http://127.0.0.1:8000/viewer/index.html**
 
-The viewer loads the **newest** concept revision from `output/concept/` by default. Use the **Concept revision** dropdown to switch revisions (manual switch still **fit-to-view**).
+The viewer loads **transport (doors closed)** by default — the newest revision's transport GLB from `output/concept/`. Use the **Assembly state** dropdown to switch to **service P1 (lower door open)** or **service P2 (upper door open)** at the same revision; each option loads its paired GLB and manifest.
 
 ### Live reload (`--watch`)
 

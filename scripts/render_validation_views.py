@@ -42,7 +42,7 @@ from stand_cad.geometry.assembly import (
     build_transport_display_assembly,
     build_tray1_quick_access_assembly,
 )
-from stand_cad.geometry.export import CONCEPT_REVISION, export_transport_mesh_bundle
+from stand_cad.geometry.export import CONCEPT_REVISION, export_viewer_mesh_states
 from stand_cad.geometry.registry import PartRecord
 from stand_cad.parameters import Parameters, load_parameters
 
@@ -644,14 +644,11 @@ def render_assembly_svg(
 def export_transport_mesh_formats(
     params: Parameters,
     output_dir: Path = DEFAULT_CONCEPT_DIR,
-    *,
-    stem: str = CONCEPT_STEM,
-) -> dict[str, Path]:
-    """Export transport assembly STL, labeled GLB, and viewer manifest."""
-    return export_transport_mesh_bundle(
+) -> dict[str, dict[str, Path | None]]:
+    """Export transport + service plotter GLB/manifest pairs for the viewer."""
+    return export_viewer_mesh_states(
         params,
         output_dir,
-        stem=stem,
         generated_from="scripts/render_validation_views.py",
     )
 
@@ -711,9 +708,10 @@ def main() -> None:
     mesh_paths = export_transport_mesh_formats(params)
     for path in paths:
         print(path)
-    for label, path in mesh_paths.items():
-        if path is not None:
-            print(f"{label}: {path}")
+    for assembly_state, bundle in mesh_paths.items():
+        for label, path in bundle.items():
+            if path is not None:
+                print(f"{assembly_state}/{label}: {path}")
 
 
 if __name__ == "__main__":

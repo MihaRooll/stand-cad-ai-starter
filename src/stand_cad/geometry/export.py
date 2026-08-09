@@ -26,6 +26,27 @@ DEFAULT_STEP_NAME = (
     f"light_plotter_tower_ASSEMBLY_CONCEPT_REFERENCE_ONLY_rev{CONCEPT_REVISION}.step"
 )
 
+VIEWER_MESH_STATE_LABELS: dict[str, str] = {
+    "transport": "transport (doors closed)",
+    "service_plotter_1": "service P1 (lower door open)",
+    "service_plotter_2": "service P2 (upper door open)",
+}
+
+VIEWER_MESH_STATE_STEMS: dict[str, str] = {
+    "transport": "light_plotter_tower_ASSEMBLY_CONCEPT_REFERENCE_ONLY",
+    "service_plotter_1": "light_plotter_tower_SERVICE_PLOTTER_1_CONCEPT_REFERENCE_ONLY",
+    "service_plotter_2": "light_plotter_tower_SERVICE_PLOTTER_2_CONCEPT_REFERENCE_ONLY",
+}
+
+
+def viewer_mesh_state_stem(
+    assembly_state: str,
+    revision: int = CONCEPT_REVISION,
+) -> str:
+    """Filename stem for a viewer GLB/manifest pair (includes _rev{N}, no extension)."""
+    prefix = VIEWER_MESH_STATE_STEMS[assembly_state]
+    return f"{prefix}_rev{revision}"
+
 
 def build_all_states(params: Parameters) -> dict[str, AssemblyState]:
     """Build all four TZ section 13 assembly states.
@@ -47,15 +68,14 @@ def transport_compound(params: Parameters):
     return build_transport_display_assembly(params).compound()
 
 
-def build_labeled_transport_compound(
-    params: Parameters,
+def build_labeled_assembly_compound(
+    state: AssemblyState,
 ) -> tuple[AssemblyState, Compound, list[PartRecord]]:
-    """Transport assembly with part_id labels on each solid for GLB export.
+    """Assembly with part_id labels on each solid for GLB export.
 
     build123d export_gltf propagates Shape.label to glTF node and mesh names,
     so the viewer can map meshes by name rather than fragile child order.
     """
-    state = build_transport_display_assembly(params)
     records = list(state.parts.values())
     labeled_solids = []
     for record in records:
@@ -65,6 +85,24 @@ def build_labeled_transport_compound(
     return state, Compound(children=labeled_solids), records
 
 
+def build_labeled_transport_compound(
+    params: Parameters,
+) -> tuple[AssemblyState, Compound, list[PartRecord]]:
+    """Transport display assembly with part_id labels (thin wrapper)."""
+    return build_labeled_assembly_compound(build_transport_display_assembly(params))
+
+
+def _build_viewer_assembly_state(params: Parameters, assembly_state: str) -> AssemblyState:
+    builders = {
+        "transport": build_transport_display_assembly,
+        "service_plotter_1": build_service_plotter_1_assembly,
+        "service_plotter_2": build_service_plotter_2_assembly,
+    }
+    if assembly_state not in builders:
+        raise ValueError(f"unsupported viewer assembly_state: {assembly_state!r}")
+    return builders[assembly_state](params)
+
+
 def write_glb_manifest(
     manifest_path: Path,
     *,
@@ -72,6 +110,8 @@ def write_glb_manifest(
     compound: Compound,
     records: list[PartRecord],
     generated_from: str = "scripts/render_validation_views.py",
+    assembly_state: str | None = None,
+    label: str | None = None,
 ) -> None:
     """Write co-located manifest JSON for the interactive GLB viewer."""
     (x_bounds, y_bounds, z_bounds) = bounding_box_bounds(compound)
@@ -91,8 +131,46 @@ def write_glb_manifest(
             for index, record in enumerate(records)
         ],
     }
+    if assembly_state is not None:
+        manifest["assembly_state"] = assembly_state
+    if label is not None:
+        manifest["label"] = label
     manifest_path.parent.mkdir(parents=True, exist_ok=True)
     manifest_path.write_text(json.dumps(manifest, indent=2) + "\n", encoding="utf-8")
+
+
+def export_assembly_mesh_bundle(
+    params: Parameters,
+    output_dir: Path | str,
+    *,
+    assembly_state: str,
+    stem: str,
+    include_stl: bool = False,
+    generated_from: str = "scripts/render_validation_views.py",
+) -> dict[str, Path | None]:
+    """Export labeled GLB + manifest for one assembly state; STL optional."""
+    target_dir = Path(output_dir)
+    target_dir.mkdir(parents=True, exist_ok=True)
+    state = _build_viewer_assembly_state(params, assembly_state)
+    _state, labeled_compound, records = build_labeled_assembly_compound(state)
+    glb_path = target_dir / f"{stem}.glb"
+    manifest_path = target_dir / f"{stem}.manifest.json"
+    stl_path: Path | None = None
+    if include_stl:
+        stl_path = target_dir / f"{stem}.stl"
+        export_stl(labeled_compound, stl_path)
+    export_gltf(labeled_compound, glb_path, binary=True)
+    label = VIEWER_MESH_STATE_LABELS[assembly_state]
+    write_glb_manifest(
+        manifest_path,
+        glb_filename=glb_path.name,
+        compound=labeled_compound,
+        records=records,
+        generated_from=generated_from,
+        assembly_state=assembly_state,
+        label=label,
+    )
+    return {"stl": stl_path, "glb": glb_path, "manifest": manifest_path}
 
 
 def export_transport_mesh_bundle(
@@ -101,24 +179,38 @@ def export_transport_mesh_bundle(
     *,
     stem: str,
     generated_from: str = "scripts/render_validation_views.py",
-) -> dict[str, Path]:
+) -> dict[str, Path | None]:
     """Export transport STL, labeled GLB, and viewer manifest."""
-    target_dir = Path(output_dir)
-    target_dir.mkdir(parents=True, exist_ok=True)
-    _state, labeled_compound, records = build_labeled_transport_compound(params)
-    stl_path = target_dir / f"{stem}.stl"
-    glb_path = target_dir / f"{stem}.glb"
-    manifest_path = target_dir / f"{stem}.manifest.json"
-    export_stl(labeled_compound, stl_path)
-    export_gltf(labeled_compound, glb_path, binary=True)
-    write_glb_manifest(
-        manifest_path,
-        glb_filename=glb_path.name,
-        compound=labeled_compound,
-        records=records,
+    return export_assembly_mesh_bundle(
+        params,
+        output_dir,
+        assembly_state="transport",
+        stem=stem,
+        include_stl=True,
         generated_from=generated_from,
     )
-    return {"stl": stl_path, "glb": glb_path, "manifest": manifest_path}
+
+
+def export_viewer_mesh_states(
+    params: Parameters,
+    output_dir: Path | str,
+    *,
+    generated_from: str = "scripts/render_validation_views.py",
+) -> dict[str, dict[str, Path | None]]:
+    """Export transport + both service plotter GLB/manifest pairs for the viewer."""
+    target_dir = Path(output_dir)
+    written: dict[str, dict[str, Path | None]] = {}
+    for assembly_state in VIEWER_MESH_STATE_LABELS:
+        stem = viewer_mesh_state_stem(assembly_state)
+        written[assembly_state] = export_assembly_mesh_bundle(
+            params,
+            target_dir,
+            assembly_state=assembly_state,
+            stem=stem,
+            include_stl=(assembly_state == "transport"),
+            generated_from=generated_from,
+        )
+    return written
 
 
 def export_transport_step(params: Parameters, output_path: Path | str) -> Path:
